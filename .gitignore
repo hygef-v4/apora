@@ -1,0 +1,80 @@
+# =========================
+# Flutter / Dart
+# =========================
+.dart_tool/
+.packages
+.pub/
+build/
+
+# Generated files
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+
+# Dart generated
+*.dart.js
+*.info.json
+*.js.map
+*.js_
+*.snapshot
+*.dill
+
+# Logs
+*.log
+
+# =========================
+# IDE
+# =========================
+.idea/
+.vscode/
+*.iml
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Android
+# =========================
+android/.gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+android/local.properties
+
+# Keystore (IMPORTANT)
+*.jks
+*.keystore
+key.properties
+
+# =========================
+# iOS
+# =========================
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/.last_build_id
+ios/Flutter/ephemeral/
+ios/DerivedData/
+
+# =========================
+# macOS / Linux / Windows
+# =========================
+macos/Flutter/ephemeral/
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
+
+# =========================
+# Firebase
+# =========================
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Firebase cache
+.firebase/
+
+# Environment Variables
+.env
+.env.*
