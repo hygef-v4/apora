@@ -1,237 +1,75 @@
 # Hướng dẫn Đóng góp (Contributing Guidelines)
 
-Cảm ơn bạn đã quan tâm đóng góp cho dự án **Apartment Management**. Vui lòng tuân theo các quy tắc dưới đây để đảm bảo code quality và consistency.
+Cảm ơn bạn đã quan tâm đóng góp cho dự án **APORA - Apartment Management**. Vui lòng tuân theo các quy tắc dưới đây để đảm bảo code quality và consistency.
+
+## 🏗 Kiến trúc Dự án (Monorepo)
+
+Dự án được chia thành 2 thư mục chính:
+- `mobile/`: Ứng dụng Flutter cho 3 Role (Resident, Admin, Staff).
+- `backend/`: API Server sử dụng Next.js (REST API, JWT Auth, Webhooks).
+
+## 🧑‍💻 Phân công Công việc (WBS)
+
+- **Thành viên 1 (Core & Auth)**: Setup Flutter base, Router, xử lý JWT Auth (UC01-UC04).
+- **Thành viên 2 (Billing & Payment)**: Xử lý API PayOS, Webhook và giao diện hóa đơn (UC05-UC08).
+- **Thành viên 3 (Ticket System)**: Xử lý quy trình báo cáo sự cố 3 bên, nén/upload hình ảnh (UC09-UC12).
+- **Thành viên 4 (Realtime & Utils)**: Xử lý Chat qua Pusher, Push Notification (FCM), bảng tin chung (UC13-UC17).
+- **Thành viên 5 (Admin & Data)**: Màn hình quản lý Admin, Dashboard thống kê, luồng Check-in/Checkout (UC18-UC20).
+
+## ⚠️ CÁC LƯU Ý KỸ THUẬT QUAN TRỌNG (MUST READ)
+
+1. **KHÔNG có nút Đăng ký (Register)**: Tài khoản phải được cấp phát bởi Admin (UC18 & UC20).
+2. **Lưu trữ JWT Token an toàn**: Phải sử dụng `flutter_secure_storage`, TUYỆT ĐỐI KHÔNG dùng `SharedPreferences`.
+3. **Nén hình ảnh**: Phải nén ảnh (ví dụ: dùng `flutter_image_compress`) xuống dưới 500KB trước khi upload lên Cloudinary.
+4. **Cập nhật Hóa đơn PayOS**: Trạng thái hóa đơn chỉ được cập nhật thông qua **Webhook** từ PayOS gọi về Backend, KHÔNG ĐƯỢC cập nhật trực tiếp từ Mobile App (đề phòng rớt mạng).
+5. **Quản lý FCM Token**: Lưu FCM Token vào Database khi Login, **XÓA FCM Token** khi Logout (nếu không chủ mới vào sẽ nhận noti của chủ cũ).
+6. **Data Isolation (Cô lập dữ liệu)**: Các API GET hóa đơn/ticket cho Resident phải query theo `user_id`, KHÔNG query theo `apartment_id` (để tránh rò rỉ dữ liệu khi đổi chủ).
+7. **Xử lý Ngoại lệ (Error Handling)**: Bọc tất cả API call trong `try...catch` và hiển thị thông báo lỗi thân thiện (tiếng Việt) bằng SnackBar/Dialog. Không để app crash.
 
 ## 📋 Quy tắc Commit Message (Conventional Commits)
-
-Mọi commit phải tuân theo format sau để dễ quản lý version và changelog:
 
 ```
 <type>(<scope>): <subject>
 <blank line>
 <body>
-<blank line>
-<footer>
 ```
 
-### Các Type Commit chuẩn:
+**Các Type Commit chuẩn:**
+- `feat`: Thêm tính năng mới
+- `fix`: Sửa bug
+- `ui`: Chỉnh giao diện
+- `refactor`: Tối ưu code không đổi chức năng
+- `style`: Format code
+- `docs`: Tài liệu
+- `test`: Thêm/sửa test
+- `chore`: Config/package/build
 
-| Type | Ý nghĩa | Ví dụ |
-|------|---------|--------|
-| **feat** | Thêm tính năng mới | `feat(auth): add login screen` |
-| **fix** | Sửa bug | `fix(ui): resolve button alignment issue` |
-| **ui** | Chính giao diện | `ui(theme): update color scheme` |
-| **refactor** | Tối ưu code không đổi chức năng | `refactor(api): simplify data model` |
-| **style** | Format code (whitespace, semicolons) | `style: format code with prettier` |
-| **docs** | Tài liệu | `docs: update README installation steps` |
-| **test** | Thêm/sửa test | `test(auth): add login validation tests` |
-| **chore** | Config/package/build | `chore: update dependencies` |
-| **perf** | Tối ưu performance | `perf(list): optimize data loading` |
-| **firebase** | Config firebase | `firebase: setup realtime database` |
-| **init** | Khởi tạo project | `init: initial project setup` |
+Ví dụ: `feat(billing): add PayOS integration for invoice payment`
 
-### Ví dụ Commit đúng:
+## 🌿 Quy trình Git (Git Workflow)
 
-```
-feat(home): add apartment list view
+1. Checkout nhánh mới: `git checkout -b feature/uc05-billing`
+2. Commit thường xuyên theo chuẩn.
+3. Chạy test trước khi PR: `flutter test`
+4. Tạo Pull Request (PR) và đợi code review. Bắt buộc test PASS mới được merge.
 
-- Display apartments in a ListView
-- Add search functionality
-- Add apartment detail navigation
+## 🎨 Lập trình Flutter
 
-Closes #123
-```
+- Thư mục tổ chức theo Feature-First (`lib/features/...`).
+- Sử dụng Riverpod hoặc BLoC để quản lý trạng thái. UI chỉ làm nhiệm vụ hiển thị.
+- Các hằng số, màu sắc, base URL lưu tại `lib/core/constants/`.
 
-## 🎨 Code Style & Naming Conventions
+## ⚙️ Lập trình Next.js Backend
 
-### Dart/Flutter Code Style
+- Sử dụng `pg` (Raw query) để tương tác PostgreSQL.
+- API route chuẩn REST: `src/app/api/...`
+- Middleware xác thực RBAC tại `src/lib/middleware.ts`.
+- Mật khẩu phải hash bằng `bcrypt` trước khi lưu.
 
-1. **Naming Conventions:**
-   ```dart
-   // Classes: PascalCase
-   class ApartmentCard { }
-   
-   // Functions/Methods: camelCase
-   void fetchApartmentList() { }
-   
-   // Constants: camelCase
-   const maxRetries = 3;
-   
-   // Private members: leading underscore
-   String _privateVariable;
-   void _privateMethod() { }
-   
-   // Enum: PascalCase
-   enum ApartmentStatus { active, inactive, maintenance }
-   ```
+## ✅ Kiểm thử (Testing)
 
-2. **File naming:**
-   ```
-   // Screens: snake_case
-   home_screen.dart
-   apartment_detail_screen.dart
-   
-   // Models: snake_case
-   apartment_model.dart
-   user_model.dart
-   
-   // Widgets: snake_case
-   apartment_card.dart
-   custom_button.dart
-   ```
-
-3. **Formatting:**
-   - Sử dụng `dart format` trước khi commit
-   - Dòng tối đa 80 ký tự
-   - 2 spaces indent (default Dart)
-   - Loại bỏ trailing whitespace
-
-   ```bash
-   # Format code
-   dart format lib/
-   ```
-
-4. **Linting:**
-   - Tuân theo rules trong `analysis_options.yaml`
-   - Chạy `flutter analyze` để check linting
-
-   ```bash
-   flutter analyze
-   ```
-
-### Project Structure
-
-```
-lib/
-├── main.dart
-├── screens/           # UI screens
-├── widgets/          # Reusable widgets
-├── models/           # Data models
-├── services/         # API, Firebase services
-├── providers/        # State management (Provider, Bloc, etc)
-├── utils/            # Utilities, helpers
-├── constants/        # App constants
-└── config/           # App configuration
-```
-
-## ✅ Testing Requirements
-
-### Bắt buộc viết test cho:
-
-1. **Unit Tests** (Business Logic)
-   ```dart
-   // test/services/apartment_service_test.dart
-   void main() {
-     test('fetchApartments returns list of apartments', () async {
-       // Arrange
-       final service = ApartmentService();
-       
-       // Act
-       final apartments = await service.fetchApartments();
-       
-       // Assert
-       expect(apartments, isNotEmpty);
-     });
-   }
-   ```
-
-2. **Widget Tests** (UI Components)
-   ```dart
-   // test/widgets/apartment_card_test.dart
-   void main() {
-     testWidgets('ApartmentCard displays apartment info', (WidgetTester tester) async {
-       await tester.pumpWidget(MaterialApp(
-         home: ApartmentCard(apartment: mockApartment),
-       ));
-       
-       expect(find.text('Apartment Name'), findsOneWidget);
-     });
-   }
-   ```
-
-### Chạy test:
-
-```bash
-# Chạy tất cả tests
-flutter test
-
-# Chạy test file cụ thể
-flutter test test/services/apartment_service_test.dart
-
-# Chạy test với coverage
-flutter test --coverage
-```
-
-### Coverage Targets:
-
-- **Services** (API, Firebase): ≥ 80%
-- **Models** (Data models): ≥ 70%
-- **Widgets**: ≥ 60%
-
-## 🌿 Branch Naming Convention (Recommended)
-
-```
-feature/add-login-screen
-bugfix/fix-apartment-filter
-hotfix/critical-crash
-docs/update-readme
-refactor/simplify-api-service
-```
-
-## 🔄 Git Workflow
-
-1. **Tạo branch mới:**
-   ```bash
-   git checkout -b feature/new-feature
-   ```
-
-2. **Commit thường xuyên:**
-   ```bash
-   git commit -m "feat(feature): description"
-   ```
-
-3. **Push và tạo Pull Request:**
-   ```bash
-   git push origin feature/new-feature
-   ```
-
-4. **PR Requirements:**
-   - ✅ Tất cả tests phải pass
-   - ✅ Code phải tuân theo linting rules
-   - ✅ Commit messages phải theo convention
-   - ✅ Code review từ 1 thành viên
-
-## 📦 Setup Development Environment
-
-```bash
-# Clone repository
-git clone <repo-url>
-
-# Install dependencies
-flutter pub get
-
-# Run the app
-flutter run
-
-# Run tests
-flutter test
-```
-
-## 🚀 Before Pushing Code
-
-Checklist trước khi commit:
-
-- [ ] `flutter analyze` - không có warnings/errors
-- [ ] `dart format lib/` - code formatted
-- [ ] `flutter test` - tất cả tests pass
-- [ ] Commit message tuân theo convention
-- [ ] Không có debug print/log statements
-- [ ] Không commit `.env` files hoặc credentials
-
-## 📞 Câu hỏi hoặc Vấn đề?
-
-Tạo issue hoặc liên hệ team lead để thảo luận về quy tắc.
+- **Flutter**: Bắt buộc viết ít nhất 1 Unit Test (Logic) và 1 Widget Test (Giao diện) để đạt yêu cầu qua môn.
+- Lệnh chạy test: `flutter test`
 
 ---
-
-**Last Updated:** May 2026
+*Dự án APORA - PRM393*

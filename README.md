@@ -1,17 +1,56 @@
-# apartment_management
+# APORA - Apartment Management Super App
 
-A new Flutter project.
+Dự án ứng dụng quản lý chung cư/căn hộ hỗ trợ tương tác số hóa giữa Ban quản lý, Cư dân và Nhân viên kỹ thuật.
 
-## Getting Started
+## 🚀 Tính năng nổi bật
 
-This project is a starting point for a Flutter application.
+- **Minh bạch hóa tài chính**: Tự động hóa hóa đơn, thanh toán qua cổng PayOS.
+- **Tối ưu hóa vận hành**: Quy trình quản lý sự cố (Ticket) 3 bên khép kín (Resident - Admin - Staff).
+- **Nâng cao trải nghiệm số**: Live Chat, Push Notifications, Quản lý Khách ra vào, Quản lý Nhân khẩu.
 
-A few resources to get you started if this is your first Flutter project:
+## 🛠 Nền tảng Công nghệ
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- **Mobile App**: Flutter (Riverpod/BLoC, Dio)
+- **Backend API**: Next.js (REST API, Node.js)
+- **Database**: PostgreSQL (Supabase Pooler, Raw Queries via `pg`)
+- **Realtime**: Pusher (Live Chat)
+- **Notifications**: Firebase Cloud Messaging (FCM)
+- **Lưu trữ ảnh**: Cloudinary
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 📁 Cấu trúc Monorepo
+
+```
+apora/
+├── mobile/       # Flutter App
+├── backend/      # Next.js API Server
+├── docs/         # Tài liệu dự án (PRM393)
+├── .gitignore
+├── CONTRIBUTING.md
+└── README.md
+```
+
+## ⚙️ Cài đặt Môi trường (Development)
+
+### 1. Backend (Next.js)
+
+```bash
+cd backend
+npm install
+# Copy .env.example thành .env và điền các API Keys cần thiết
+cp .env.example .env
+# Chạy Server
+npm run dev
+```
+
+### 2. Mobile App (Flutter)
+
+```bash
+cd mobile
+flutter pub get
+# Chạy ứng dụng trên Emulator/Device
+flutter run
+```
+
+## 👥 Nhóm Phát triển
+
+Hệ thống được phát triển bởi nhóm 5 thành viên. Vui lòng tham khảo file `CONTRIBUTING.md` để xem phân công công việc chi tiết và các quy định khắt khe về kỹ thuật trước khi code.

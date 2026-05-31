@@ -1,15 +1,17 @@
-# =========================
-# Flutter / Dart
-# =========================
-.dart_tool/
-.packages
-.pub/
-build/
+# ==============================================================================
+# APORA - Monorepo Gitignore
+# ==============================================================================
 
-# Generated files
-.flutter-plugins
-.flutter-plugins-dependencies
-.metadata
+# =========================
+# FLUTTER / DART (Mobile App)
+# =========================
+mobile/.dart_tool/
+mobile/.packages
+mobile/.pub/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.metadata
 
 # Dart generated
 *.dart.js
@@ -19,62 +21,65 @@ build/
 *.snapshot
 *.dill
 
-# Logs
-*.log
+# Android/iOS specific (inside mobile)
+mobile/android/.gradle/
+mobile/android/app/debug/
+mobile/android/app/profile/
+mobile/android/app/release/
+mobile/android/local.properties
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/ios/Flutter/.last_build_id
+mobile/ios/Flutter/ephemeral/
+mobile/ios/DerivedData/
+
+# Desktop platforms
+mobile/macos/Flutter/ephemeral/
+mobile/linux/flutter/ephemeral/
+mobile/windows/flutter/ephemeral/
+
+# Keystores
+*.jks
+*.keystore
+mobile/android/key.properties
 
 # =========================
-# IDE
+# NEXT.JS / NODE.JS (Backend)
+# =========================
+backend/node_modules/
+backend/.next/
+backend/out/
+backend/build/
+
+# npm/yarn debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# ENVIRONMENT VARIABLES
+# =========================
+# (Bảo mật: Tuyệt đối không commit credentials)
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# =========================
+# IDEs & OS Files
 # =========================
 .idea/
 .vscode/
 *.iml
-
-# =========================
-# OS Files
-# =========================
 .DS_Store
 Thumbs.db
 
 # =========================
-# Android
-# =========================
-android/.gradle/
-android/app/debug/
-android/app/profile/
-android/app/release/
-android/local.properties
-
-# Keystore (IMPORTANT)
-*.jks
-*.keystore
-key.properties
-
-# =========================
-# iOS
-# =========================
-ios/Pods/
-ios/.symlinks/
-ios/Flutter/.last_build_id
-ios/Flutter/ephemeral/
-ios/DerivedData/
-
-# =========================
-# macOS / Linux / Windows
-# =========================
-macos/Flutter/ephemeral/
-linux/flutter/ephemeral/
-windows/flutter/ephemeral/
-
-# =========================
-# Firebase
+# Firebase Logs
 # =========================
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
-
-# Firebase cache
 .firebase/
-
-# Environment Variables
-.env
-.env.*
