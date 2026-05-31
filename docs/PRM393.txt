@@ -687,30 +687,6 @@ Widget Test giả lập các thao tác người dùng trên màn hình (chạm, 
 * Chỉ khi tất cả Unit Test và Widget Test đều báo trạng thái PASS (Xanh), mã nguồn mới được hội đồng nhóm chấp nhận gộp (Merge) vào nhánh chính (nhánh main).
 
 
-env
-
-
-kết nối datagrip với postgres 
-  
-
-host: aws-1-ap-southeast-1.pooler.supabase.com
-port: 5432
-database: postgres
-user: postgres.drmtggvxixuhzervzzzv
-db password: Anhembantron
-
-
-
-
-env de code :
-# Cloudinary
-CLOUDINARY_CLOUD_NAME="dw5obru2d"
-CLOUDINARY_API_KEY="437458793946477"
-CLOUDINARY_API_SECRET="1bP2yFG2A-HehOEqyj-aslh1KWQ"
-
-
-# dung transaction pool cho code (do ngat ket noi) 
-DATABASE_URL="postgresql://postgres.drmtggvxixuhzervzzzv:Anhembantron@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
 
 
 
