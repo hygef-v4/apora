@@ -1,141 +1,167 @@
 /**
  * TypeScript Type Definitions
  *
- * Định nghĩa interface cho toàn bộ entities trong hệ thống.
- * Khớp với ERD trong tài liệu PRM393.
+ * Định nghĩa interface cho các entities trong hệ thống.
+ * Khớp với Data Dictionary trong SRS + Software Design (docs/).
+ *
+ * Module 1 (Auth & Profile) đã refactor theo thiết kế mới.
+ * Các entity module sau (Contract, Invoice, ...) bổ sung dần khi triển khai.
  */
 
 // ==========================================
 // Enums (Giá trị cố định trong Database)
 // ==========================================
 
-export type UserRole = 'ADMIN' | 'RESIDENT' | 'STAFF';
+/** 6 role theo SRS. Một user có thể giữ nhiều role (roles: text[]). */
+export type UserRole =
+  | 'LANDLORD'
+  | 'MANAGER'
+  | 'RESIDENT'
+  | 'SECURITY_GUARD'
+  | 'JANITOR'
+  | 'TECHNICIAN';
+
+/** 3 role nhân viên vận hành (Module 8). */
+export type StaffRole = 'SECURITY_GUARD' | 'JANITOR' | 'TECHNICIAN';
+
+export const STAFF_ROLES: StaffRole[] = ['SECURITY_GUARD', 'JANITOR', 'TECHNICIAN'];
+
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
-export type ApartmentStatus = 'EMPTY' | 'OCCUPIED';
-export type RoomMemberStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'INACTIVE';
-export type BillStatus = 'UNPAID' | 'PAID';
+export type ApartmentStatus = 'EMPTY' | 'OCCUPIED' | 'INACTIVE';
+export type RoommateStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'INACTIVE';
+export type InvoiceStatus = 'UNPAID' | 'PAID';
 export type PaymentMethod = 'PAYOS' | 'CASH';
-export type TicketStatus = 'PENDING' | 'PROCESSING' | 'WAITING_RATING' | 'CLOSED';
-export type VisitorStatus = 'EXPECTED' | 'ARRIVED' | 'CANCELLED';
+
+/** Bộ trạng thái đã chốt theo Software Design mục 3.4 (xem CLAUDE.md). */
+export type TicketStatus =
+  | 'PENDING'
+  | 'ASSIGNED'
+  | 'PROCESSING'
+  | 'RESOLVED'
+  | 'CANCELLED';
+
+export type TaskStatus = 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED';
 
 // ==========================================
-// Entity Interfaces (Khớp với bảng DB)
+// Entity Interfaces (Khớp với bảng DB - Module 1)
 // ==========================================
 
 export interface User {
-  id: string;
-  phone: string;
+  id: number;
+  phone_number: string;
   password_hash: string;
   full_name: string;
-  role: UserRole;
-  status: UserStatus;
   avatar_url: string | null;
-  fcm_token: string | null;
+  roles: UserRole[];
+  status: UserStatus;
+  /** BR-01: bắt buộc đổi mật khẩu ở lần đăng nhập đầu (mật khẩu mặc định do BQL cấp). */
+  must_change_password: boolean;
+  /** BR-07: tăng khi reset/đổi mật khẩu để vô hiệu hóa mọi JWT cũ. */
+  token_version: number;
   created_at: Date;
 }
 
+/** User trả về cho client - không bao giờ chứa password_hash / token_version. */
+export interface PublicUser {
+  id: number;
+  phoneNumber: string;
+  fullName: string;
+  avatarUrl: string | null;
+  roles: UserRole[];
+}
+
+/** BR-44: FCM token lưu bảng riêng, revoke khi logout. */
+export interface DeviceToken {
+  id: number;
+  user_id: number;
+  token: string;
+  created_at: Date;
+  revoked_at: Date | null;
+}
+
+/** BR-08: OTP hết hạn 5 phút; attempt_count tối đa 3 lần sai. */
+export interface PasswordResetOtp {
+  id: number;
+  phone_number: string;
+  otp_code: string;
+  expired_at: Date;
+  is_used: boolean;
+  attempt_count: number;
+  created_at: Date;
+}
+
+/** Bảng APARTMENTS (theo SRS "Apartment"). */
 export interface Apartment {
-  id: string;
-  room_number: string;
-  owner_id: string | null;
+  id: number;
+  unit_number: string;
+  floor: string;
+  owner_id: number | null;
   status: ApartmentStatus;
 }
 
-export interface RoomMember {
-  id: string;
-  apartment_id: string;
-  full_name: string;
-  cccd_number: string | null;
-  cccd_image_url: string | null;
-  status: RoomMemberStatus;
-}
-
-export interface Bill {
-  id: string;
-  apartment_id: string;
-  user_id: string;
-  month_year: string;
-  total_amount: number;
-  payment_method: PaymentMethod;
-  status: BillStatus;
-  paid_at: Date | null;
-  payos_order_code: number | null;
-  created_at: Date;
-}
-
-export interface Ticket {
-  id: string;
-  apartment_id: string;
-  resident_id: string;
-  assigned_staff_id: string | null;
+/** Bảng REPAIR_TICKETS (theo SD Module 4 - RepairTicket entity). */
+export interface RepairTicket {
+  id: number;
+  apartment_id: number;
+  resident_id: number;
   category: string;
   description: string;
-  issue_images: string[];
-  result_images: string[];
+  before_images: string[];
   status: TicketStatus;
-  rating: number | null;
-  feedback: string | null;
+  internal_notes: string | null;
   created_at: Date;
-}
-
-export interface Visitor {
-  id: string;
-  apartment_id: string;
-  resident_id: string;
-  visitor_name: string;
-  guest_count: number;
-  expected_date: Date;
-  arrived_at: Date | null;
-  status: VisitorStatus;
-  created_at: Date;
-}
-
-export interface News {
-  id: string;
-  title: string;
-  content: string;
-  image_url: string | null;
-  author_id: string;
-  created_at: Date;
-}
-
-export interface ChatRoom {
-  id: string;
-  resident_id: string;
-  last_message: string | null;
   updated_at: Date;
 }
 
-export interface Message {
-  id: string;
-  room_id: string;
-  sender_id: string;
-  text: string;
+/** Bảng TASKS (theo SD Module 4 - Task entity). */
+export interface Task {
+  id: number;
+  ticket_id: number;
+  assigned_to: number;
+  assigned_by: number;
+  title: string;
+  description: string | null;
+  progress_notes: string | null;
+  completion_images: string[];
+  status: TaskStatus;
+  assigned_at: Date;
+  completed_at: Date | null;
+}
+
+/** Bảng AUDIT_LOGS (UC39/UC40 BR-04 - mở rộng có chủ đích, xem CLAUDE.md). */
+export interface AuditLog {
+  id: number;
+  actor_id: number;
+  target_user_id: number | null;
+  action: string;
+  old_value: Record<string, unknown> | null;
+  new_value: Record<string, unknown> | null;
+  reason: string | null;
   created_at: Date;
+}
+
+// ==========================================
+// Module 8: Staff Management DTOs
+// ==========================================
+
+/** 1 dòng trong danh sách nhân viên (UC36) - kèm số task đang mở (BR-41). */
+export interface StaffListItem extends PublicUser {
+  status: UserStatus;
+  openTaskCount: number;
+  createdAt: Date;
+}
+
+/** Thống kê tổng quan nhân sự (UC36 - Staff Statistics Summary). */
+export interface StaffStats {
+  total: number;
+  active: number;
+  inactive: number;
+  openTasks: number;
 }
 
 // ==========================================
 // API Request/Response Types
 // ==========================================
-
-export interface LoginRequest {
-  phone: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  status: 'success' | 'error';
-  message: string;
-  data?: {
-    token: string;
-    user: {
-      id: string;
-      fullName: string;
-      role: UserRole;
-      apartmentId: string | null;
-    };
-  };
-}
 
 export interface ApiResponse<T = unknown> {
   status: 'success' | 'error';
@@ -143,13 +169,27 @@ export interface ApiResponse<T = unknown> {
   data?: T;
 }
 
+export interface LoginRequest {
+  phone: string;
+  password: string;
+  /** Optional - mobile gửi khi đã setup Firebase Messaging (Module 5). */
+  fcmToken?: string;
+}
+
+export interface LoginResponseData {
+  token: string;
+  mustChangePassword: boolean;
+  user: PublicUser;
+}
+
 /**
- * JWT Payload structure
- * Được encode vào JWT Token khi đăng nhập thành công
+ * JWT Payload
+ * tv = token_version tại thời điểm ký; middleware so với DB (BR-07).
  */
 export interface JwtPayload {
-  id: string;
-  role: UserRole;
+  id: number;
+  roles: UserRole[];
+  tv: number;
   iat?: number;
   exp?: number;
 }

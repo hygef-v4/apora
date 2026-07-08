@@ -83,3 +83,5 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 .firebase/
+# Dev database (embedded-postgres)
+backend/db/pgdata/

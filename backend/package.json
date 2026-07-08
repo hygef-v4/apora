@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
+    "db:dev": "node db/dev-db.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -12,7 +13,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.10.0",
@@ -29,6 +29,7 @@
     "@types/node": "^25.9.1",
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.15",
+    "embedded-postgres": "^18.4.0-beta.17",
     "typescript": "^6.0.3"
   }
 }
