@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../core/widgets/coming_soon.dart';
+import '../../../core/widgets/gradient_header.dart';
+import '../../../core/widgets/initials_avatar.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 
-/// Placeholder danh sách công việc cho Staff (Bảo vệ / Lao công / Kỹ thuật).
-/// Module 4 (Incident & Task) sẽ thay nội dung thật vào đây.
+/// Khung danh sách công việc cho Staff — theo màn 19 trong thiết kế.
+/// Dữ liệu Task thật sẽ nối khi làm Module 4 (Incident & Task).
 class TaskBoardScreen extends ConsumerWidget {
   const TaskBoardScreen({super.key});
 
@@ -15,26 +18,62 @@ class TaskBoardScreen extends ConsumerWidget {
     final user = ref.watch(authNotifierProvider).user;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Công việc của tôi'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            tooltip: 'Hồ sơ cá nhân',
-            onPressed: () => context.push(AppRoutes.profile),
+      body: Column(
+        children: [
+          GradientHeader(
+            titleWidget: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Nhân viên vận hành',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: .6),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Xin chào, ${user?.fullName ?? 'Nhân viên'} 👋',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => context.push(AppRoutes.profile),
+                  child: InitialsAvatar(
+                    name: user?.fullName ?? '?',
+                    imageUrl: user?.avatarUrl,
+                    size: 44,
+                    square: true,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              HeaderIconButton(
+                icon: Icons.logout,
+                tooltip: 'Đăng xuất',
+                onTap: () => ref.read(authNotifierProvider.notifier).logout(),
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Đăng xuất',
-            onPressed: () => ref.read(authNotifierProvider.notifier).logout(),
+          const Expanded(
+            child: ComingSoon(
+              icon: Icons.assignment,
+              title: 'Công việc của tôi',
+              moduleNote:
+                  'danh sách công việc được giao sẽ có ở Module 4 (Incident & Task)',
+            ),
           ),
         ],
-      ),
-      body: Center(
-        child: Text(
-          'Xin chào, ${user?.fullName ?? 'Nhân viên'}!\n(Danh sách công việc sẽ bổ sung ở Module 4)',
-          textAlign: TextAlign.center,
-        ),
       ),
     );
   }

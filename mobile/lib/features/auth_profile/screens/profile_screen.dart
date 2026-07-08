@@ -5,6 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/gradient_header.dart';
+import '../../../core/widgets/initials_avatar.dart';
+import '../../../core/widgets/status_badge.dart';
+import '../providers/auth_notifier.dart';
 import '../providers/profile_notifier.dart';
 
 /// UC04: Xem hồ sơ cá nhân (FID-04) - read-only.
@@ -47,75 +52,207 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(profileNotifierProvider);
+    final user = profile.value;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Hồ sơ cá nhân'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            tooltip: 'Chỉnh sửa hồ sơ',
-            onPressed: () => context.push(AppRoutes.profileEdit),
+      body: Column(
+        children: [
+          GradientHeader(
+            showBack: true,
+            titleWidget: user == null
+                ? const Text(
+                    'Hồ sơ cá nhân',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  )
+                : Row(
+                    children: [
+                      InitialsAvatar(
+                        name: user.fullName,
+                        imageUrl: user.avatarUrl,
+                        size: 56,
+                        square: true,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user.fullName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 6,
+                              children: user.roles
+                                  .map((r) => StatusBadge(
+                                        text: _roleLabel(r),
+                                        color: Colors.white,
+                                        backgroundColor:
+                                            Colors.white.withValues(alpha: .2),
+                                      ))
+                                  .toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+            actions: [
+              HeaderIconButton(
+                icon: Icons.edit,
+                tooltip: 'Chỉnh sửa hồ sơ',
+                onTap: () => context.push(AppRoutes.profileEdit),
+              ),
+              HeaderIconButton(
+                icon: Icons.logout,
+                tooltip: 'Đăng xuất',
+                onTap: () => ref.read(authNotifierProvider.notifier).logout(),
+              ),
+            ],
+          ),
+          Expanded(
+            child: profile.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(mapDioError(error), textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                        onPressed: () => ref
+                            .read(profileNotifierProvider.notifier)
+                            .fetchProfile(),
+                        child: const Text('Thử lại'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              data: (data) {
+                if (data == null) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    // Các trường read-only theo BR trong SRS (sửa phải qua UC05)
+                    AppCard(
+                      padding: EdgeInsets.zero,
+                      child: Column(
+                        children: [
+                          _InfoRow(
+                            icon: Icons.badge,
+                            label: 'Họ và tên',
+                            value: data.fullName,
+                          ),
+                          const Divider(height: 1, indent: 56),
+                          _InfoRow(
+                            icon: Icons.phone,
+                            label: 'Số điện thoại (đăng nhập)',
+                            value: data.phoneNumber,
+                          ),
+                          const Divider(height: 1, indent: 56),
+                          _InfoRow(
+                            icon: Icons.verified_user,
+                            label: 'Vai trò',
+                            value: data.roles.map(_roleLabel).join(', '),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    AppCard(
+                      onTap: () => context.push(AppRoutes.changePassword),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.lock_reset,
+                              size: 20, color: AppColors.primary),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Đổi mật khẩu',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          Icon(Icons.chevron_right,
+                              color: AppColors.textTertiary),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),
-      body: profile.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppColors.infoBg,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, size: 17, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(mapDioError(error), textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: () =>
-                      ref.read(profileNotifierProvider.notifier).fetchProfile(),
-                  child: const Text('Thử lại'),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ],
             ),
           ),
-        ),
-        data: (user) {
-          if (user == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              Center(
-                child: CircleAvatar(
-                  radius: 48,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  backgroundImage:
-                      user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
-                  child: user.avatarUrl == null
-                      ? const Icon(Icons.person, size: 48, color: AppColors.primary)
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 24),
-              // Các trường read-only theo BR trong SRS (sửa phải qua UC05)
-              ListTile(
-                leading: const Icon(Icons.badge),
-                title: const Text('Họ và tên'),
-                subtitle: Text(user.fullName),
-              ),
-              ListTile(
-                leading: const Icon(Icons.phone),
-                title: const Text('Số điện thoại'),
-                subtitle: Text(user.phoneNumber),
-              ),
-              ListTile(
-                leading: const Icon(Icons.verified_user),
-                title: const Text('Vai trò'),
-                subtitle: Text(user.roles.map(_roleLabel).join(', ')),
-              ),
-            ],
-          );
-        },
+        ],
       ),
     );
   }

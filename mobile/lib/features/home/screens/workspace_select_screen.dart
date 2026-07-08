@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/gradient_header.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 
 /// Màn chọn workspace khi user giữ nhiều nhóm role
@@ -16,40 +19,53 @@ class WorkspaceSelectScreen extends ConsumerWidget {
     final user = auth.user;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chọn không gian làm việc'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Đăng xuất',
-            onPressed: () => ref.read(authNotifierProvider.notifier).logout(),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
+      body: Column(
         children: [
-          if (user?.isManagement ?? false)
-            _WorkspaceCard(
-              icon: Icons.dashboard,
-              title: 'Quản lý tòa nhà',
-              subtitle: 'Dashboard, căn hộ, nhân sự',
-              onTap: () => context.go(AppRoutes.dashboard),
+          GradientHeader(
+            title: 'Chọn không gian làm việc',
+            subtitle: 'Tài khoản của bạn có nhiều vai trò',
+            actions: [
+              HeaderIconButton(
+                icon: Icons.logout,
+                tooltip: 'Đăng xuất',
+                onTap: () => ref.read(authNotifierProvider.notifier).logout(),
+              ),
+            ],
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (user?.isManagement ?? false)
+                  _WorkspaceCard(
+                    icon: Icons.dashboard,
+                    iconBg: AppColors.infoBg,
+                    iconColor: AppColors.primary,
+                    title: 'Quản lý tòa nhà',
+                    subtitle: 'Dashboard, căn hộ, nhân sự',
+                    onTap: () => context.go(AppRoutes.dashboard),
+                  ),
+                if (user?.isResident ?? false)
+                  _WorkspaceCard(
+                    icon: Icons.home,
+                    iconBg: AppColors.successBg,
+                    iconColor: AppColors.success,
+                    title: 'Cư dân',
+                    subtitle: 'Hóa đơn, sự cố, bảng tin',
+                    onTap: () => context.go(AppRoutes.residentHome),
+                  ),
+                if (user?.isStaff ?? false)
+                  _WorkspaceCard(
+                    icon: Icons.handyman,
+                    iconBg: AppColors.warningBg,
+                    iconColor: AppColors.warning,
+                    title: 'Nhân viên vận hành',
+                    subtitle: 'Công việc được giao',
+                    onTap: () => context.go(AppRoutes.tasks),
+                  ),
+              ],
             ),
-          if (user?.isResident ?? false)
-            _WorkspaceCard(
-              icon: Icons.home,
-              title: 'Cư dân',
-              subtitle: 'Hóa đơn, sự cố, bảng tin',
-              onTap: () => context.go(AppRoutes.residentHome),
-            ),
-          if (user?.isStaff ?? false)
-            _WorkspaceCard(
-              icon: Icons.handyman,
-              title: 'Nhân viên vận hành',
-              subtitle: 'Công việc được giao',
-              onTap: () => context.go(AppRoutes.tasks),
-            ),
+          ),
         ],
       ),
     );
@@ -59,27 +75,65 @@ class WorkspaceSelectScreen extends ConsumerWidget {
 class _WorkspaceCard extends StatelessWidget {
   const _WorkspaceCard({
     required this.icon,
+    required this.iconBg,
+    required this.iconColor,
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
   final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Icon(icon, size: 40),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
         onTap: onTap,
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, size: 24, color: iconColor),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textTertiary),
+          ],
+        ),
       ),
     );
   }

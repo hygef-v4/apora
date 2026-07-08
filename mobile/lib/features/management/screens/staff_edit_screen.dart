@@ -5,9 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/utils/image_util.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/gradient_header.dart';
+import '../../../core/widgets/initials_avatar.dart';
 import '../models/staff_member.dart';
 import '../providers/staff_notifier.dart';
 
@@ -34,6 +38,7 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
   int _openTaskCount = 0;
   Uint8List? _avatarBytes;
   String? _currentAvatarUrl;
+  String _staffName = '';
   bool _isSubmitting = false;
   bool _dirty = false;
 
@@ -48,6 +53,7 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
       _initialRole = detail.member.role;
       _openTaskCount = detail.member.openTaskCount;
       _currentAvatarUrl = detail.member.avatarUrl;
+      _staffName = detail.member.fullName;
     }
   }
 
@@ -147,7 +153,6 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
               decoration: const InputDecoration(
                 labelText: 'Mật khẩu mới',
                 helperText: 'Tối thiểu 8 ký tự, gồm 1 chữ hoa và 1 chữ số.',
-                border: OutlineInputBorder(),
               ),
             ),
           ],
@@ -203,113 +208,131 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
         if ((leave ?? false) && context.mounted) context.pop();
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Chỉnh sửa nhân viên')),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              onChanged: () {
-                if (!_dirty) setState(() => _dirty = true);
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Stack(
+        body: Column(
+          children: [
+            const GradientHeader(
+              title: 'Chỉnh sửa nhân viên',
+              subtitle: 'Cập nhật hồ sơ & vai trò',
+              showBack: true,
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: AppCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Form(
+                    key: _formKey,
+                    onChanged: () {
+                      if (!_dirty) setState(() => _dirty = true);
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        CircleAvatar(
-                          radius: 48,
-                          backgroundImage: _avatarBytes != null
-                              ? MemoryImage(_avatarBytes!)
-                              : (_currentAvatarUrl != null
-                                  ? NetworkImage(_currentAvatarUrl!)
-                                  : null) as ImageProvider?,
-                          child: (_avatarBytes == null && _currentAvatarUrl == null)
-                              ? const Icon(Icons.person, size: 48)
-                              : null,
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: IconButton.filled(
-                            icon: const Icon(Icons.camera_alt, size: 18),
-                            onPressed: _pickAvatar,
+                        Center(
+                          child: Stack(
+                            children: [
+                              _avatarBytes != null
+                                  ? CircleAvatar(
+                                      radius: 48,
+                                      backgroundImage:
+                                          MemoryImage(_avatarBytes!),
+                                    )
+                                  : InitialsAvatar(
+                                      name: _staffName.isEmpty
+                                          ? '?'
+                                          : _staffName,
+                                      imageUrl: _currentAvatarUrl,
+                                      size: 96,
+                                    ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: IconButton.filled(
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                  ),
+                                  icon: const Icon(Icons.camera_alt, size: 18),
+                                  onPressed: _pickAvatar,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        const SizedBox(height: 24),
+                        TextFormField(
+                          controller: _fullNameController,
+                          maxLength: 100,
+                          decoration: const InputDecoration(
+                            labelText: 'Họ và tên',
+                            prefixIcon: Icon(Icons.badge, size: 20),
+                            counterText: '',
+                          ),
+                          validator: (value) =>
+                              (value == null || value.trim().isEmpty)
+                                  ? AppStrings.msgFieldRequired
+                                  : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          maxLength: 15,
+                          decoration: const InputDecoration(
+                            labelText: 'Số điện thoại (dùng để đăng nhập)',
+                            prefixIcon: Icon(Icons.phone, size: 20),
+                            counterText: '',
+                          ),
+                          validator: (value) =>
+                              (value == null || value.trim().isEmpty)
+                                  ? AppStrings.msgPhoneRequired
+                                  : null,
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedRole,
+                          decoration: const InputDecoration(
+                            labelText: 'Vai trò',
+                            prefixIcon: Icon(Icons.work, size: 20),
+                          ),
+                          items: kStaffRoles
+                              .map((role) => DropdownMenuItem(
+                                    value: role,
+                                    child: Text(staffRoleLabel(role)),
+                                  ))
+                              .toList(),
+                          onChanged: (value) => setState(() {
+                            _selectedRole = value;
+                            _dirty = true;
+                          }),
+                          validator: (value) =>
+                              value == null ? 'Vui lòng chọn vai trò.' : null,
+                        ),
+                        const SizedBox(height: 20),
+                        FilledButton(
+                          onPressed: _isSubmitting ? null : _save,
+                          child: _isSubmitting
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Lưu thay đổi'),
+                        ),
+                        TextButton.icon(
+                          icon: const Icon(Icons.lock_reset, size: 18),
+                          label: const Text('Đặt lại mật khẩu'),
+                          onPressed: _resetPasswordDialog,
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _fullNameController,
-                    maxLength: 100,
-                    decoration: const InputDecoration(
-                      labelText: 'Họ và tên',
-                      prefixIcon: Icon(Icons.badge),
-                      border: OutlineInputBorder(),
-                      counterText: '',
-                    ),
-                    validator: (value) => (value == null || value.trim().isEmpty)
-                        ? AppStrings.msgFieldRequired
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    maxLength: 15,
-                    decoration: const InputDecoration(
-                      labelText: 'Số điện thoại (dùng để đăng nhập)',
-                      prefixIcon: Icon(Icons.phone),
-                      border: OutlineInputBorder(),
-                      counterText: '',
-                    ),
-                    validator: (value) => (value == null || value.trim().isEmpty)
-                        ? AppStrings.msgPhoneRequired
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedRole,
-                    decoration: const InputDecoration(
-                      labelText: 'Vai trò',
-                      prefixIcon: Icon(Icons.work),
-                      border: OutlineInputBorder(),
-                    ),
-                    items: kStaffRoles
-                        .map((role) => DropdownMenuItem(
-                              value: role,
-                              child: Text(staffRoleLabel(role)),
-                            ))
-                        .toList(),
-                    onChanged: (value) => setState(() {
-                      _selectedRole = value;
-                      _dirty = true;
-                    }),
-                    validator: (value) =>
-                        value == null ? 'Vui lòng chọn vai trò.' : null,
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _isSubmitting ? null : _save,
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Lưu thay đổi'),
-                  ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.lock_reset),
-                    label: const Text('Đặt lại mật khẩu'),
-                    onPressed: _resetPasswordDialog,
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

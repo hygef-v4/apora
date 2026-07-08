@@ -8,7 +8,7 @@ import '../../features/auth_profile/screens/forgot_password_screen.dart';
 import '../../features/auth_profile/screens/login_screen.dart';
 import '../../features/auth_profile/screens/profile_edit_screen.dart';
 import '../../features/auth_profile/screens/profile_screen.dart';
-import '../../features/home/screens/dashboard_screen.dart';
+import '../../features/home/screens/manager_shell.dart';
 import '../../features/home/screens/resident_home_screen.dart';
 import '../../features/home/screens/task_board_screen.dart';
 import '../../features/home/screens/workspace_select_screen.dart';
@@ -106,7 +106,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.residentHome,
         builder: (_, _) => const ResidentHomeScreen(),
       ),
-      GoRoute(path: AppRoutes.dashboard, builder: (_, _) => const DashboardScreen()),
+      GoRoute(path: AppRoutes.dashboard, builder: (_, _) => const ManagerShell()),
       GoRoute(path: AppRoutes.tasks, builder: (_, _) => const TaskBoardScreen()),
       GoRoute(
         path: AppRoutes.selectWorkspace,

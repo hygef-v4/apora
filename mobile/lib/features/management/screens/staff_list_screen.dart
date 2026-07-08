@@ -8,12 +8,18 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/filter_pills.dart';
+import '../../../core/widgets/gradient_header.dart';
+import '../../../core/widgets/initials_avatar.dart';
+import '../../../core/widgets/stat_card.dart';
+import '../../../core/widgets/status_badge.dart';
 import '../models/staff_member.dart';
 import '../models/staff_stats.dart';
 import '../providers/staff_notifier.dart';
 
-/// UC36 (FID-35): Danh sách nhân viên vận hành.
-/// Stats cards + search (debounce) + tab lọc trạng thái + list card.
+/// UC36 (FID-35): Danh sách nhân viên vận hành — style theo màn 04 "Cư dân":
+/// header gradient chứa title + search bar, filter pills, card avatar gradient.
 class StaffListScreen extends ConsumerStatefulWidget {
   const StaffListScreen({super.key});
 
@@ -41,39 +47,45 @@ class _StaffListScreenState extends ConsumerState<StaffListScreen> {
   Widget build(BuildContext context) {
     final directory = ref.watch(staffDirectoryProvider);
     final notifier = ref.read(staffDirectoryProvider.notifier);
+    final stats = directory.value?.stats ?? StaffStats.empty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Quản lý nhân viên')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(AppRoutes.staffCreate),
-        icon: const Icon(Icons.person_add),
-        label: const Text('Thêm nhân viên'),
-      ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: TextField(
-              onChanged: _onSearchChanged,
-              decoration: const InputDecoration(
-                hintText: 'Tìm theo tên hoặc số điện thoại...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-                isDense: true,
+          GradientHeader(
+            title: 'Nhân viên',
+            subtitle: '${stats.active} đang làm việc · ${stats.inactive} đã nghỉ',
+            showBack: true,
+            actions: [
+              HeaderIconButton(
+                icon: Icons.person_add_alt_1,
+                tooltip: 'Thêm nhân viên',
+                onTap: () => context.push(AppRoutes.staffCreate),
               ),
+            ],
+            bottom: HeaderSearchBar(
+              hint: 'Tìm tên, số điện thoại...',
+              onChanged: _onSearchChanged,
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: SegmentedButton<String?>(
-              segments: const [
-                ButtonSegment(value: null, label: Text('Tất cả')),
-                ButtonSegment(value: 'ACTIVE', label: Text('Đang làm việc')),
-                ButtonSegment(value: 'INACTIVE', label: Text('Đã nghỉ')),
+            padding: const EdgeInsets.only(top: 12, bottom: 4),
+            child: FilterPills<String?>(
+              pills: [
+                FilterPill(value: null, label: 'Tất cả (${stats.total})'),
+                FilterPill(
+                  value: 'ACTIVE',
+                  label: 'Đang làm việc (${stats.active})',
+                  color: AppColors.success,
+                ),
+                FilterPill(
+                  value: 'INACTIVE',
+                  label: 'Đã nghỉ (${stats.inactive})',
+                  color: AppColors.warning,
+                ),
               ],
-              selected: {notifier.statusFilter},
-              onSelectionChanged: (selection) =>
-                  notifier.setStatusFilter(selection.first),
+              selected: notifier.statusFilter,
+              onSelected: notifier.setStatusFilter,
             ),
           ),
           Expanded(
@@ -98,10 +110,28 @@ class _StaffListScreenState extends ConsumerState<StaffListScreen> {
               data: (result) => RefreshIndicator(
                 onRefresh: notifier.refresh,
                 child: ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
                   children: [
-                    _StatsRow(stats: result.stats),
-                    const SizedBox(height: 16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: StatCard(
+                            label: 'Tổng số',
+                            value: '${result.stats.total}',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: StatCard(
+                            label: 'Việc mở',
+                            value: '${result.stats.openTasks}',
+                            valueColor: AppColors.warning,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     if (result.staff.isEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 48),
@@ -111,15 +141,21 @@ class _StaffListScreenState extends ConsumerState<StaffListScreen> {
                                     notifier.statusFilter != null)
                                 ? AppStrings.msgStaffNoMatch
                                 : AppStrings.msgStaffEmpty,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ),
                       )
                     else
                       ...result.staff.map(
-                        (member) => _StaffCard(
-                          member: member,
-                          onTap: () => context.push(
-                            AppRoutes.staffDetailPath(member.id),
+                        (member) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _StaffCard(
+                            member: member,
+                            onTap: () => context.push(
+                              AppRoutes.staffDetailPath(member.id),
+                            ),
                           ),
                         ),
                       ),
@@ -134,57 +170,7 @@ class _StaffListScreenState extends ConsumerState<StaffListScreen> {
   }
 }
 
-/// UC36: Staff Statistics Summary - 4 chỉ số tổng quan.
-class _StatsRow extends StatelessWidget {
-  const _StatsRow({required this.stats});
-
-  final StaffStats stats;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _StatCard(label: 'Tổng số', value: stats.total, color: AppColors.primary),
-        _StatCard(label: 'Đang làm', value: stats.active, color: Colors.green),
-        _StatCard(label: 'Đã nghỉ', value: stats.inactive, color: Colors.grey),
-        _StatCard(label: 'Việc mở', value: stats.openTasks, color: Colors.orange),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.value, required this.color});
-
-  final String label;
-  final int value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Column(
-            children: [
-              Text(
-                '$value',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-              Text(label, style: const TextStyle(fontSize: 11)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
+/// Card nhân viên theo màn 04: avatar tròn gradient + tên + phụ đề + badges.
 class _StaffCard extends StatelessWidget {
   const _StaffCard({required this.member, required this.onTap});
 
@@ -193,60 +179,50 @@ class _StaffCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        onTap: onTap,
-        leading: CircleAvatar(
-          backgroundImage:
-              member.avatarUrl != null ? NetworkImage(member.avatarUrl!) : null,
-          child: member.avatarUrl == null ? const Icon(Icons.person) : null,
-        ),
-        title: Text(member.fullName,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(member.phoneNumber),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 6,
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          InitialsAvatar(
+            name: member.fullName,
+            imageUrl: member.avatarUrl,
+            size: 46,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _Badge(text: staffRoleLabel(member.role), color: AppColors.primary),
-                _Badge(
-                  text: member.isActive ? 'Đang làm việc' : 'Đã nghỉ',
-                  color: member.isActive ? Colors.green : Colors.grey,
-                ),
-                if (member.openTaskCount > 0)
-                  _Badge(
-                    text: '${member.openTaskCount} việc đang mở',
-                    color: Colors.orange,
+                Text(
+                  member.fullName,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
                   ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${staffRoleLabel(member.role)} · ${member.phoneNumber}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                if (member.openTaskCount > 0) ...[
+                  const SizedBox(height: 4),
+                  StatusBadge.warning('${member.openTaskCount} việc đang mở'),
+                ],
               ],
             ),
-          ],
-        ),
-        trailing: const Icon(Icons.chevron_right),
+          ),
+          const SizedBox(width: 8),
+          member.isActive
+              ? StatusBadge.success('Đang làm việc')
+              : StatusBadge.muted('Đã nghỉ'),
+        ],
       ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.text, required this.color});
-
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(text, style: TextStyle(fontSize: 11, color: color)),
     );
   }
 }

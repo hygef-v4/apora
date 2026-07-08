@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/gradient_header.dart';
 import '../models/staff_member.dart';
 import '../providers/staff_notifier.dart';
 
@@ -98,113 +100,127 @@ class _StaffFormScreenState extends ConsumerState<StaffFormScreen> {
         if (await _confirmDiscard() && context.mounted) context.pop();
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Thêm nhân viên')),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextFormField(
-                    controller: _fullNameController,
-                    maxLength: 100,
-                    decoration: const InputDecoration(
-                      labelText: 'Họ và tên',
-                      prefixIcon: Icon(Icons.badge),
-                      border: OutlineInputBorder(),
-                      counterText: '',
+        body: Column(
+          children: [
+            const GradientHeader(
+              title: 'Thêm nhân viên',
+              subtitle: 'Cấp tài khoản cho nhân viên vận hành',
+              showBack: true,
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: AppCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextFormField(
+                          controller: _fullNameController,
+                          maxLength: 100,
+                          decoration: const InputDecoration(
+                            labelText: 'Họ và tên',
+                            prefixIcon: Icon(Icons.badge, size: 20),
+                            counterText: '',
+                          ),
+                          validator: (value) =>
+                              (value == null || value.trim().isEmpty)
+                                  ? AppStrings.msgFieldRequired
+                                  : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          maxLength: 15,
+                          decoration: const InputDecoration(
+                            labelText: 'Số điện thoại (dùng để đăng nhập)',
+                            prefixIcon: Icon(Icons.phone, size: 20),
+                            counterText: '',
+                          ),
+                          validator: (value) =>
+                              (value == null || value.trim().isEmpty)
+                                  ? AppStrings.msgPhoneRequired
+                                  : null,
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedRole,
+                          decoration: const InputDecoration(
+                            labelText: 'Vai trò',
+                            prefixIcon: Icon(Icons.work, size: 20),
+                          ),
+                          items: kStaffRoles
+                              .map((role) => DropdownMenuItem(
+                                    value: role,
+                                    child: Text(staffRoleLabel(role)),
+                                  ))
+                              .toList(),
+                          onChanged: (value) =>
+                              setState(() => _selectedRole = value),
+                          validator: (value) =>
+                              value == null ? 'Vui lòng chọn vai trò.' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Mật khẩu ban đầu',
+                            helperText:
+                                'Tối thiểu 8 ký tự, gồm 1 chữ hoa và 1 chữ số. Nhân viên sẽ phải đổi khi đăng nhập lần đầu.',
+                            helperMaxLines: 2,
+                            prefixIcon: Icon(Icons.lock, size: 20),
+                          ),
+                          validator: (value) =>
+                              (value == null || value.isEmpty)
+                                  ? AppStrings.msgFieldRequired
+                                  : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _confirmPasswordController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Xác nhận mật khẩu',
+                            prefixIcon: Icon(Icons.lock_outline, size: 20),
+                          ),
+                          validator: (value) =>
+                              value != _passwordController.text
+                                  ? AppStrings.msgPasswordMismatch
+                                  : null,
+                        ),
+                        const SizedBox(height: 20),
+                        FilledButton(
+                          onPressed: _isSubmitting ? null : _submit,
+                          child: _isSubmitting
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Tạo tài khoản'),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            if (await _confirmDiscard() && context.mounted) {
+                              context.pop();
+                            }
+                          },
+                          child: const Text('Hủy'),
+                        ),
+                      ],
                     ),
-                    validator: (value) => (value == null || value.trim().isEmpty)
-                        ? AppStrings.msgFieldRequired
-                        : null,
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    maxLength: 15,
-                    decoration: const InputDecoration(
-                      labelText: 'Số điện thoại (dùng để đăng nhập)',
-                      prefixIcon: Icon(Icons.phone),
-                      border: OutlineInputBorder(),
-                      counterText: '',
-                    ),
-                    validator: (value) => (value == null || value.trim().isEmpty)
-                        ? AppStrings.msgPhoneRequired
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedRole,
-                    decoration: const InputDecoration(
-                      labelText: 'Vai trò',
-                      prefixIcon: Icon(Icons.work),
-                      border: OutlineInputBorder(),
-                    ),
-                    items: kStaffRoles
-                        .map((role) => DropdownMenuItem(
-                              value: role,
-                              child: Text(staffRoleLabel(role)),
-                            ))
-                        .toList(),
-                    onChanged: (value) => setState(() => _selectedRole = value),
-                    validator: (value) =>
-                        value == null ? 'Vui lòng chọn vai trò.' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Mật khẩu ban đầu',
-                      helperText:
-                          'Tối thiểu 8 ký tự, gồm 1 chữ hoa và 1 chữ số. Nhân viên sẽ phải đổi khi đăng nhập lần đầu.',
-                      helperMaxLines: 2,
-                      prefixIcon: Icon(Icons.lock),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) => (value == null || value.isEmpty)
-                        ? AppStrings.msgFieldRequired
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _confirmPasswordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Xác nhận mật khẩu',
-                      prefixIcon: Icon(Icons.lock_outline),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) => value != _passwordController.text
-                        ? AppStrings.msgPasswordMismatch
-                        : null,
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _isSubmitting ? null : _submit,
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Tạo tài khoản'),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      if (await _confirmDiscard() && context.mounted) {
-                        context.pop();
-                      }
-                    },
-                    child: const Text('Hủy'),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

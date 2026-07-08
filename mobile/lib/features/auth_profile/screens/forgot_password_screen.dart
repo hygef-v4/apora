@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/gradient_header.dart';
 import '../providers/auth_notifier.dart';
 
 /// UC03: Quên mật khẩu (FID-03) - 2 bước:
@@ -87,90 +89,102 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Quên mật khẩu')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  enabled: !_otpSent,
-                  decoration: const InputDecoration(
-                    labelText: 'Số điện thoại đã đăng ký',
-                    prefixIcon: Icon(Icons.phone),
-                    border: OutlineInputBorder(),
+      body: Column(
+        children: [
+          const GradientHeader(
+            title: 'Quên mật khẩu',
+            subtitle: 'Khôi phục quyền truy cập qua mã OTP',
+            showBack: true,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: AppCard(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        enabled: !_otpSent,
+                        decoration: const InputDecoration(
+                          labelText: 'Số điện thoại đã đăng ký',
+                          prefixIcon: Icon(Icons.phone, size: 20),
+                        ),
+                        validator: (value) =>
+                            (value == null || value.trim().isEmpty)
+                                ? AppStrings.msgPhoneRequired
+                                : null,
+                      ),
+                      const SizedBox(height: 16),
+                      if (!_otpSent)
+                        FilledButton(
+                          onPressed: _isSubmitting ? null : _sendOtp,
+                          child: const Text('Gửi mã OTP'),
+                        ),
+                      if (_otpSent) ...[
+                        TextFormField(
+                          controller: _otpController,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          decoration: const InputDecoration(
+                            labelText: 'Mã OTP (6 chữ số)',
+                            prefixIcon: Icon(Icons.pin, size: 20),
+                            counterText: '',
+                          ),
+                          validator: (value) =>
+                              (value == null || value.trim().isEmpty)
+                                  ? AppStrings.msgFieldRequired
+                                  : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _newPasswordController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Mật khẩu mới',
+                            helperText:
+                                'Tối thiểu 8 ký tự, gồm 1 chữ hoa và 1 chữ số.',
+                            prefixIcon: Icon(Icons.lock, size: 20),
+                          ),
+                          validator: (value) =>
+                              (value == null || value.isEmpty)
+                                  ? AppStrings.msgFieldRequired
+                                  : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _confirmPasswordController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Xác nhận mật khẩu mới',
+                            prefixIcon: Icon(Icons.lock_outline, size: 20),
+                          ),
+                          validator: (value) =>
+                              value != _newPasswordController.text
+                                  ? AppStrings.msgPasswordMismatch
+                                  : null,
+                        ),
+                        const SizedBox(height: 20),
+                        FilledButton(
+                          onPressed: _isSubmitting ? null : _resetPassword,
+                          child: const Text('Đổi mật khẩu'),
+                        ),
+                        TextButton(
+                          onPressed: _isSubmitting ? null : _sendOtp,
+                          child: const Text('Gửi lại OTP'),
+                        ),
+                      ],
+                    ],
                   ),
-                  validator: (value) => (value == null || value.trim().isEmpty)
-                      ? AppStrings.msgPhoneRequired
-                      : null,
                 ),
-                const SizedBox(height: 16),
-                if (!_otpSent)
-                  FilledButton(
-                    onPressed: _isSubmitting ? null : _sendOtp,
-                    child: const Text('Gửi mã OTP'),
-                  ),
-                if (_otpSent) ...[
-                  TextFormField(
-                    controller: _otpController,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    decoration: const InputDecoration(
-                      labelText: 'Mã OTP (6 chữ số)',
-                      prefixIcon: Icon(Icons.pin),
-                      border: OutlineInputBorder(),
-                      counterText: '',
-                    ),
-                    validator: (value) => (value == null || value.trim().isEmpty)
-                        ? AppStrings.msgFieldRequired
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _newPasswordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Mật khẩu mới',
-                      helperText: 'Tối thiểu 8 ký tự, gồm 1 chữ hoa và 1 chữ số.',
-                      prefixIcon: Icon(Icons.lock),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) => (value == null || value.isEmpty)
-                        ? AppStrings.msgFieldRequired
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _confirmPasswordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Xác nhận mật khẩu mới',
-                      prefixIcon: Icon(Icons.lock_outline),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) => value != _newPasswordController.text
-                        ? AppStrings.msgPasswordMismatch
-                        : null,
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _isSubmitting ? null : _resetPassword,
-                    child: const Text('Đổi mật khẩu'),
-                  ),
-                  TextButton(
-                    onPressed: _isSubmitting ? null : _sendOtp,
-                    child: const Text('Gửi lại OTP'),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
