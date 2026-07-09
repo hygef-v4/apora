@@ -62,3 +62,53 @@ export async function findAllTickets(status?: TicketStatus): Promise<TicketRow[]
   );
   return result.rows;
 }
+
+/** Căn hộ đang thuê của cư dân (PRE-02 UC19). */
+export interface ResidentApartment {
+  id: number;
+  unit_number: string;
+  floor: string;
+}
+
+/**
+ * UC19 (PRE-02/BR-39): căn hộ mà cư dân đang gắn qua hợp đồng ACTIVE.
+ * Trả null nếu cư dân không có hợp đồng đang hiệu lực -> không được tạo sự cố.
+ */
+export async function findActiveApartmentByResident(
+  residentId: number,
+): Promise<ResidentApartment | null> {
+  const result = await query(
+    `SELECT a.id, a.unit_number, a.floor
+     FROM contracts c
+     JOIN apartments a ON a.id = c.apartment_id
+     WHERE c.resident_id = $1 AND c.status = 'ACTIVE'
+     ORDER BY c.created_at DESC
+     LIMIT 1`,
+    [residentId],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * UC19: tạo sự cố mới (mặc định PENDING theo schema).
+ * Trả về ticket kèm unit_number (dùng CTE để chỉ 1 vòng truy vấn).
+ */
+export async function createTicket(
+  residentId: number,
+  apartmentId: number,
+  category: string,
+  description: string,
+  beforeImages: string[],
+): Promise<TicketRow> {
+  const result = await query(
+    `WITH ins AS (
+       INSERT INTO repair_tickets (apartment_id, resident_id, category, description, before_images)
+       VALUES ($1, $2, $3, $4, $5::text[])
+       RETURNING *
+     )
+     SELECT ins.*, a.unit_number
+     FROM ins JOIN apartments a ON a.id = ins.apartment_id`,
+    [apartmentId, residentId, category, description, beforeImages],
+  );
+  return result.rows[0];
+}
