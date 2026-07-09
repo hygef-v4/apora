@@ -16,6 +16,10 @@ import '../../features/management/screens/staff_detail_screen.dart';
 import '../../features/management/screens/staff_edit_screen.dart';
 import '../../features/management/screens/staff_form_screen.dart';
 import '../../features/management/screens/staff_list_screen.dart';
+import '../../features/billing/models/invoice.dart';
+import '../../features/billing/models/payment.dart';
+import '../../features/billing/screens/payment_webview.dart';
+import '../../features/billing/screens/payment_receipt_screen.dart';
 
 /// Đường dẫn route tập trung.
 class AppRoutes {
@@ -137,6 +141,28 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => StaffEditScreen(
           staffId: int.parse(state.pathParameters['id']!),
         ),
+      ),
+      // Module 3: Hóa đơn & Thanh toán (UC15 - UC17)
+      GoRoute(
+        path: '/invoices/pay',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return PaymentWebView(
+            invoiceId: extra['invoiceId'] as int,
+            paymentUrl: extra['paymentUrl'] as String,
+            totalAmount: extra['totalAmount'] as double,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/invoices/receipt',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return PaymentReceiptScreen(
+            invoice: extra['invoice'] as Invoice,
+            payment: extra['payment'] as Payment,
+          );
+        },
       ),
     ],
   );

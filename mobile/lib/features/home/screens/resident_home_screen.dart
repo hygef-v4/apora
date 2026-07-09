@@ -10,6 +10,8 @@ import '../../../core/widgets/coming_soon.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
+import '../../billing/screens/invoice_list_screen.dart';
+
 
 /// Khung trang chủ Cư dân — theo màn 10 trong thiết kế.
 /// Bottom nav: Trang chủ · Hóa đơn · Yêu cầu · Tin nhắn · Cá nhân.
@@ -120,11 +122,8 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
             ],
           ),
           // Các tab module sau
-          const _ResidentComingSoon(
-            title: 'Hóa đơn',
-            icon: Icons.receipt_long,
-            note: 'sẽ có ở Module 3 (Billing & Payment)',
-          ),
+          const InvoiceListScreen(),
+
           const _ResidentComingSoon(
             title: 'Yêu cầu',
             icon: Icons.build,
