@@ -20,6 +20,15 @@ class ApiConstants {
   // User (UC04-UC05)
   static const String profile = '/users/profile';
   static const String changePassword = '/users/change-password';
+
+  // Module 4 - Sự cố & Công việc (UC18-UC23)
+  static const String tickets = '/tickets'; // GET danh sách (UC18), POST tạo (UC19)
+  static String ticketDetail(int id) => '/tickets/$id'; // GET chi tiết (UC20)
+  static String ticketStatus(int id) => '/tickets/$id/status'; // PUT đổi trạng thái (UC20)
+  static String ticketAssign(int id) => '/tickets/$id/assign'; // POST phân công (UC21)
+  static const String staffWorkload = '/staff/workload'; // GET bảng tải việc nhân viên (UC21)
+  static const String tasks = '/tasks'; // GET công việc của tôi (UC22)
+  static String taskProgress(int id) => '/tasks/$id/progress'; // PUT cập nhật tiến độ (UC23)
 }
 
 /// Key lưu trữ trong flutter_secure_storage (KHÔNG dùng SharedPreferences).
