@@ -13,7 +13,11 @@ import '../providers/ticket_provider.dart';
 /// UC18 - Danh sách sự cố. Dùng chung cho Resident (sự cố của mình) và
 /// Manager (toàn bộ) - backend tự phân luồng theo vai trò.
 class TicketListScreen extends ConsumerStatefulWidget {
-  const TicketListScreen({super.key});
+  /// true khi mở bằng push (Manager) -> hiện nút back; false khi nhúng làm tab
+  /// trong Home cư dân -> không có nút back.
+  const TicketListScreen({super.key, this.showBack = false});
+
+  final bool showBack;
 
   @override
   ConsumerState<TicketListScreen> createState() => _TicketListScreenState();
@@ -91,7 +95,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
           GradientHeader(
             title: 'Sự Cố & Sửa Chữa',
             subtitle: 'Theo dõi các yêu cầu sửa chữa',
-            showBack: true,
+            showBack: widget.showBack,
             actions: [
               HeaderIconButton(
                 icon: Icons.refresh,

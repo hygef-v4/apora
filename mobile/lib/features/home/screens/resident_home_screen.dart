@@ -11,6 +11,7 @@ import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../../billing/screens/invoice_list_screen.dart';
+import '../../ticket/screens/ticket_list_screen.dart';
 
 
 /// Khung trang chủ Cư dân — theo màn 10 trong thiết kế.
@@ -103,7 +104,7 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
                         iconBg: AppColors.warningBg,
                         iconColor: AppColors.warning,
                         title: 'Yêu cầu sửa chữa',
-                        note: 'Báo sự cố kèm ảnh — sẽ có ở Module 4',
+                        note: 'Báo sự cố kèm ảnh — mở ở tab "Yêu cầu"',
                       ),
                     ),
                     SizedBox(height: 10),
@@ -124,11 +125,8 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
           // Các tab module sau
           const InvoiceListScreen(),
 
-          const _ResidentComingSoon(
-            title: 'Yêu cầu',
-            icon: Icons.build,
-            note: 'sẽ có ở Module 4 (Incident & Task)',
-          ),
+          // Tab Yêu cầu -> danh sách sự cố của cư dân (UC18/UC19, nhúng nên không back)
+          const TicketListScreen(),
           const _ResidentComingSoon(
             title: 'Tin nhắn',
             icon: Icons.chat_bubble,

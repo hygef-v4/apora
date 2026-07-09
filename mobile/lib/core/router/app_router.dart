@@ -230,7 +230,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.tickets,
-        builder: (context, state) => const TicketListScreen(),
+        builder: (context, state) => const TicketListScreen(showBack: true),
       ),
     ],
   );
