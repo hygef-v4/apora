@@ -163,6 +163,18 @@ class _ManagementHubTab extends ConsumerWidget {
                   trailing: Icon(Icons.chevron_right, color: AppColors.textTertiary),
                 ),
               ),
+              const SizedBox(height: 10),
+              AppCard(
+                onTap: () => context.push(AppRoutes.managerRoommates),
+                child: const _HubRow(
+                  icon: Icons.how_to_reg,
+                  iconBg: AppColors.successBg,
+                  iconColor: AppColors.success,
+                  title: 'Duyệt thành viên',
+                  subtitle: 'Xem xét yêu cầu đăng ký tạm trú',
+                  trailing: Icon(Icons.chevron_right, color: AppColors.textTertiary),
+                ),
+              ),
             ],
           ),
         ),

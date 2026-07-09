@@ -172,6 +172,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ],
                       ),
                     ),
+                    if (data.roles.contains('RESIDENT')) ...[
+                      const SizedBox(height: 12),
+                      AppCard(
+                        onTap: () => context.push(AppRoutes.roommates),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.people,
+                                size: 20, color: AppColors.primary),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Thành viên phòng',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            Icon(Icons.chevron_right,
+                                color: AppColors.textTertiary),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     AppCard(
                       onTap: () => context.push(AppRoutes.changePassword),

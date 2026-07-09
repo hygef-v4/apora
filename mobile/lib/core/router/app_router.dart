@@ -22,6 +22,10 @@ import '../../features/billing/screens/payment_webview.dart';
 import '../../features/billing/screens/payment_receipt_screen.dart';
 import '../../features/billing/screens/manager_generate_bill_screen.dart';
 import '../../features/billing/screens/manager_invoice_list_screen.dart';
+import '../../features/roommate/screens/roommate_list_screen.dart';
+import '../../features/roommate/screens/roommate_register_screen.dart';
+import '../../features/roommate/screens/manager_roommate_list_screen.dart';
+import '../../features/roommate/screens/manager_roommate_detail_screen.dart';
 
 /// Đường dẫn route tập trung.
 class AppRoutes {
@@ -46,6 +50,11 @@ class AppRoutes {
   // Module 3: Hóa đơn (Manager)
   static const String generateBill = '/manager/bills/generate';
   static const String managerInvoiceList = '/manager/bills';
+
+  // Module 2: Thành viên phòng (UC10-UC12)
+  static const String roommates = '/resident/roommates';
+  static const String roommateRegister = '/resident/roommates/register';
+  static const String managerRoommates = '/manager/roommates';
 }
 
 /// Xác định màn hình chính theo role (UC01 bước 4):
@@ -183,6 +192,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.managerInvoiceList,
         builder: (context, state) => const ManagerInvoiceListScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.roommates,
+        builder: (context, state) => const RoommateListScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.roommateRegister,
+        builder: (context, state) => const RoommateRegisterScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.managerRoommates,
+        builder: (context, state) => const RoommateApprovalListScreen(),
+      ),
+      GoRoute(
+        path: '/manager/roommates/:id',
+        builder: (context, state) => RoommateApprovalDetailScreen(
+          roommateId: int.parse(state.pathParameters['id']!),
+        ),
       ),
     ],
   );
