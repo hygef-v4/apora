@@ -84,6 +84,8 @@ CREATE TABLE IF NOT EXISTS invoices (
   water_consumption       DOUBLE PRECISION NOT NULL,
   room_rent_snapshot      NUMERIC(12, 2) NOT NULL,
   mgmt_fee_snapshot       NUMERIC(12, 2) NOT NULL,
+  electricity_rate_snapshot NUMERIC(10, 2) NOT NULL DEFAULT 2000.00,
+  water_rate_snapshot       NUMERIC(10, 2) NOT NULL DEFAULT 2166.00,
   extra_fee               NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (extra_fee >= 0),
   extra_fee_description   TEXT,
   total_amount            NUMERIC(12, 2) NOT NULL,
@@ -225,3 +227,16 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_audit_logs_target ON audit_logs (target_user_id, created_at DESC);
+
+-- 17. PRICING_SETTINGS (Billing Management)
+CREATE TABLE IF NOT EXISTS pricing_settings (
+  id                SERIAL PRIMARY KEY,
+  electricity_rate  NUMERIC(10, 2) NOT NULL,
+  water_rate        NUMERIC(10, 2) NOT NULL,
+  mgmt_fee          NUMERIC(10, 2) NOT NULL,
+  effective_from    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by        INTEGER REFERENCES users(id),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pricing_settings_effective ON pricing_settings (effective_from DESC);
