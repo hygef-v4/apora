@@ -85,3 +85,15 @@ ui-debug.log
 .firebase/
 # Dev database (embedded-postgres)
 backend/db/pgdata/
+
+# Kotlin / Gradle logs
+.kotlin/
+**/errors-*.log
+
+# Flutter platform generated files
+**/generated_plugin_registrant.cc
+**/generated_plugins.cmake
+**/GeneratedPluginRegistrant.swift
+**/GeneratedPluginRegistrant.objc
+**/generated_plugin_registrant.h
+
