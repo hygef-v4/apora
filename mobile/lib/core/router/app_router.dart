@@ -22,6 +22,7 @@ import '../../features/billing/screens/payment_webview.dart';
 import '../../features/billing/screens/payment_receipt_screen.dart';
 import '../../features/billing/screens/manager_generate_bill_screen.dart';
 import '../../features/billing/screens/manager_invoice_list_screen.dart';
+import '../../features/billing/screens/manager_pricing_settings_screen.dart';
 import '../../features/roommate/screens/roommate_list_screen.dart';
 import '../../features/roommate/screens/roommate_register_screen.dart';
 import '../../features/roommate/screens/manager_roommate_list_screen.dart';
@@ -50,6 +51,7 @@ class AppRoutes {
   // Module 3: Hóa đơn (Manager)
   static const String generateBill = '/manager/bills/generate';
   static const String managerInvoiceList = '/manager/bills';
+  static const String pricingSettings = '/manager/pricing-settings';
 
   // Module 2: Thành viên phòng (UC10-UC12)
   static const String roommates = '/resident/roommates';
@@ -192,6 +194,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.managerInvoiceList,
         builder: (context, state) => const ManagerInvoiceListScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.pricingSettings,
+        builder: (context, state) => const ManagerPricingSettingsScreen(),
       ),
       GoRoute(
         path: AppRoutes.roommates,

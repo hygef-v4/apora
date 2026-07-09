@@ -91,7 +91,7 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
           iconColor: AppColors.warning,
           title: 'Tiền điện tiêu thụ',
           subtitle: 'Chỉ số: ${invoice.prevElectricityIndex.toInt()} → ${invoice.currElectricityIndex.toInt()} (${invoice.electricityConsumption.toInt()} kWh)',
-          value: _formatMoney(invoice.electricityConsumption * 2000),
+          value: _formatMoney(invoice.electricityConsumption * invoice.electricityRateSnapshot),
         ),
         const Divider(height: 20, color: AppColors.divider),
         _buildBreakdownItem(
@@ -99,7 +99,7 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
           iconColor: Colors.cyan,
           title: 'Tiền nước sinh hoạt',
           subtitle: 'Chỉ số: ${invoice.prevWaterIndex.toInt()} → ${invoice.currWaterIndex.toInt()} (${invoice.waterConsumption.toInt()} m³)',
-          value: _formatMoney(invoice.waterConsumption * 2166),
+          value: _formatMoney(invoice.waterConsumption * invoice.waterRateSnapshot),
         ),
         const Divider(height: 20, color: AppColors.divider),
         _buildBreakdownItem(

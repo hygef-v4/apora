@@ -143,6 +143,8 @@ class BillingNotifier extends Notifier<BillingState> {
         waterConsumption: invoice.waterConsumption,
         roomRentSnapshot: invoice.roomRentSnapshot,
         mgmtFeeSnapshot: invoice.mgmtFeeSnapshot,
+        electricityRateSnapshot: invoice.electricityRateSnapshot,
+        waterRateSnapshot: invoice.waterRateSnapshot,
         extraFee: invoice.extraFee,
         extraFeeDescription: invoice.extraFeeDescription,
         totalAmount: invoice.totalAmount,

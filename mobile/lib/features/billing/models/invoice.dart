@@ -11,6 +11,8 @@ class Invoice {
   final double waterConsumption;
   final double roomRentSnapshot;
   final double mgmtFeeSnapshot;
+  final double electricityRateSnapshot;
+  final double waterRateSnapshot;
   final double extraFee;
   final String? extraFeeDescription;
   final double totalAmount;
@@ -31,6 +33,8 @@ class Invoice {
     required this.waterConsumption,
     required this.roomRentSnapshot,
     required this.mgmtFeeSnapshot,
+    required this.electricityRateSnapshot,
+    required this.waterRateSnapshot,
     required this.extraFee,
     this.extraFeeDescription,
     required this.totalAmount,
@@ -68,11 +72,13 @@ class Invoice {
       prevWaterIndex: (json['prev_water_index'] as num).toDouble(),
       currWaterIndex: (json['curr_water_index'] as num).toDouble(),
       waterConsumption: (json['water_consumption'] as num).toDouble(),
-      roomRentSnapshot: double.tryParse(json['room_rent_snapshot'].toString()) ?? 0.0,
-      mgmtFeeSnapshot: double.tryParse(json['mgmt_fee_snapshot'].toString()) ?? 0.0,
-      extraFee: double.tryParse(json['extra_fee'].toString()) ?? 0.0,
+      roomRentSnapshot: double.parse(json['room_rent_snapshot'].toString()),
+      mgmtFeeSnapshot: double.parse(json['mgmt_fee_snapshot'].toString()),
+      electricityRateSnapshot: double.parse(json['electricity_rate_snapshot'].toString()),
+      waterRateSnapshot: double.parse(json['water_rate_snapshot'].toString()),
+      extraFee: double.parse(json['extra_fee'].toString()),
       extraFeeDescription: json['extra_fee_description'] as String?,
-      totalAmount: double.tryParse(json['total_amount'].toString()) ?? 0.0,
+      totalAmount: double.parse(json['total_amount'].toString()),
       status: json['status'] as String,
       dueDate: json['due_date'] != null
           ? DateTime.parse(json['due_date'] as String)
@@ -95,6 +101,8 @@ class Invoice {
       'water_consumption': waterConsumption,
       'room_rent_snapshot': roomRentSnapshot,
       'mgmt_fee_snapshot': mgmtFeeSnapshot,
+      'electricity_rate_snapshot': electricityRateSnapshot,
+      'water_rate_snapshot': waterRateSnapshot,
       'extra_fee': extraFee,
       'extra_fee_description': extraFeeDescription,
       'total_amount': totalAmount,

@@ -22,6 +22,10 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
   List<dynamic> _contracts = [];
   Map<String, dynamic>? _selectedContract;
 
+  double _electricityRate = 0.0;
+  double _waterRate = 0.0;
+  double _mgmtFee = 0.0;
+
   final _monthYearController = TextEditingController(text: '07/2026');
   final _electricityController = TextEditingController();
   final _waterController = TextEditingController();
@@ -47,11 +51,20 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
   Future<void> _loadActiveContracts() async {
     try {
       final dio = ref.read(dioProvider);
-      final response = await dio.get('/bills/active-contracts');
+      final results = await Future.wait([
+        dio.get('/bills/active-contracts'),
+        dio.get('/bills/active-pricing'),
+      ]);
       
       if (mounted) {
         setState(() {
-          _contracts = response.data['data'] as List;
+          _contracts = results[0].data['data'] as List;
+          
+          final pricingData = results[1].data['data'];
+          _electricityRate = double.parse(pricingData['electricity_rate'].toString());
+          _waterRate = double.parse(pricingData['water_rate'].toString());
+          _mgmtFee = double.parse(pricingData['mgmt_fee'].toString());
+
           _isLoadingContracts = false;
         });
       }
@@ -59,7 +72,7 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
       if (mounted) {
         setState(() => _isLoadingContracts = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải danh sách căn hộ: $e')),
+          SnackBar(content: Text('Lỗi tải thông tin khởi tạo: $e')),
         );
       }
     }
@@ -338,9 +351,9 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      _buildPriceInfoItem('Đơn giá Điện', '2.000 đ/kWh', Icons.bolt, Colors.orange),
-                                      _buildPriceInfoItem('Đơn giá Nước', '2.166 đ/m³', Icons.water_drop, Colors.blue),
-                                      _buildPriceInfoItem('Phí quản lý', '150k đ/tháng', Icons.admin_panel_settings, AppColors.success),
+                                      _buildPriceInfoItem('Đơn giá Điện', '${_formatRate(_electricityRate)} đ/kWh', Icons.bolt, Colors.orange),
+                                      _buildPriceInfoItem('Đơn giá Nước', '${_formatRate(_waterRate)} đ/m³', Icons.water_drop, Colors.blue),
+                                      _buildPriceInfoItem('Phí quản lý', '${_formatRate(_mgmtFee)} đ/tháng', Icons.admin_panel_settings, AppColors.success),
                                     ],
                                   ),
                                 ],
@@ -376,6 +389,17 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
         ],
       ),
     );
+  }
+
+  String _formatRate(double val) {
+    final intVal = val.toInt();
+    if (intVal >= 1000) {
+      return intVal.toString().replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]}.',
+      );
+    }
+    return intVal.toString();
   }
 
   Widget _buildPriceInfoItem(String title, String value, IconData icon, Color color) {

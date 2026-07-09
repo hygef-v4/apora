@@ -175,6 +175,18 @@ class _ManagementHubTab extends ConsumerWidget {
                   trailing: Icon(Icons.chevron_right, color: AppColors.textTertiary),
                 ),
               ),
+              const SizedBox(height: 10),
+              AppCard(
+                onTap: () => context.push(AppRoutes.pricingSettings),
+                child: const _HubRow(
+                  icon: Icons.settings,
+                  iconBg: AppColors.infoBg,
+                  iconColor: AppColors.info,
+                  title: 'Thiết lập đơn giá',
+                  subtitle: 'Đơn giá điện, nước, phí quản lý',
+                  trailing: Icon(Icons.chevron_right, color: AppColors.textTertiary),
+                ),
+              ),
             ],
           ),
         ),

@@ -1,5 +1,6 @@
 import { PayOS } from '@payos/node';
 import * as billingRepo from '@/repositories/billing.repository';
+import * as pricingRepo from '@/repositories/pricing.repository';
 import { HttpError } from '@/lib/middleware';
 import { Invoice, Payment } from '@/types';
 
@@ -44,11 +45,15 @@ export async function createMonthlyBill(
   const electricityConsumption = currElectricityIndex - prevElectricityIndex;
   const waterConsumption = currWaterIndex - prevWaterIndex;
 
-  // 5. Tính toán các khoản phí (Đơn giá điện: 2000đ/kWh, nước: 2166đ/m³, phí quản lý cố định: 150.000đ)
+  // 5. Tính toán các khoản phí lấy đơn giá động từ CSDL
+  const activePricing = await pricingRepo.findActivePricing();
+  if (!activePricing) {
+    throw new HttpError(404, 'Không tìm thấy đơn giá điện nước hoạt động trong hệ thống. Vui lòng thiết lập đơn giá.');
+  }
   const roomRentSnapshot = Number(contract.base_rent_snapshot);
-  const mgmtFeeSnapshot = 150000;
-  const electricityCost = electricityConsumption * 2000;
-  const waterCost = waterConsumption * 2166;
+  const mgmtFeeSnapshot = activePricing.mgmt_fee;
+  const electricityCost = electricityConsumption * activePricing.electricity_rate;
+  const waterCost = waterConsumption * activePricing.water_rate;
   const totalAmount = roomRentSnapshot + mgmtFeeSnapshot + electricityCost + waterCost + extraFee;
 
   // 6. Lưu hóa đơn mới (Nếu trùng lặp apartment_id + month_year -> ném lỗi UNIQUE constraint 409 ở middleware)
@@ -64,6 +69,8 @@ export async function createMonthlyBill(
     water_consumption: waterConsumption,
     room_rent_snapshot: roomRentSnapshot,
     mgmt_fee_snapshot: mgmtFeeSnapshot,
+    electricity_rate_snapshot: activePricing.electricity_rate,
+    water_rate_snapshot: activePricing.water_rate,
     extra_fee: extraFee,
     extra_fee_description: extraFeeDescription || null,
     total_amount: totalAmount,
@@ -268,4 +275,23 @@ export async function getTransactionReceipt(paymentId: number, userId: number): 
 /** Get all active contracts for manager/landlord. */
 export async function getActiveContracts(): Promise<any[]> {
   return billingRepo.findActiveContracts();
+}
+
+/** Get currently active pricing settings. */
+export async function getActivePricing(): Promise<any> {
+  const pricing = await pricingRepo.findActivePricing();
+  if (!pricing) {
+    throw new HttpError(404, 'Không tìm thấy đơn giá điện nước trong hệ thống.');
+  }
+  return pricing;
+}
+
+/** Update pricing settings. */
+export async function updatePricingSettings(
+  userId: number,
+  electricityRate: number,
+  waterRate: number,
+  mgmtFee: number
+): Promise<any> {
+  return pricingRepo.insertPricingSetting(electricityRate, waterRate, mgmtFee, userId);
 }

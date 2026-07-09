@@ -154,6 +154,8 @@ export interface Invoice {
   water_consumption: number;
   room_rent_snapshot: number;
   mgmt_fee_snapshot: number;
+  electricity_rate_snapshot: number;
+  water_rate_snapshot: number;
   extra_fee: number;
   extra_fee_description: string | null;
   total_amount: number;
