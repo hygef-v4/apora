@@ -140,6 +140,45 @@ export interface AuditLog {
   created_at: Date;
 }
 
+/** Bảng INVOICES (theo SD Module 3 - Invoice entity). */
+export interface Invoice {
+  id: number;
+  contract_id: number;
+  apartment_id: number;
+  month_year: string;
+  prev_electricity_index: number;
+  curr_electricity_index: number;
+  electricity_consumption: number;
+  prev_water_index: number;
+  curr_water_index: number;
+  water_consumption: number;
+  room_rent_snapshot: number;
+  mgmt_fee_snapshot: number;
+  extra_fee: number;
+  extra_fee_description: string | null;
+  total_amount: number;
+  status: 'UNPAID' | 'PAID';
+  created_at: Date;
+  unit_number?: string; // Dùng kèm khi query join apartment
+}
+
+/** Bảng PAYMENTS (theo SD Module 3 - Payment entity). */
+export interface Payment {
+  id: number;
+  invoice_id: number;
+  resident_id: number;
+  payos_order_id: string;
+  transaction_code: string | null;
+  amount: number;
+  payment_method: string;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  paid_at: Date | null;
+  created_at: Date;
+  unit_number?: string;
+  month_year?: string;
+  resident_name?: string;
+}
+
 // ==========================================
 // Module 8: Staff Management DTOs
 // ==========================================

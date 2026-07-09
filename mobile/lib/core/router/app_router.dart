@@ -20,6 +20,8 @@ import '../../features/billing/models/invoice.dart';
 import '../../features/billing/models/payment.dart';
 import '../../features/billing/screens/payment_webview.dart';
 import '../../features/billing/screens/payment_receipt_screen.dart';
+import '../../features/billing/screens/manager_generate_bill_screen.dart';
+import '../../features/billing/screens/manager_invoice_list_screen.dart';
 
 /// Đường dẫn route tập trung.
 class AppRoutes {
@@ -40,6 +42,10 @@ class AppRoutes {
   static const String staffCreate = '/staff/create';
   static String staffDetailPath(int id) => '/staff/$id';
   static String staffEditPath(int id) => '/staff/$id/edit';
+
+  // Module 3: Hóa đơn (Manager)
+  static const String generateBill = '/manager/bills/generate';
+  static const String managerInvoiceList = '/manager/bills';
 }
 
 /// Xác định màn hình chính theo role (UC01 bước 4):
@@ -146,7 +152,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/invoices/pay',
         builder: (_, state) {
-          final extra = state.extra as Map<String, dynamic>;
+          final extra = state.extra as Map<String, dynamic>? ?? {
+            'invoiceId': 101,
+            'paymentUrl': 'https://pay.payos.vn/web/checkout/MOCK_ORDER_101',
+            'totalAmount': 5190000.0,
+          };
           return PaymentWebView(
             invoiceId: extra['invoiceId'] as int,
             paymentUrl: extra['paymentUrl'] as String,
@@ -157,12 +167,50 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/invoices/receipt',
         builder: (_, state) {
-          final extra = state.extra as Map<String, dynamic>;
+          final extra = state.extra as Map<String, dynamic>?;
+          final invoice = extra?['invoice'] as Invoice? ?? Invoice(
+            id: 101,
+            contractId: 10,
+            apartmentId: 5,
+            monthYear: '06/2026',
+            prevElectricityIndex: 1200,
+            currElectricityIndex: 1340,
+            electricityConsumption: 140,
+            prevWaterIndex: 350,
+            currWaterIndex: 362,
+            waterConsumption: 12,
+            roomRentSnapshot: 4500000,
+            mgmtFeeSnapshot: 150000,
+            extraFee: 0,
+            totalAmount: 5190000,
+            status: 'PAID',
+            dueDate: DateTime(2026, 6, 30),
+          );
+          final payment = extra?['payment'] as Payment? ?? Payment(
+            id: 602,
+            invoiceId: 101,
+            residentId: 3,
+            payosOrderId: 'MOCK_ORDER_101',
+            transactionCode: 'FT_MOCK_SUCCESS_101',
+            amount: 5190000,
+            paymentMethod: 'VietQR / PayOS (Mock)',
+            status: 'SUCCESS',
+            paidAt: DateTime.now(),
+            createdAt: DateTime.now(),
+          );
           return PaymentReceiptScreen(
-            invoice: extra['invoice'] as Invoice,
-            payment: extra['payment'] as Payment,
+            invoice: invoice,
+            payment: payment,
           );
         },
+      ),
+      GoRoute(
+        path: AppRoutes.generateBill,
+        builder: (context, state) => const ManagerGenerateBillScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.managerInvoiceList,
+        builder: (context, state) => const ManagerInvoiceListScreen(),
       ),
     ],
   );

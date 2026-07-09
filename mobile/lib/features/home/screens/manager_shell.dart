@@ -153,13 +153,14 @@ class _ManagementHubTab extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               AppCard(
-                child: _HubRow(
+                onTap: () => context.push(AppRoutes.managerInvoiceList),
+                child: const _HubRow(
                   icon: Icons.receipt_long,
                   iconBg: AppColors.purpleBg,
                   iconColor: AppColors.purple,
                   title: 'Hóa đơn & Thu tiền',
                   subtitle: 'Chỉ số điện nước, thanh toán',
-                  trailing: StatusBadge.info('Module 3'),
+                  trailing: Icon(Icons.chevron_right, color: AppColors.textTertiary),
                 ),
               ),
             ],

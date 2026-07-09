@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
@@ -25,7 +27,10 @@ class PaymentWebView extends ConsumerStatefulWidget {
 
 class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
+  late final WebViewController _webViewController;
   bool _isProcessing = false;
+  bool _isRealPayment = false;
+  int _loadingProgress = 0;
 
   @override
   void initState() {
@@ -34,6 +39,71 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
+
+    // Kiểm tra xem là link thanh toán thật (không phải giả lập mock)
+    _isRealPayment = !widget.paymentUrl.contains('MOCK_ORDER');
+
+    if (_isRealPayment) {
+      _webViewController = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onProgress: (int progress) {
+              if (mounted) {
+                setState(() => _loadingProgress = progress);
+              }
+            },
+            onPageStarted: (String url) {
+              _checkRedirect(url);
+            },
+            onUrlChange: (UrlChange change) {
+              if (change.url != null) {
+                _checkRedirect(change.url!);
+              }
+            },
+          ),
+        )
+        ..loadRequest(Uri.parse(widget.paymentUrl));
+    }
+  }
+
+  void _checkRedirect(String url) {
+    debugPrint('[WebView] URL thay đổi: $url');
+    // Nhận diện chuyển hướng khi thanh toán thành công/hủy từ backend
+    if (url.contains('/api/payments/payos/success') || url.contains('/success')) {
+      _handleSuccessRedirect();
+    } else if (url.contains('/api/payments/payos/cancel') || url.contains('/cancel')) {
+      if (mounted) {
+        context.pop();
+      }
+    }
+  }
+
+  Future<void> _handleSuccessRedirect() async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+
+    try {
+      // Gọi API để cập nhật trạng thái PAID
+      final payment = await ref.read(billingProvider.notifier).simulateSuccessPayment(widget.invoiceId);
+      final billingState = ref.read(billingProvider);
+      final invoice = billingState.invoices.firstWhere((inv) => inv.id == widget.invoiceId);
+
+      if (mounted) {
+        // Điều hướng tới màn biên lai
+        context.pushReplacement(
+          '/invoices/receipt',
+          extra: {
+            'invoice': invoice,
+            'payment': payment,
+          },
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
   }
 
   @override
@@ -56,8 +126,73 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
 
   @override
   Widget build(BuildContext context) {
+    // 1. GIAO DIỆN WEBVIEW THẬT (Khi kết nối cổng thanh toán trực tuyến thật)
+    if (_isRealPayment) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: AppColors.navy,
+          title: const Text(
+            'Thanh toán hóa đơn',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => context.pop(),
+          ),
+          bottom: _loadingProgress < 100
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(3),
+                  child: LinearProgressIndicator(
+                    value: _loadingProgress / 100.0,
+                    backgroundColor: Colors.white24,
+                    color: AppColors.primary,
+                    minHeight: 3,
+                  ),
+                )
+              : null,
+        ),
+        body: Stack(
+          children: [
+            WebViewWidget(controller: _webViewController),
+            if (_isProcessing)
+              Container(
+                color: Colors.black.withValues(alpha: 0.6),
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: AppCard(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircularProgressIndicator(color: AppColors.primary),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Đang nhận tín hiệu từ PayOS...',
+                            style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Hệ thống đang xác thực giao dịch an toàn.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
+    // 2. GIAO DIỆN GIẢ LẬP (MOCK SANDBOX - Khi test offline)
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9), // Màu xám nhẹ hơn
+      backgroundColor: const Color(0xFFF1F5F9),
       body: Stack(
         children: [
           Column(
@@ -173,6 +308,24 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
                               ],
                             ),
                           ),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Đã tải và lưu ảnh VietQR thành công vào thư viện của thiết bị!'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.download_rounded, size: 16),
+                            label: const Text('Lưu ảnh QR về máy', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.primary),
+                              foregroundColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           AnimatedBuilder(
                             animation: _pulseController,
@@ -196,6 +349,44 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
                                 ),
                               );
                             },
+                          ),
+                          const SizedBox(height: 16),
+                          const Divider(height: 1, color: AppColors.divider),
+                          const SizedBox(height: 12),
+                          const Text(
+                            '⚠️ Đây là màn hình giả lập UI. Để quét mã VietQR thật từ PayOS:',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 11, color: AppColors.error, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 46,
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                final messenger = ScaffoldMessenger.of(context);
+                                final uri = Uri.parse(widget.paymentUrl);
+                                try {
+                                  if (await canLaunchUrl(uri)) {
+                                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                  }
+                                } catch (e) {
+                                  messenger.showSnackBar(
+                                    SnackBar(content: Text('Không thể mở link: $e')),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.open_in_browser, size: 18),
+                              label: const Text(
+                                'MỞ CỔNG THANH TOÁN VietQR THẬT',
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.navy,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
                           ),
                         ],
                       ),

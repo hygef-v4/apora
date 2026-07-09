@@ -30,7 +30,7 @@ class Payment {
       residentId: json['resident_id'] as int,
       payosOrderId: json['payos_order_id'] as String,
       transactionCode: json['transaction_code'] as String?,
-      amount: (json['amount'] as num).toDouble(),
+      amount: double.tryParse(json['amount'].toString()) ?? 0.0,
       paymentMethod: json['payment_method'] as String,
       status: json['status'] as String,
       paidAt: json['paid_at'] != null ? DateTime.parse(json['paid_at'] as String) : null,

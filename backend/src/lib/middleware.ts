@@ -42,11 +42,19 @@ export function jsonError(error: unknown): NextResponse<ApiResponse> {
   // BR-02: hai request đồng thời cùng SĐT có thể lọt qua bước check trước
   // và vướng UNIQUE constraint của Postgres -> map sang 409 thay vì 500.
   const pgError = error as { code?: string; constraint?: string };
-  if (pgError?.code === '23505' && pgError.constraint === 'users_phone_number_key') {
-    return NextResponse.json(
-      { status: 'error', message: 'Số điện thoại đã tồn tại. Vui lòng nhập số khác.' },
-      { status: 409 },
-    );
+  if (pgError?.code === '23505') {
+    if (pgError.constraint === 'users_phone_number_key') {
+      return NextResponse.json(
+        { status: 'error', message: 'Số điện thoại đã tồn tại. Vui lòng nhập số khác.' },
+        { status: 409 },
+      );
+    }
+    if (pgError.constraint === 'invoices_apartment_id_month_year_key') {
+      return NextResponse.json(
+        { status: 'error', message: 'Hóa đơn của căn hộ này trong kỳ thanh toán đã chọn đã được lập trước đó.' },
+        { status: 409 },
+      );
+    }
   }
   console.error('[API] Lỗi không xác định:', error);
   return NextResponse.json(

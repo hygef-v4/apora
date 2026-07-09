@@ -16,6 +16,7 @@ class Invoice {
   final double totalAmount;
   final String status; // 'UNPAID', 'PAID'
   final DateTime dueDate;
+  final String? unitNumber;
 
   Invoice({
     required this.id,
@@ -35,27 +36,48 @@ class Invoice {
     required this.totalAmount,
     required this.status,
     required this.dueDate,
+    this.unitNumber,
   });
 
+  static DateTime _parseDueDate(String monthYear, String? createdAtStr) {
+    try {
+      final parts = monthYear.split('/');
+      final month = int.parse(parts[0]);
+      final year = int.parse(parts[1]);
+      return DateTime(year, month + 1, 0);
+    } catch (_) {
+      if (createdAtStr != null) {
+        return DateTime.parse(createdAtStr).add(const Duration(days: 10));
+      }
+      return DateTime.now().add(const Duration(days: 10));
+    }
+  }
+
   factory Invoice.fromJson(Map<String, dynamic> json) {
+    final mYear = json['month_year'] as String;
+    final cAt = json['created_at'] as String?;
+    
     return Invoice(
       id: json['id'] as int,
       contractId: json['contract_id'] as int,
       apartmentId: json['apartment_id'] as int,
-      monthYear: json['month_year'] as String,
+      monthYear: mYear,
       prevElectricityIndex: (json['prev_electricity_index'] as num).toDouble(),
       currElectricityIndex: (json['curr_electricity_index'] as num).toDouble(),
       electricityConsumption: (json['electricity_consumption'] as num).toDouble(),
       prevWaterIndex: (json['prev_water_index'] as num).toDouble(),
       currWaterIndex: (json['curr_water_index'] as num).toDouble(),
       waterConsumption: (json['water_consumption'] as num).toDouble(),
-      roomRentSnapshot: (json['room_rent_snapshot'] as num).toDouble(),
-      mgmtFeeSnapshot: (json['mgmt_fee_snapshot'] as num).toDouble(),
-      extraFee: (json['extra_fee'] as num).toDouble(),
+      roomRentSnapshot: double.tryParse(json['room_rent_snapshot'].toString()) ?? 0.0,
+      mgmtFeeSnapshot: double.tryParse(json['mgmt_fee_snapshot'].toString()) ?? 0.0,
+      extraFee: double.tryParse(json['extra_fee'].toString()) ?? 0.0,
       extraFeeDescription: json['extra_fee_description'] as String?,
-      totalAmount: (json['total_amount'] as num).toDouble(),
+      totalAmount: double.tryParse(json['total_amount'].toString()) ?? 0.0,
       status: json['status'] as String,
-      dueDate: DateTime.parse(json['due_date'] as String),
+      dueDate: json['due_date'] != null
+          ? DateTime.parse(json['due_date'] as String)
+          : _parseDueDate(mYear, cAt),
+      unitNumber: json['unit_number'] as String?,
     );
   }
 
@@ -78,6 +100,7 @@ class Invoice {
       'total_amount': totalAmount,
       'status': status,
       'due_date': dueDate.toIso8601String(),
+      'unit_number': unitNumber,
     };
   }
 }
