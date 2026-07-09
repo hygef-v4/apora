@@ -167,37 +167,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/invoices/receipt',
         builder: (_, state) {
-          final extra = state.extra as Map<String, dynamic>?;
-          final invoice = extra?['invoice'] as Invoice? ?? Invoice(
-            id: 101,
-            contractId: 10,
-            apartmentId: 5,
-            monthYear: '06/2026',
-            prevElectricityIndex: 1200,
-            currElectricityIndex: 1340,
-            electricityConsumption: 140,
-            prevWaterIndex: 350,
-            currWaterIndex: 362,
-            waterConsumption: 12,
-            roomRentSnapshot: 4500000,
-            mgmtFeeSnapshot: 150000,
-            extraFee: 0,
-            totalAmount: 5190000,
-            status: 'PAID',
-            dueDate: DateTime(2026, 6, 30),
-          );
-          final payment = extra?['payment'] as Payment? ?? Payment(
-            id: 602,
-            invoiceId: 101,
-            residentId: 3,
-            payosOrderId: 'MOCK_ORDER_101',
-            transactionCode: 'FT_MOCK_SUCCESS_101',
-            amount: 5190000,
-            paymentMethod: 'VietQR / PayOS (Mock)',
-            status: 'SUCCESS',
-            paidAt: DateTime.now(),
-            createdAt: DateTime.now(),
-          );
+          final extra = state.extra as Map<String, dynamic>;
+          final invoice = extra['invoice'] as Invoice;
+          final payment = extra['payment'] as Payment;
           return PaymentReceiptScreen(
             invoice: invoice,
             payment: payment,
