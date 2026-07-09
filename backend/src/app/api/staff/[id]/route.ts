@@ -7,6 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { HttpError, jsonError, jsonSuccess, requireAuth } from '@/lib/middleware';
+import { readImageUpload } from '@/lib/upload';
 import * as staffService from '@/services/staff.service';
 
 function parseId(raw: string): number {
@@ -43,11 +44,7 @@ export async function PUT(
       throw new HttpError(400, 'Dữ liệu gửi lên không hợp lệ (yêu cầu multipart/form-data).');
     });
 
-    let avatarBuffer: Buffer | undefined;
-    const avatar = form.get('avatar');
-    if (avatar instanceof File && avatar.size > 0) {
-      avatarBuffer = Buffer.from(await avatar.arrayBuffer());
-    }
+    const avatarBuffer = await readImageUpload(form, 'avatar');
 
     const data = await staffService.modifyStaffAccount(auth.id, parseId(id), {
       fullName: String(form.get('fullName') ?? ''),

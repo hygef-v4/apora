@@ -11,9 +11,10 @@
  * - BR-49/BR-59: không hard-delete
  */
 
-import { hashPassword, validatePasswordComplexity } from '@/lib/auth';
+import { hashPassword, validatePasswordComplexity, validatePhoneNumber } from '@/lib/auth';
 import { uploadImage } from '@/lib/cloudinary';
 import { HttpError } from '@/lib/middleware';
+import * as auditRepo from '@/repositories/audit.repository';
 import * as staffRepo from '@/repositories/staff.repository';
 import * as userRepo from '@/repositories/user.repository';
 import {
@@ -117,6 +118,9 @@ export async function registerStaffAccount(
   }
   assertStaffRole(data.role);
 
+  const phoneError = validatePhoneNumber(data.phone.trim()); // BR-02
+  if (phoneError) throw new HttpError(400, phoneError);
+
   const complexityError = validatePasswordComplexity(data.password); // BR-09
   if (complexityError) throw new HttpError(400, complexityError);
 
@@ -132,7 +136,7 @@ export async function registerStaffAccount(
     data.role,
   );
 
-  await staffRepo.insertAuditLog(actorId, created.id, 'STAFF_CREATE', null, {
+  await auditRepo.insertAuditLog(actorId, created.id, 'STAFF_CREATE', null, {
     fullName: created.full_name,
     phone: created.phone_number,
     role: data.role,
@@ -163,6 +167,9 @@ export async function modifyStaffAccount(
     throw new HttpError(400, 'Trường bắt buộc không được để trống.');
   }
   assertStaffRole(data.role);
+
+  const phoneError = validatePhoneNumber(data.phone.trim()); // BR-02
+  if (phoneError) throw new HttpError(400, phoneError);
 
   const current = await staffRepo.findStaffById(staffId);
   if (!current) throw new HttpError(404, MSG_STAFF_NOT_FOUND);
@@ -195,7 +202,7 @@ export async function modifyStaffAccount(
   const phoneChanged = current.phone_number !== updated.phone_number;
   const roleChanged = current.roles.join(',') !== updated.roles.join(',');
   if (phoneChanged || roleChanged) {
-    await staffRepo.insertAuditLog(
+    await auditRepo.insertAuditLog(
       actorId,
       staffId,
       'STAFF_UPDATE',
@@ -233,7 +240,7 @@ export async function resetStaffPasswordByManager(
   await staffRepo.resetStaffPassword(staffId, hash);
 
   // KHÔNG ghi mật khẩu vào audit log
-  await staffRepo.insertAuditLog(actorId, staffId, 'STAFF_RESET_PASSWORD', null, null);
+  await auditRepo.insertAuditLog(actorId, staffId, 'STAFF_RESET_PASSWORD', null, null);
 }
 
 // ==========================================
@@ -271,7 +278,7 @@ export async function disableStaffAccount(
   await staffRepo.revokeAllDeviceTokens(staffId);
 
   // BR-04 (UC40): audit log bắt buộc
-  await staffRepo.insertAuditLog(
+  await auditRepo.insertAuditLog(
     actorId,
     staffId,
     'STAFF_DEACTIVATE',

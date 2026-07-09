@@ -6,6 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import { jsonError, jsonSuccess, requireAuth, HttpError } from '@/lib/middleware';
+import { readImageUpload } from '@/lib/upload';
 import * as userService from '@/services/user.service';
 
 export async function GET(req: NextRequest) {
@@ -28,12 +29,7 @@ export async function PUT(req: NextRequest) {
 
     const fullName = String(form.get('fullName') ?? '');
     const phone = String(form.get('phone') ?? '');
-
-    let avatarBuffer: Buffer | undefined;
-    const avatar = form.get('avatar');
-    if (avatar instanceof File && avatar.size > 0) {
-      avatarBuffer = Buffer.from(await avatar.arrayBuffer());
-    }
+    const avatarBuffer = await readImageUpload(form, 'avatar');
 
     const data = await userService.updateUserProfile(auth.id, fullName, phone, avatarBuffer);
     return jsonSuccess('Cập nhật hồ sơ thành công.', data);

@@ -10,7 +10,8 @@ import * as userService from '@/services/user.service';
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireAuth(req);
+    // Cho phép logout cả khi chưa đổi mật khẩu mặc định (BR-01)
+    const auth = await requireAuth(req, undefined, { allowPendingPasswordChange: true });
     const body = await req.json().catch(() => ({}));
     await userService.invalidateSession(auth.id, body.fcmToken);
     return jsonSuccess('Đăng xuất thành công.');

@@ -85,6 +85,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isAuthRoute || location == AppRoutes.changePassword) {
         return homePathForRoles(auth.roles);
       }
+
+      // Module 8: chỉ MANAGER/LANDLORD được vào màn quản lý nhân viên
+      // (backend vẫn enforce 403 - đây là chặn sớm phía client cho UX)
+      final isManagement =
+          auth.roles.contains('MANAGER') || auth.roles.contains('LANDLORD');
+      if (location.startsWith(AppRoutes.staffList) && !isManagement) {
+        return homePathForRoles(auth.roles);
+      }
       return null;
     },
     routes: [

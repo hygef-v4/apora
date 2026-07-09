@@ -13,6 +13,7 @@ class MockAuthAPIService extends Mock implements AuthAPIService {}
 class FakeTokenStorage implements TokenStorage {
   String? token;
   String? userJson;
+  bool mustChangePassword = false;
 
   @override
   Future<String?> readToken() async => token;
@@ -21,15 +22,24 @@ class FakeTokenStorage implements TokenStorage {
   Future<String?> readUserJson() async => userJson;
 
   @override
-  Future<void> saveSession({required String token, required String userJson}) async {
+  Future<bool> readMustChangePassword() async => mustChangePassword;
+
+  @override
+  Future<void> saveSession({
+    required String token,
+    required String userJson,
+    required bool mustChangePassword,
+  }) async {
     this.token = token;
     this.userJson = userJson;
+    this.mustChangePassword = mustChangePassword;
   }
 
   @override
   Future<void> clear() async {
     token = null;
     userJson = null;
+    mustChangePassword = false;
   }
 }
 

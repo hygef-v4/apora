@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/network/token_storage.dart';
 import '../models/user.dart';
@@ -52,14 +53,20 @@ class AuthNotifier extends Notifier<AuthState> {
   AuthState build() => const AuthState();
 
   /// Khôi phục phiên từ secure storage khi mở app.
-  /// Token hết hạn/bị vô hiệu -> API trả 401, các notifier gọi API sẽ logout.
+  /// Token hết hạn/bị vô hiệu -> API trả 401, Dio interceptor gọi sessionExpired().
   Future<void> restoreSession() async {
     final token = await _storage.readToken();
     final userJson = await _storage.readUserJson();
     if (token == null || userJson == null) return;
     try {
       final user = User.fromJson(jsonDecode(userJson) as Map<String, dynamic>);
-      state = AuthState(status: AuthStatus.authenticated, user: user);
+      // BR-01: đọc lại cờ từ storage - kill app không thoát được màn ép đổi mật khẩu
+      final mustChangePassword = await _storage.readMustChangePassword();
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        user: user,
+        mustChangePassword: mustChangePassword,
+      );
     } catch (_) {
       await _storage.clear();
     }
@@ -74,6 +81,7 @@ class AuthNotifier extends Notifier<AuthState> {
       await _storage.saveSession(
         token: res.token,
         userJson: jsonEncode(res.user.toJson()),
+        mustChangePassword: res.mustChangePassword,
       );
       state = AuthState(
         status: AuthStatus.authenticated,
@@ -116,9 +124,22 @@ class AuthNotifier extends Notifier<AuthState> {
     final newToken = await _api.changePassword(oldPassword, newPassword);
     final user = state.user;
     if (user != null) {
-      await _storage.saveSession(token: newToken, userJson: jsonEncode(user.toJson()));
+      await _storage.saveSession(
+        token: newToken,
+        userJson: jsonEncode(user.toJson()),
+        mustChangePassword: false,
+      );
     }
     state = state.copyWith(mustChangePassword: false);
+  }
+
+  /// Gọi từ Dio interceptor khi backend trả 401 (token hết hạn / bị vô hiệu - BR-07).
+  /// Chỉ xóa phiên local, KHÔNG gọi API logout (token đã mất hiệu lực sẵn);
+  /// router sẽ tự đưa về màn Login.
+  Future<void> sessionExpired() async {
+    if (!state.isAuthenticated) return;
+    await _storage.clear();
+    state = const AuthState(errorMessage: AppStrings.msgSessionExpired);
   }
 }
 

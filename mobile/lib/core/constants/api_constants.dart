@@ -28,4 +28,5 @@ class StorageKeys {
 
   static const String jwtToken = 'jwt_token';
   static const String userJson = 'user_json';
+  static const String mustChangePassword = 'must_change_password';
 }

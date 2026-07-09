@@ -18,6 +18,8 @@ class AppStrings {
   static const String msgNetworkError =
       'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.';
   static const String msgUnknownError = 'Đã có lỗi xảy ra. Vui lòng thử lại sau.';
+  static const String msgSessionExpired =
+      'Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.';
 
   // OTP / mật khẩu
   static const String msgOtpSent = 'Mã OTP đã được gửi tới số điện thoại của bạn.';

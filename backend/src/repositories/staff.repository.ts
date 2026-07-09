@@ -1,8 +1,8 @@
 /**
  * StaffRepository - Data Access Layer cho Module 8: Operational Staff Management
  *
- * Thao tác trên bảng users (role staff), tasks (workload BR-41/BR-50),
- * device_tokens và audit_logs.
+ * Thao tác trên bảng users (role staff), tasks (workload BR-41/BR-50)
+ * và device_tokens. Audit log ghi qua audit.repository (dùng chung).
  *
  * @see docs/PRM393_SoftwareDesign_Group5.docx - Module 8 (StaffRepository)
  */
@@ -38,7 +38,9 @@ export async function findStaffByRole(
     conditions.push(`$${params.length} = ANY(u.roles)`);
   }
   if (search?.trim()) {
-    params.push(`%${search.trim()}%`);
+    // Escape ký tự wildcard của LIKE để user gõ % / _ được hiểu là ký tự thường
+    const escaped = search.trim().replace(/[\\%_]/g, '\\$&');
+    params.push(`%${escaped}%`);
     conditions.push(
       `(u.full_name ILIKE $${params.length} OR u.phone_number ILIKE $${params.length})`,
     );
@@ -180,21 +182,5 @@ export async function revokeAllDeviceTokens(userId: number): Promise<void> {
   await query(
     `UPDATE device_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`,
     [userId],
-  );
-}
-
-/** UC39/UC40 BR-04: ghi audit log cho thao tác quản lý nhân sự. */
-export async function insertAuditLog(
-  actorId: number,
-  targetUserId: number | null,
-  action: string,
-  oldValue: Record<string, unknown> | null,
-  newValue: Record<string, unknown> | null,
-  reason?: string,
-): Promise<void> {
-  await query(
-    `INSERT INTO audit_logs (actor_id, target_user_id, action, old_value, new_value, reason)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [actorId, targetUserId, action, oldValue, newValue, reason ?? null],
   );
 }

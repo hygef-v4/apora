@@ -21,13 +21,16 @@ import {
   hashPassword,
   signToken,
   validatePasswordComplexity,
+  validatePhoneNumber,
 } from '@/lib/auth';
 import { uploadImage } from '@/lib/cloudinary';
 import { HttpError } from '@/lib/middleware';
+import * as auditRepo from '@/repositories/audit.repository';
 import * as userRepo from '@/repositories/user.repository';
 import { LoginResponseData, PublicUser, User } from '@/types';
 
 const OTP_TTL_MS = 5 * 60 * 1000; // BR-08: 5 phút
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000; // chống spam SMS: tối thiểu 60s giữa 2 lần gửi
 
 // MSG theo SRS
 const MSG_LOGIN_FAILED = 'Số điện thoại hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.';
@@ -110,6 +113,15 @@ export async function generateOTP(phone: string): Promise<{ devOtp?: string }> {
     throw new HttpError(403, MSG_INACTIVE); // BR-05
   }
 
+  // Cooldown chống spam: tối thiểu 60s giữa 2 lần yêu cầu OTP cho cùng SĐT
+  const lastCreatedAt = await userRepo.findLatestOtpCreatedAt(user.phone_number);
+  if (lastCreatedAt && Date.now() - lastCreatedAt.getTime() < OTP_RESEND_COOLDOWN_MS) {
+    const waitSeconds = Math.ceil(
+      (OTP_RESEND_COOLDOWN_MS - (Date.now() - lastCreatedAt.getTime())) / 1000,
+    );
+    throw new HttpError(429, `Vui lòng đợi ${waitSeconds} giây trước khi yêu cầu mã mới.`);
+  }
+
   const code = String(Math.floor(100000 + Math.random() * 900000)); // 6 chữ số
   const expiredAt = new Date(Date.now() + OTP_TTL_MS);
   await userRepo.createOtp(user.phone_number, code, expiredAt);
@@ -131,6 +143,12 @@ export async function verifyOTPAndReset(
 
   const complexityError = validatePasswordComplexity(newPassword); // BR-09
   if (complexityError) throw new HttpError(400, complexityError);
+
+  // BR-05: re-check tại thời điểm reset - tài khoản có thể bị vô hiệu hóa
+  // trong khoảng 5 phút từ lúc xin OTP tới lúc xác nhận.
+  const user = await userRepo.findByPhone(phone.trim());
+  if (!user) throw new HttpError(400, MSG_OTP_INVALID);
+  if (user.status !== 'ACTIVE') throw new HttpError(403, MSG_INACTIVE);
 
   const record = await userRepo.findActiveOtp(phone.trim());
   if (!record) {
@@ -169,25 +187,43 @@ export async function updateUserProfile(
   if (!fullName?.trim()) throw new HttpError(400, 'Trường bắt buộc không được để trống.');
   if (!phone?.trim()) throw new HttpError(400, 'Vui lòng nhập Số điện thoại.');
 
+  const phoneError = validatePhoneNumber(phone.trim()); // BR-02
+  if (phoneError) throw new HttpError(400, phoneError);
+
   const current = await userRepo.findById(userId);
   if (!current) throw new HttpError(404, 'Không tìm thấy người dùng.');
 
   // BR-02: phone unique
-  if (phone.trim() !== current.phone_number) {
+  const phoneChanged = phone.trim() !== current.phone_number;
+  if (phoneChanged) {
     const existed = await userRepo.findByPhone(phone.trim());
     if (existed) throw new HttpError(409, MSG_PHONE_EXISTS);
-    // BR-12: audit thay đổi số điện thoại (username đăng nhập)
-    console.log(
-      `[AUDIT] User #${userId} đổi số điện thoại: ${current.phone_number} -> ${phone.trim()}`,
-    );
   }
 
+  // Upload avatar lỗi -> vẫn lưu các field text, giữ avatar cũ
+  // (đồng bộ hành vi với UC39 - alternative flow AT3)
   let avatarUrl: string | undefined;
   if (avatarBuffer) {
-    avatarUrl = await uploadImage(avatarBuffer, 'avatars');
+    try {
+      avatarUrl = await uploadImage(avatarBuffer, 'avatars');
+    } catch (error) {
+      console.error('[UserService] Upload avatar thất bại, giữ avatar cũ:', error);
+    }
   }
 
   const updated = await userRepo.updateProfileDetails(userId, fullName.trim(), phone.trim(), avatarUrl);
+
+  // BR-12: audit thay đổi số điện thoại (username đăng nhập) - ghi sau khi update thành công
+  if (phoneChanged) {
+    await auditRepo.insertAuditLog(
+      userId,
+      userId,
+      'PROFILE_PHONE_CHANGE',
+      { phone: current.phone_number },
+      { phone: updated.phone_number },
+    );
+  }
+
   return toPublicUser(updated);
 }
 
@@ -203,8 +239,10 @@ export async function changePassword(
   const user = await userRepo.findById(userId);
   if (!user) throw new HttpError(404, 'Không tìm thấy người dùng.');
 
+  // 400 (không phải 401) - 401 dành riêng cho "phiên hết hiệu lực"
+  // để mobile auto-logout không đá user ra khi gõ nhầm mật khẩu cũ
   if (!(await comparePassword(oldPassword, user.password_hash))) {
-    throw new HttpError(401, 'Mật khẩu hiện tại không đúng.');
+    throw new HttpError(400, 'Mật khẩu hiện tại không đúng.');
   }
 
   const complexityError = validatePasswordComplexity(newPassword); // BR-09

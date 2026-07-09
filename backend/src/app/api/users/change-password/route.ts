@@ -11,7 +11,8 @@ import * as userService from '@/services/user.service';
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireAuth(req);
+    // BR-01: endpoint duy nhất (cùng logout) mở cho user chưa đổi mật khẩu mặc định
+    const auth = await requireAuth(req, undefined, { allowPendingPasswordChange: true });
     const body = await req.json();
     const data = await userService.changePassword(auth.id, body.oldPassword, body.newPassword);
     return jsonSuccess('Đổi mật khẩu thành công.', data);

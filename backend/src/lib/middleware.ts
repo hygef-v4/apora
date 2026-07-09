@@ -39,6 +39,15 @@ export function jsonError(error: unknown): NextResponse<ApiResponse> {
       { status: error.status },
     );
   }
+  // BR-02: hai request đồng thời cùng SĐT có thể lọt qua bước check trước
+  // và vướng UNIQUE constraint của Postgres -> map sang 409 thay vì 500.
+  const pgError = error as { code?: string; constraint?: string };
+  if (pgError?.code === '23505' && pgError.constraint === 'users_phone_number_key') {
+    return NextResponse.json(
+      { status: 'error', message: 'Số điện thoại đã tồn tại. Vui lòng nhập số khác.' },
+      { status: 409 },
+    );
+  }
   console.error('[API] Lỗi không xác định:', error);
   return NextResponse.json(
     { status: 'error', message: 'Đã có lỗi xảy ra. Vui lòng thử lại sau.' },
@@ -54,10 +63,14 @@ export function jsonSuccess<T>(message: string, data?: T, status = 200): NextRes
 /**
  * Xác thực request. Ném HttpError 401/403 nếu không hợp lệ.
  * @param allowedRoles Nếu truyền, user phải có ít nhất 1 role trong danh sách.
+ * @param options.allowPendingPasswordChange BR-01: mặc định user đang dùng mật khẩu
+ *   mặc định (must_change_password) bị chặn 403 ở mọi endpoint; chỉ change-password
+ *   và logout truyền true để user thoát được trạng thái này.
  */
 export async function requireAuth(
   req: NextRequest,
   allowedRoles?: UserRole[],
+  options?: { allowPendingPasswordChange?: boolean },
 ): Promise<JwtPayload> {
   const header = req.headers.get('authorization');
   if (!header || !header.startsWith('Bearer ')) {
@@ -72,8 +85,9 @@ export async function requireAuth(
   }
 
   // 1 query duy nhất: check tồn tại + ACTIVE (BR-04) + token_version (BR-07)
+  // + must_change_password (BR-01)
   const result = await query(
-    'SELECT status, token_version, roles FROM users WHERE id = $1',
+    'SELECT status, token_version, roles, must_change_password FROM users WHERE id = $1',
     [payload.id],
   );
   const user = result.rows[0];
@@ -82,6 +96,11 @@ export async function requireAuth(
   }
   if (user.token_version !== payload.tv) {
     throw new HttpError(401, 'Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.');
+  }
+
+  // BR-01: đang dùng mật khẩu mặc định -> chặn mọi API khác cho tới khi đổi
+  if (user.must_change_password && !options?.allowPendingPasswordChange) {
+    throw new HttpError(403, 'Bạn cần đổi mật khẩu mặc định trước khi tiếp tục sử dụng.');
   }
 
   if (allowedRoles && allowedRoles.length > 0) {

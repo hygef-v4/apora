@@ -110,6 +110,18 @@ export async function createOtp(phone: string, code: string, expiredAt: Date): P
   );
 }
 
+/** Thời điểm cấp OTP gần nhất (kể cả đã dùng) - phục vụ cooldown chống spam SMS. */
+export async function findLatestOtpCreatedAt(phone: string): Promise<Date | null> {
+  const result = await query(
+    `SELECT created_at FROM password_reset_otps
+     WHERE phone_number = $1
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [phone],
+  );
+  return result.rows[0]?.created_at ?? null;
+}
+
 /** OTP đang hiệu lực gần nhất (chưa dùng, chưa hết hạn). */
 export async function findActiveOtp(phone: string): Promise<PasswordResetOtp | null> {
   const result = await query(

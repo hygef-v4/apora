@@ -45,6 +45,17 @@ export function verifyToken(token: string): JwtPayload {
 }
 
 /**
+ * BR-02: SĐT là username - phải đúng định dạng di động VN (10 chữ số, bắt đầu bằng 0).
+ * @returns null nếu hợp lệ, ngược lại trả message lỗi tiếng Việt.
+ */
+export function validatePhoneNumber(phone: string): string | null {
+  if (!/^0\d{9}$/.test(phone)) {
+    return 'Số điện thoại không hợp lệ. Vui lòng nhập 10 chữ số bắt đầu bằng 0.';
+  }
+  return null;
+}
+
+/**
  * BR-09: Mật khẩu tối thiểu 8 ký tự, ít nhất 1 chữ hoa và 1 chữ số.
  * @returns null nếu hợp lệ, ngược lại trả message lỗi tiếng Việt.
  */

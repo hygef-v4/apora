@@ -7,8 +7,16 @@ import '../constants/api_constants.dart';
 /// Tách interface để unit test override bằng bản in-memory (không cần plugin).
 abstract class TokenStorage {
   Future<String?> readToken();
-  Future<void> saveSession({required String token, required String userJson});
+  Future<void> saveSession({
+    required String token,
+    required String userJson,
+    required bool mustChangePassword,
+  });
   Future<String?> readUserJson();
+
+  /// BR-01: cờ "phải đổi mật khẩu" phải được lưu lại - nếu chỉ giữ trong state,
+  /// kill app rồi mở lại là thoát được màn ép đổi mật khẩu.
+  Future<bool> readMustChangePassword();
   Future<void> clear();
 }
 
@@ -23,18 +31,33 @@ class SecureTokenStorage implements TokenStorage {
   Future<String?> readToken() => _storage.read(key: StorageKeys.jwtToken);
 
   @override
-  Future<void> saveSession({required String token, required String userJson}) async {
+  Future<void> saveSession({
+    required String token,
+    required String userJson,
+    required bool mustChangePassword,
+  }) async {
     await _storage.write(key: StorageKeys.jwtToken, value: token);
     await _storage.write(key: StorageKeys.userJson, value: userJson);
+    await _storage.write(
+      key: StorageKeys.mustChangePassword,
+      value: mustChangePassword.toString(),
+    );
   }
 
   @override
   Future<String?> readUserJson() => _storage.read(key: StorageKeys.userJson);
 
   @override
+  Future<bool> readMustChangePassword() async {
+    final value = await _storage.read(key: StorageKeys.mustChangePassword);
+    return value == 'true';
+  }
+
+  @override
   Future<void> clear() async {
     await _storage.delete(key: StorageKeys.jwtToken);
     await _storage.delete(key: StorageKeys.userJson);
+    await _storage.delete(key: StorageKeys.mustChangePassword);
   }
 }
 
