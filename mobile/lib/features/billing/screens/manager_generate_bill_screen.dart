@@ -161,12 +161,50 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                                           child: Text('Căn ${contract['unit_number']} - ${contract['resident_name']}'),
                                         );
                                       }).toList(),
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _selectedContract = value;
-                                      });
-                                    },
-                                  ),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _selectedContract = value;
+                                        });
+                                      },
+                                    ),
+                                    if (_selectedContract != null) ...[
+                                      const SizedBox(height: 12),
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.05),
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Chỉ số ghi nhận kỳ trước:',
+                                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.bolt, color: Colors.orange, size: 16),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'Điện: ${double.tryParse(_selectedContract!['last_electricity_index'].toString())?.toInt() ?? 0} kWh',
+                                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                                ),
+                                                const SizedBox(width: 24),
+                                                const Icon(Icons.water_drop, color: Colors.blue, size: 16),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'Nước: ${double.tryParse(_selectedContract!['last_water_index'].toString())?.toInt() ?? 0} m³',
+                                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                 ],
                               ),
                             ),
@@ -217,7 +255,12 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                                     ),
                                     validator: (val) {
                                       if (val == null || val.trim().isEmpty) return 'Vui lòng nhập chỉ số điện.';
-                                      if (double.tryParse(val) == null) return 'Phải là số hợp lệ.';
+                                      final current = double.tryParse(val);
+                                      if (current == null) return 'Phải là số hợp lệ.';
+                                      if (_selectedContract != null) {
+                                        final last = double.tryParse(_selectedContract!['last_electricity_index'].toString()) ?? 0.0;
+                                        if (current < last) return 'Không được nhỏ hơn chỉ số cũ (${last.toInt()}).';
+                                      }
                                       return null;
                                     },
                                   ),
@@ -232,7 +275,12 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                                     ),
                                     validator: (val) {
                                       if (val == null || val.trim().isEmpty) return 'Vui lòng nhập chỉ số nước.';
-                                      if (double.tryParse(val) == null) return 'Phải là số hợp lệ.';
+                                      final current = double.tryParse(val);
+                                      if (current == null) return 'Phải là số hợp lệ.';
+                                      if (_selectedContract != null) {
+                                        final last = double.tryParse(_selectedContract!['last_water_index'].toString()) ?? 0.0;
+                                        if (current < last) return 'Không được nhỏ hơn chỉ số cũ (${last.toInt()}).';
+                                      }
                                       return null;
                                     },
                                   ),
@@ -277,6 +325,27 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                                 ],
                               ),
                             ),
+                            const SizedBox(height: 16),
+                            AppCard(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Thông Tin Đơn Giá & Dịch Vụ',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      _buildPriceInfoItem('Đơn giá Điện', '2.000 đ/kWh', Icons.bolt, Colors.orange),
+                                      _buildPriceInfoItem('Đơn giá Nước', '2.166 đ/m³', Icons.water_drop, Colors.blue),
+                                      _buildPriceInfoItem('Phí quản lý', '150k đ/tháng', Icons.admin_panel_settings, AppColors.success),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                             const SizedBox(height: 24),
                             SizedBox(
                               width: double.infinity,
@@ -304,6 +373,20 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                         ),
                       ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceInfoItem(String title, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(height: 4),
+          Text(title, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 2),
+          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navy)),
         ],
       ),
     );

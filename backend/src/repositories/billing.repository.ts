@@ -180,13 +180,27 @@ export async function findPaymentById(id: number): Promise<Payment | null> {
   return res.rows[0] || null;
 }
 
-/** Get all active contracts with apartment unit numbers. */
+/** Get all active contracts with apartment unit numbers and their last billing indexes. */
 export async function findActiveContracts(): Promise<any[]> {
   const res = await query(
-    `SELECT c.id as contract_id, c.apartment_id, a.unit_number, c.base_rent_snapshot, u.full_name as resident_name
+    `SELECT 
+       c.id as contract_id, 
+       c.apartment_id, 
+       a.unit_number, 
+       c.base_rent_snapshot, 
+       u.full_name as resident_name,
+       COALESCE(latest_inv.curr_electricity_index, 0) as last_electricity_index,
+       COALESCE(latest_inv.curr_water_index, 0) as last_water_index
      FROM contracts c
      JOIN apartments a ON c.apartment_id = a.id
      JOIN users u ON c.resident_id = u.id
+     LEFT JOIN LATERAL (
+       SELECT curr_electricity_index, curr_water_index
+       FROM invoices
+       WHERE apartment_id = a.id
+       ORDER BY created_at DESC
+       LIMIT 1
+     ) latest_inv ON TRUE
      WHERE c.status = 'ACTIVE'
      ORDER BY a.unit_number ASC`
   );
