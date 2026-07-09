@@ -7,6 +7,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../providers/billing_provider.dart';
+import '../models/payment.dart';
 import '../../../core/router/app_router.dart';
 
 class ManagerInvoiceListScreen extends ConsumerStatefulWidget {
@@ -22,7 +23,7 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     // Tải dữ liệu mới nhất khi mở màn hình
     Future.microtask(() => ref.read(billingProvider.notifier).fetchData());
   }
@@ -79,8 +80,9 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
               indicatorSize: TabBarIndicatorSize.tab,
               labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               tabs: [
-                Tab(text: 'Chưa thanh toán (${unpaidInvoices.length})'),
-                Tab(text: 'Đã thanh toán (${paidInvoices.length})'),
+                Tab(text: 'Chưa đóng (${unpaidInvoices.length})'),
+                Tab(text: 'Đã đóng (${paidInvoices.length})'),
+                Tab(text: 'Giao dịch (${state.payments.length})'),
               ],
             ),
           ),
@@ -90,6 +92,7 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
               children: [
                 _buildInvoiceList(unpaidInvoices, isPaid: false),
                 _buildInvoiceList(paidInvoices, isPaid: true),
+                _buildTransactionList(state.payments),
               ],
             ),
           ),
@@ -214,6 +217,134 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
                         Text(
                           'Điện: ${invoice.electricityConsumption.toInt()} kWh | Nước: ${invoice.waterConsumption.toInt()} m³',
                           style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTransactionList(List<Payment> payments) {
+    if (payments.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.history, size: 48, color: AppColors.textTertiary),
+            const SizedBox(height: 8),
+            const Text(
+              'Không có giao dịch thanh toán nào.',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => ref.read(billingProvider.notifier).fetchData(),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(14),
+        itemCount: payments.length,
+        itemBuilder: (context, idx) {
+          final payment = payments[idx];
+          
+          Widget statusBadge;
+          if (payment.status == 'SUCCESS') {
+            statusBadge = StatusBadge.success('Thành công');
+          } else if (payment.status == 'PENDING') {
+            statusBadge = StatusBadge.warning('Đang xử lý');
+          } else {
+            statusBadge = const StatusBadge(
+              text: 'Thất bại',
+              color: AppColors.error,
+              backgroundColor: AppColors.errorBg,
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: AppCard(
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Căn ${payment.unitNumber ?? "N/A"}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              payment.monthYear != null ? 'Tháng ${payment.monthYear}' : 'Hóa đơn',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                            ),
+                          ],
+                        ),
+                        statusBadge,
+                      ],
+                    ),
+                    const Divider(height: 20, color: AppColors.divider),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Số tiền thanh toán', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            const SizedBox(height: 2),
+                            Text(
+                              _formatMoney(payment.amount),
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.navy),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text('Phương thức', style: TextStyle(fontSize: 10, color: AppColors.textTertiary)),
+                            const SizedBox(height: 2),
+                            Text(
+                              payment.paymentMethod,
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Mã GD: ${payment.transactionCode ?? "Chưa có"}',
+                          style: const TextStyle(fontSize: 11, color: AppColors.textTertiary, fontWeight: FontWeight.w500),
+                        ),
+                        Text(
+                          'Ngày: ${payment.createdAt.day}/${payment.createdAt.month}/${payment.createdAt.year} ${payment.createdAt.hour}:${payment.createdAt.minute.toString().padLeft(2, '0')}',
+                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                         ),
                       ],
                     ),

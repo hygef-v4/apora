@@ -9,6 +9,9 @@ class Payment {
   final String status; // 'PENDING', 'SUCCESS', 'FAILED', 'CANCELLED'
   final DateTime? paidAt;
   final DateTime createdAt;
+  final String? unitNumber;
+  final String? monthYear;
+  final String? residentName;
 
   Payment({
     required this.id,
@@ -21,6 +24,9 @@ class Payment {
     required this.status,
     this.paidAt,
     required this.createdAt,
+    this.unitNumber,
+    this.monthYear,
+    this.residentName,
   });
 
   factory Payment.fromJson(Map<String, dynamic> json) {
@@ -35,6 +41,9 @@ class Payment {
       status: json['status'] as String,
       paidAt: json['paid_at'] != null ? DateTime.parse(json['paid_at'] as String) : null,
       createdAt: DateTime.parse(json['created_at'] as String),
+      unitNumber: json['unit_number'] as String?,
+      monthYear: json['month_year'] as String?,
+      residentName: json['resident_name'] as String?,
     );
   }
 
@@ -50,6 +59,9 @@ class Payment {
       'status': status,
       'paid_at': paidAt?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
+      'unit_number': unitNumber,
+      'month_year': monthYear,
+      'resident_name': residentName,
     };
   }
 }
