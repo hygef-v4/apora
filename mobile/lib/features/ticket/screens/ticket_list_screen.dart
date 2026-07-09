@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
+import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/ticket.dart';
 import '../providers/ticket_provider.dart';
 
@@ -66,9 +69,23 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(ticketProvider);
     final notifier = ref.read(ticketProvider.notifier);
+    final isResident = ref.watch(authNotifierProvider).roles.contains('RESIDENT');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
+      floatingActionButton: isResident
+          ? FloatingActionButton.extended(
+              onPressed: () async {
+                await context.push(AppRoutes.ticketCreate);
+                // Quay lại từ màn tạo -> làm mới theo bộ lọc hiện tại
+                if (context.mounted) notifier.fetchTickets(status: state.statusFilter);
+              },
+              backgroundColor: AppColors.navy,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('BÁO SỰ CỐ',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            )
+          : null,
       body: Column(
         children: [
           GradientHeader(
