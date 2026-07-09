@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/dio_client.dart';
@@ -57,6 +59,30 @@ class TicketNotifier extends Notifier<TicketState> {
       state = state.copyWith(tickets: list, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: mapDioError(e));
+    }
+  }
+
+  /// UC19: tạo sự cố mới. [imageBytes] đã được nén < 500KB tại nơi gọi (BR-10),
+  /// tối đa 3 ảnh (BR-37). Ném lỗi (đã map tiếng Việt) để màn hình hiển thị.
+  Future<void> createTicket({
+    required String category,
+    required String description,
+    List<Uint8List> imageBytes = const [],
+  }) async {
+    try {
+      final dio = ref.read(dioProvider);
+      final form = FormData.fromMap({
+        'category': category,
+        'description': description,
+        'images': [
+          for (var i = 0; i < imageBytes.length; i++)
+            MultipartFile.fromBytes(imageBytes[i], filename: 'ticket_$i.jpg'),
+        ],
+      });
+      await dio.post(ApiConstants.tickets, data: form);
+      await fetchTickets(); // làm mới danh sách (bỏ lọc, thấy ngay cái vừa tạo)
+    } catch (e) {
+      throw mapDioError(e);
     }
   }
 }
