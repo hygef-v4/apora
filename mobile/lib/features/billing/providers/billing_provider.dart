@@ -37,71 +37,14 @@ class BillingState {
 }
 
 class BillingNotifier extends Notifier<BillingState> {
-  // Mẫu dữ liệu Mock để dự phòng khi chạy offline hoặc API chưa khởi động
-  List<Invoice> get _mockInvoices => [
-        Invoice(
-          id: 101,
-          contractId: 10,
-          apartmentId: 5,
-          monthYear: '06/2026',
-          prevElectricityIndex: 1200,
-          currElectricityIndex: 1200,
-          electricityConsumption: 0,
-          prevWaterIndex: 350,
-          currWaterIndex: 350,
-          waterConsumption: 0,
-          roomRentSnapshot: 10000,
-          mgmtFeeSnapshot: 0,
-          extraFee: 0,
-          extraFeeDescription: null,
-          totalAmount: 10000,
-          status: 'UNPAID',
-          dueDate: DateTime(2026, 6, 30),
-        ),
-        Invoice(
-          id: 100,
-          contractId: 10,
-          apartmentId: 5,
-          monthYear: '05/2026',
-          prevElectricityIndex: 1060,
-          currElectricityIndex: 1200,
-          electricityConsumption: 140,
-          prevWaterIndex: 338,
-          currWaterIndex: 350,
-          waterConsumption: 12,
-          roomRentSnapshot: 4500000,
-          mgmtFeeSnapshot: 150000,
-          extraFee: 100000,
-          extraFeeDescription: 'Thay bóng đèn phòng khách',
-          totalAmount: 5280000,
-          status: 'PAID',
-          dueDate: DateTime(2026, 5, 31),
-        ),
-      ];
-
-  List<Payment> get _mockPayments => [
-        Payment(
-          id: 501,
-          invoiceId: 100,
-          residentId: 3,
-          payosOrderId: 'ORDER_17835708443',
-          transactionCode: 'FT261559981294',
-          amount: 5280000,
-          paymentMethod: 'VietQR / PayOS',
-          status: 'SUCCESS',
-          paidAt: DateTime(2026, 5, 28, 14, 30),
-          createdAt: DateTime(2026, 5, 28, 14, 25),
-        ),
-      ];
-
   @override
   BillingState build() {
     // Gọi tải dữ liệu bất đồng bộ từ backend API trong background
     Future.microtask(() => fetchData());
 
     return BillingState(
-      invoices: _mockInvoices,
-      payments: _mockPayments,
+      invoices: const [],
+      payments: const [],
     );
   }
 
@@ -126,8 +69,11 @@ class BillingNotifier extends Notifier<BillingState> {
       );
       debugPrint('[Billing] Tải dữ liệu thành công từ API.');
     } catch (e, stack) {
-      debugPrint('[Billing] Không kết nối được API, sử dụng dữ liệu Mock: $e');
+      debugPrint('[Billing] Lỗi tải dữ liệu từ API: $e');
       debugPrintStack(stackTrace: stack);
+      state = state.copyWith(
+        errorMessage: 'Không thể kết nối đến máy chủ: $e',
+      );
     }
   }
 
