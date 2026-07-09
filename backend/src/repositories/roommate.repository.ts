@@ -9,12 +9,21 @@ export interface RoommateData {
   cccd_back_url: string | null;
 }
 
-/** Lấy danh sách thành viên của 1 căn hộ */
+/** Lấy danh sách thành viên của 1 căn hộ kèm theo lý do từ chối (nếu có) từ audit_logs */
 export async function findRoommatesByApartmentId(apartmentId: number): Promise<any[]> {
   const res = await query(
-    `SELECT * FROM roommates 
-     WHERE apartment_id = $1 
-     ORDER BY created_at DESC`,
+    `SELECT r.*, latest_audit.reason as rejection_reason
+     FROM roommates r
+     LEFT JOIN LATERAL (
+       SELECT reason 
+       FROM audit_logs 
+       WHERE action = 'ROOMMATE_REJECT' 
+         AND (old_value->>'id')::int = r.id
+       ORDER BY created_at DESC
+       LIMIT 1
+     ) latest_audit ON TRUE
+     WHERE r.apartment_id = $1 
+     ORDER BY r.created_at DESC`,
     [apartmentId]
   );
   return res.rows;

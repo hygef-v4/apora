@@ -208,7 +208,25 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                                       statusBadge,
                                     ],
                                   ),
-
+                                  if (roommate.status == 'REJECTED') ...[
+                                    const Divider(height: 16, color: AppColors.divider),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.error_outline, color: AppColors.error, size: 14),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            'Lý do từ chối: ${roommate.rejectionReason ?? "Yêu cầu bị mờ hoặc thông tin không trùng khớp."}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.error,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),

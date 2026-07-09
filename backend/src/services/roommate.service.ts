@@ -75,7 +75,11 @@ export async function approveRoommateRequest(managerId: number, id: number): Pro
 }
 
 /** UC12: Quản lý từ chối yêu cầu */
-export async function rejectRoommateRequest(managerId: number, id: number): Promise<any> {
+export async function rejectRoommateRequest(managerId: number, id: number, reason: string): Promise<any> {
+  if (!reason || reason.trim() === '') {
+    throw new HttpError(400, 'Vui lòng cung cấp lý do từ chối.');
+  }
+
   const roommate = await roommateRepo.findRoommateById(id);
   if (!roommate) {
     throw new HttpError(404, 'Không tìm thấy yêu cầu đăng ký thành viên này.');
@@ -93,7 +97,8 @@ export async function rejectRoommateRequest(managerId: number, id: number): Prom
     null,
     'ROOMMATE_REJECT',
     { id: roommate.id, status: roommate.status, full_name: roommate.full_name, apartment_id: roommate.apartment_id },
-    { id: updated.id, status: updated.status }
+    { id: updated.id, status: updated.status },
+    reason
   );
 
   return updated;

@@ -9,6 +9,7 @@ class Roommate {
   final String status; // 'PENDING', 'APPROVED', 'REJECTED'
   final DateTime createdAt;
   final String? unitNumber; // Trả về thêm ở danh sách chờ duyệt của quản lý
+  final String? rejectionReason; // Lý do từ chối lấy từ audit logs
 
   Roommate({
     required this.id,
@@ -21,6 +22,7 @@ class Roommate {
     required this.status,
     required this.createdAt,
     this.unitNumber,
+    this.rejectionReason,
   });
 
   factory Roommate.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,7 @@ class Roommate {
       status: json['status'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       unitNumber: json['unit_number'] as String?,
+      rejectionReason: json['rejection_reason'] as String?,
     );
   }
 
@@ -50,6 +53,7 @@ class Roommate {
       'status': status,
       'created_at': createdAt.toIso8601String(),
       'unit_number': unitNumber,
+      'rejection_reason': rejectionReason,
     };
   }
 }

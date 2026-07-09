@@ -21,7 +21,7 @@ export async function PATCH(
     }
 
     const body = await req.json().catch(() => ({}));
-    const { status } = body;
+    const { status, reason = '' } = body;
 
     if (status !== 'APPROVED' && status !== 'REJECTED') {
       throw new HttpError(400, 'Trạng thái cập nhật phải là APPROVED hoặc REJECTED.');
@@ -31,7 +31,7 @@ export async function PATCH(
     if (status === 'APPROVED') {
       result = await roommateService.approveRoommateRequest(auth.id, roommateId);
     } else {
-      result = await roommateService.rejectRoommateRequest(auth.id, roommateId);
+      result = await roommateService.rejectRoommateRequest(auth.id, roommateId, reason);
     }
 
     const actionText = status === 'APPROVED' ? 'phê duyệt' : 'từ chối';

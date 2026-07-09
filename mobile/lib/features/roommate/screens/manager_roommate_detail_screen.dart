@@ -16,6 +16,8 @@ class RoommateApprovalDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalDetailScreen> {
+  final _reasonController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   bool _isActioning = false;
 
   @override
@@ -26,6 +28,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
 
   @override
   void dispose() {
+    _reasonController.dispose();
     super.dispose();
   }
 
@@ -52,12 +55,13 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
     }
   }
 
-  Future<void> _reject() async {
+  Future<void> _reject(String reason) async {
     setState(() => _isActioning = true);
     try {
       await ref.read(roommateProvider.notifier).updateRequestStatus(
             roommateId: widget.roommateId,
             status: 'REJECTED',
+            reason: reason,
           );
       _showMessage('Đã từ chối yêu cầu đăng ký tạm trú.');
       if (mounted) context.pop();
@@ -69,15 +73,30 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
   }
 
   void _showRejectDialog() {
+    _reasonController.clear();
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text(
-            'Từ chối thành viên',
+            'Lý do từ chối',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
-          content: const Text('Bạn có chắc chắn muốn từ chối yêu cầu đăng ký tạm trú của thành viên này?'),
+          content: Form(
+            key: _formKey,
+            child: TextFormField(
+              controller: _reasonController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Nhập lý do từ chối (ví dụ: Ảnh CCCD bị mờ, Sai số CCCD...)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              validator: (val) {
+                if (val == null || val.trim().isEmpty) return 'Vui lòng nhập lý do từ chối.';
+                return null;
+              },
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -85,8 +104,11 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context);
-                _reject();
+                if (_formKey.currentState!.validate()) {
+                  final reason = _reasonController.text.trim();
+                  Navigator.pop(context);
+                  _reject(reason);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error,
