@@ -8,6 +8,9 @@ import '../../features/auth_profile/screens/forgot_password_screen.dart';
 import '../../features/auth_profile/screens/login_screen.dart';
 import '../../features/auth_profile/screens/profile_edit_screen.dart';
 import '../../features/auth_profile/screens/profile_screen.dart';
+import '../../features/communication/screens/announce_form_screen.dart';
+import '../../features/communication/screens/notification_detail_screen.dart';
+import '../../features/communication/screens/notification_list_screen.dart';
 import '../../features/home/screens/manager_shell.dart';
 import '../../features/home/screens/resident_home_screen.dart';
 import '../../features/home/screens/task_board_screen.dart';
@@ -52,6 +55,11 @@ class AppRoutes {
   static const String generateBill = '/manager/bills/generate';
   static const String managerInvoiceList = '/manager/bills';
   static const String pricingSettings = '/manager/pricing-settings';
+
+  // Module Communication
+  static const String announce = '/manager/announce';
+  static const String notifications = '/notifications';
+  static const String notificationDetail = '/notifications/detail';
 
   // Module 2: Thành viên phòng (UC10-UC12)
   static const String roommates = '/resident/roommates';
@@ -198,6 +206,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.pricingSettings,
         builder: (context, state) => const ManagerPricingSettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.announce,
+        builder: (context, state) => const AnnounceFormScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        builder: (context, state) => const NotificationListScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.notificationDetail,
+        builder: (context, state) {
+          final notif = state.extra as dynamic; // Cast to NotificationModel in screen
+          return NotificationDetailScreen(notification: notif);
+        },
       ),
       GoRoute(
         path: AppRoutes.roommates,
