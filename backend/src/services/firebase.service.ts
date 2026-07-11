@@ -1,24 +1,25 @@
-import * as admin from 'firebase-admin';
+import { initializeApp, getApps, cert, applicationDefault } from 'firebase-admin/app';
+import { getMessaging, MulticastMessage } from 'firebase-admin/messaging';
 import path from 'path';
 import fs from 'fs';
 
 // Khởi tạo Firebase Admin SDK (Singleton)
-if (!admin.apps.length) {
+if (!getApps().length) {
   try {
     // Để chạy thật, bạn tạo file `serviceAccountKey.json` ở thư mục gốc của backend (cùng cấp với package.json)
-    const serviceAccountPath = path.resolve(process.cwd(), 'serviceAccountKey.json');
+    const serviceAccountPath = path.resolve(process.cwd(), process.env.FIREBASE_SERVICE_ACCOUNT_KEY || 'serviceAccountKey.json');
     
     if (fs.existsSync(serviceAccountPath)) {
       const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
       
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
+      initializeApp({
+        credential: cert(serviceAccount),
       });
-      console.log('[Firebase] Đã khởi tạo Firebase Admin SDK thành công từ serviceAccountKey.json.');
+      console.log('[Firebase] Đã khởi tạo Firebase Admin SDK thành công từ cấu hình.');
     } else {
-      console.warn('[Firebase] CẢNH BÁO: Không tìm thấy file serviceAccountKey.json. Đang khởi tạo bằng môi trường mặc định (Application Default Credentials).');
-      admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
+      console.warn('[Firebase] CẢNH BÁO: Không tìm thấy file JSON. Đang khởi tạo bằng môi trường mặc định (Application Default Credentials).');
+      initializeApp({
+        credential: applicationDefault(),
       });
     }
   } catch (error) {
@@ -39,7 +40,7 @@ export async function sendPushNotification(
 
   try {
     // Sử dụng thư viện firebase-admin mới cài để tạo payload
-    const message: admin.messaging.MulticastMessage = {
+    const message: MulticastMessage = {
       notification: {
         title,
         body,
@@ -48,7 +49,7 @@ export async function sendPushNotification(
       tokens, // Danh sách FCM tokens
     };
 
-    const response = await admin.messaging().sendEachForMulticast(message);
+    const response = await getMessaging().sendEachForMulticast(message);
     
     console.log(`[FCM] Đã gửi ${response.successCount} thành công, ${response.failureCount} thất bại.`);
     
@@ -57,7 +58,7 @@ export async function sendPushNotification(
       response.responses.forEach((resp, idx) => {
         if (!resp.success) {
           console.error(`[FCM] Lỗi gửi token ${tokens[idx]}:`, resp.error);
-          // Gợi ý: Nếu resp.error.code === 'messaging/registration-token-not-registered' thì xóa token đó khỏi bảng Users/DeviceToken
+          // Gợi ý: Nếu resp.error?.code === 'messaging/registration-token-not-registered' thì xóa token đó khỏi DB
         }
       });
     }

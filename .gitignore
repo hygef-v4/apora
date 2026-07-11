@@ -97,3 +97,4 @@ backend/db/pgdata/
 **/GeneratedPluginRegistrant.objc
 **/generated_plugin_registrant.h
 
+serviceAccountKey.json

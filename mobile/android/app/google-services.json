@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "639435995014",
+    "project_id": "apora-364a2",
+    "storage_bucket": "apora-364a2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:639435995014:android:2f111edb8a8b4152dbde07",
+        "android_client_info": {
+          "package_name": "com.example.apartment_management"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "639435995014-dullhoehd33svenkpi763e82h3rbl5r7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyALZn399rAXQrxPTFEMO6yEbcXHpki3EYQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "639435995014-dullhoehd33svenkpi763e82h3rbl5r7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

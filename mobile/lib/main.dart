@@ -15,13 +15,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   
-  // Tạm thời bỏ Firebase theo yêu cầu
-  // try {
-  //   await Firebase.initializeApp();
-  //   await pushNotificationService.init();
-  // } catch (e) {
-  //   debugPrint('Firebase initialization failed: $e');
-  // }
+  try {
+    await Firebase.initializeApp();
+    await pushNotificationService.init();
+  } catch (e) {
+    debugPrint('Firebase initialization failed: $e');
+  }
   
   runApp(
     ProviderScope(
