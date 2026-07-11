@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     // 3. Truy xuất DB
     const notifications = await getUserNotifications(userId, limit, offset);
 
-    return jsonSuccess(notifications);
+    return jsonSuccess('Lấy danh sách thông báo thành công', notifications);
   } catch (error) {
     return jsonError(error);
   }

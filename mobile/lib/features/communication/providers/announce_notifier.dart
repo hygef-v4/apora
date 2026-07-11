@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../repositories/communication_repository.dart';
+
+final imagePickerProvider = Provider<ImagePicker>((ref) => ImagePicker());
 
 class AnnounceState {
   final bool isLoading;
@@ -18,10 +21,14 @@ class AnnounceState {
   }
 }
 
-class AnnounceNotifier extends StateNotifier<AnnounceState> {
-  final CommunicationRepository _repo;
+class AnnounceNotifier extends Notifier<AnnounceState> {
+  late CommunicationRepository _repo;
 
-  AnnounceNotifier(this._repo) : super(AnnounceState());
+  @override
+  AnnounceState build() {
+    _repo = ref.read(communicationRepositoryProvider);
+    return AnnounceState();
+  }
 
   Future<void> submit({
     required String title,
@@ -43,6 +50,6 @@ class AnnounceNotifier extends StateNotifier<AnnounceState> {
 }
 
 final announceNotifierProvider =
-    StateNotifierProvider.autoDispose<AnnounceNotifier, AnnounceState>((ref) {
-  return AnnounceNotifier(ref.read(communicationRepositoryProvider));
-});
+    NotifierProvider.autoDispose<AnnounceNotifier, AnnounceState>(
+  AnnounceNotifier.new,
+);

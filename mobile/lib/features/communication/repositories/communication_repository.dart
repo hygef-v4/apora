@@ -5,7 +5,7 @@ import '../models/notification_model.dart';
 import '../../../core/network/dio_client.dart';
 
 final communicationRepositoryProvider = Provider((ref) {
-  return CommunicationRepository(ref.read(dioClientProvider));
+  return CommunicationRepository(ref.read(dioProvider));
 });
 
 class CommunicationRepository {
@@ -39,8 +39,15 @@ class CommunicationRepository {
       'offset': offset,
     });
     
-    final data = response.data['data'] as List;
-    return data.map((json) => NotificationModel.fromJson(json)).toList();
+    if (response.data['status'] == 'error') {
+      throw Exception(response.data['message'] ?? 'Lỗi từ server');
+    }
+
+    final data = response.data['data'];
+    if (data == null) return [];
+    
+    final list = data as List;
+    return list.map((json) => NotificationModel.fromJson(json)).toList();
   }
 
   Future<void> markAsRead(int notificationId) async {

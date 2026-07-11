@@ -48,40 +48,46 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
               GradientHeader(
                 titleWidget: Row(
                   children: [
+                    GestureDetector(
+                      onTap: () => context.push(AppRoutes.profile),
+                      child: InitialsAvatar(
+                        name: user?.fullName ?? 'N A',
+                        size: 40,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Cư dân · Chung cư Apora',
+                            'Xin chào,',
                             style: TextStyle(
+                              color: Colors.white.withValues(alpha: .7),
                               fontSize: 12,
-                              color: Colors.white.withValues(alpha: .6),
                             ),
                           ),
-                          const SizedBox(height: 3),
                           Text(
-                            'Xin chào, ${user?.fullName ?? 'Cư dân'} 👋',
+                            user?.fullName ?? 'Cư dân',
                             style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
                               color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => context.push(AppRoutes.profile),
-                      child: InitialsAvatar(
-                        name: user?.fullName ?? '?',
-                        imageUrl: user?.avatarUrl,
-                        size: 44,
-                        square: true,
-                      ),
-                    ),
                   ],
                 ),
+                actions: [
+                  HeaderIconButton(
+                    icon: Icons.notifications_none,
+                    onTap: () => context.push(AppRoutes.notifications),
+                  ),
+                ],
               ),
               Expanded(
                 child: ListView(

@@ -18,14 +18,22 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
-    return NotificationModel(
-      id: json['id'] as int,
-      title: json['title'] as String,
-      body: json['body'] as String,
-      type: json['type'] as String,
-      referenceId: json['reference_id'] as int?,
-      isRead: json['is_read'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
-    );
+    try {
+      return NotificationModel(
+        id: json['id'] as int? ?? 0,
+        title: json['title'] as String? ?? 'Không có tiêu đề',
+        body: json['body'] as String? ?? '',
+        type: json['type'] as String? ?? 'NEWS',
+        referenceId: json['reference_id'] as int?,
+        isRead: json['is_read'] as bool? ?? false,
+        createdAt: json['created_at'] != null 
+            ? DateTime.parse(json['created_at'].toString()) 
+            : DateTime.now(),
+      );
+    } catch (e) {
+      print('Error parsing NotificationModel: $e');
+      print('JSON data: $json');
+      rethrow;
+    }
   }
 }

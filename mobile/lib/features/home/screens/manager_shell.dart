@@ -10,6 +10,7 @@ import '../../../core/widgets/coming_soon.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
+import '../../communication/screens/notification_list_screen.dart';
 import 'dashboard_screen.dart';
 
 /// Khung điều hướng của Quản lý/Chủ tòa nhà — bottom nav 5 tab theo thiết kế
@@ -38,9 +39,9 @@ class _ManagerShellState extends State<ManagerShell> {
     return Scaffold(
       body: IndexedStack(
         index: _index,
-        children: const [
-          DashboardTab(),
-          _ComingSoonTab(
+        children: [
+          const DashboardTab(),
+          const _ComingSoonTab(
             title: 'Căn hộ',
             child: ComingSoon(
               icon: Icons.apartment,
@@ -48,16 +49,9 @@ class _ManagerShellState extends State<ManagerShell> {
               moduleNote: 'sẽ có ở Module 6 (Apartment Management)',
             ),
           ),
-          _ManagementHubTab(),
-          _ComingSoonTab(
-            title: 'Thông báo',
-            child: ComingSoon(
-              icon: Icons.notifications,
-              title: 'Thông báo & Bảng tin',
-              moduleNote: 'sẽ có ở Module 5 (Communication)',
-            ),
-          ),
-          _ComingSoonTab(
+          const _ManagementHubTab(),
+          const NotificationListScreen(),
+          const _ComingSoonTab(
             title: 'Báo cáo',
             child: ComingSoon(
               icon: Icons.bar_chart,

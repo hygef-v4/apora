@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -61,8 +60,7 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
         children: [
           GradientHeader(
             title: 'Chi tiết thông báo',
-            showBackButton: true,
-            onBack: () => context.pop(),
+            showBack: true,
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -76,7 +74,7 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: iconColor.withOpacity(0.1),
+                          color: iconColor.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(icon, color: iconColor, size: 32),

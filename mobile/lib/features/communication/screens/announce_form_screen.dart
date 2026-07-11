@@ -20,7 +20,6 @@ class _AnnounceFormScreenState extends ConsumerState<AnnounceFormScreen> {
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
   File? _bannerImage;
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void dispose() {
@@ -30,7 +29,12 @@ class _AnnounceFormScreenState extends ConsumerState<AnnounceFormScreen> {
   }
 
   Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    // BR-10: Compress image at client side
+    final picker = ref.read(imagePickerProvider);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70, // Giảm chất lượng để tối ưu dung lượng < 500KB
+    );
     if (pickedFile != null) {
       setState(() {
         _bannerImage = File(pickedFile.path);
@@ -52,7 +56,7 @@ class _AnnounceFormScreenState extends ConsumerState<AnnounceFormScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(announceNotifierProvider);
 
-    ref.listen(announceNotifierProvider, (prev, next) {
+    ref.listen<AnnounceState>(announceNotifierProvider, (prev, next) {
       if (next.error != null) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
@@ -71,8 +75,7 @@ class _AnnounceFormScreenState extends ConsumerState<AnnounceFormScreen> {
         children: [
           GradientHeader(
             title: 'Tạo thông báo',
-            showBackButton: true,
-            onBack: () => context.pop(),
+            showBack: true,
           ),
           Expanded(
             child: SingleChildScrollView(

@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../auth_profile/providers/auth_notifier.dart';
 import '../providers/notification_list_provider.dart';
 import '../models/notification_model.dart';
 
@@ -16,15 +17,23 @@ class NotificationListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notificationsAsyncValue = ref.watch(notificationListProvider);
+    final user = ref.watch(authNotifierProvider).user;
+    final isManagerOrLandlord = user?.isManagement == true;
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: isManagerOrLandlord
+          ? FloatingActionButton(
+              onPressed: () => context.push(AppRoutes.announce),
+              backgroundColor: AppColors.primary,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
       body: Column(
         children: [
           GradientHeader(
             title: 'Thông báo',
-            showBackButton: true,
-            onBack: () => context.pop(),
+            showBack: true,
           ),
           Expanded(
             child: notificationsAsyncValue.when(
@@ -87,7 +96,7 @@ class NotificationListScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: iconColor, size: 24),
@@ -146,6 +155,7 @@ class NotificationListScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
