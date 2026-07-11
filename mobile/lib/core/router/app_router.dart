@@ -15,6 +15,8 @@ import '../../features/home/screens/manager_shell.dart';
 import '../../features/home/screens/resident_home_screen.dart';
 import '../../features/home/screens/task_board_screen.dart';
 import '../../features/home/screens/workspace_select_screen.dart';
+import '../../features/management/screens/manager_detail_screen.dart';
+import '../../features/management/screens/manager_list_screen.dart';
 import '../../features/management/screens/staff_detail_screen.dart';
 import '../../features/management/screens/staff_edit_screen.dart';
 import '../../features/management/screens/staff_form_screen.dart';
@@ -52,6 +54,11 @@ class AppRoutes {
   static const String staffCreate = '/staff/create';
   static String staffDetailPath(int id) => '/staff/$id';
   static String staffEditPath(int id) => '/staff/$id/edit';
+
+  // Module 9: Quản lý Manager (UC41-UC42)
+  static const String managerList = '/managers';
+  static const String managerCreate = '/managers/create';
+  static String managerDetailPath(int id) => '/managers/$id';
 
   // Module 3: Hóa đơn (Manager)
   static const String generateBill = '/manager/bills/generate';
@@ -128,6 +135,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (location.startsWith(AppRoutes.staffList) && !isManagement) {
         return homePathForRoles(auth.roles);
       }
+
+      // Module 9: chỉ LANDLORD được vào màn quản lý Manager (BR-60)
+      final isLandlord = auth.roles.contains('LANDLORD');
+      if (location.startsWith(AppRoutes.managerList) && !isLandlord) {
+        return homePathForRoles(auth.roles);
+      }
       return null;
     },
     routes: [
@@ -171,6 +184,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/staff/:id/edit',
         builder: (_, state) => StaffEditScreen(
           staffId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      // Module 9: Quản lý Manager (chỉ LANDLORD - backend enforce 403, BR-60)
+      GoRoute(
+        path: AppRoutes.managerList,
+        builder: (_, _) => const ManagerListScreen(),
+      ),
+      GoRoute(
+        path: '/managers/:id',
+        builder: (_, state) => ManagerDetailScreen(
+          managerId: int.parse(state.pathParameters['id']!),
         ),
       ),
       // Module 3: Hóa đơn & Thanh toán (UC15 - UC17)

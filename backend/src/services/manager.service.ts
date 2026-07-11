@@ -1,0 +1,116 @@
+/**
+ * ManagerService - Business Logic for Module 9: Manager Management (UC41-UC42)
+ *
+ * Business Rules:
+ * - BR-60: Only LANDLORD can access Manager Management
+ * - BR-61: List must display full name, contact, status from latest DB state
+ * - BR-62: View operations are strictly read-only, no data modifications
+ * - BR-08: Sensitive data (password_hash, token_version) must be masked/excluded
+ * - BR-49: Inactive accounts remain visible (soft-delete only)
+ *
+ * @see docs/PRM393_SoftwareDesign_Group5.docx - Module 9 (ManagerService)
+ */
+
+import { HttpError } from '@/lib/middleware';
+import * as managerRepo from '@/repositories/manager.repository';
+import {
+  ManagementHistoryItem,
+  ManagerListItem,
+  ManagerStats,
+  User,
+} from '@/types';
+
+const MSG_MANAGER_NOT_FOUND = 'Không tìm thấy tài khoản quản lý.';
+
+/**
+ * Maps a raw User DB row to a ManagerListItem DTO.
+ * BR-08: Strips password_hash, token_version, must_change_password
+ * before returning to the client.
+ *
+ * @param user - Raw user row from the database
+ * @returns Sanitized ManagerListItem for API response
+ */
+function toManagerListItem(user: User): ManagerListItem {
+  return {
+    id: user.id,
+    phoneNumber: user.phone_number,
+    fullName: user.full_name,
+    avatarUrl: user.avatar_url,
+    roles: user.roles,
+    status: user.status,
+    createdAt: user.created_at,
+  };
+}
+
+// ==========================================
+// UC41: View Manager List
+// ==========================================
+
+/**
+ * Retrieves the list of Manager accounts with optional search/filter,
+ * along with aggregate statistics for summary cards.
+ *
+ * @param filter - Optional search keyword and status filter
+ * @param filter.status - 'ACTIVE' | 'INACTIVE' | undefined (all)
+ * @param filter.search - Keyword to match against full_name or phone_number
+ * @returns Object containing the filtered manager list and statistics
+ */
+export async function getManagerAccounts(filter: {
+  status?: string;
+  search?: string;
+}): Promise<{ managers: ManagerListItem[]; stats: ManagerStats }> {
+  // Validate status filter if provided
+  let status: 'ACTIVE' | 'INACTIVE' | undefined;
+  if (filter.status === 'ACTIVE' || filter.status === 'INACTIVE') {
+    status = filter.status;
+  }
+
+  const [rows, stats] = await Promise.all([
+    managerRepo.findManagersByRole(status, filter.search),
+    managerRepo.getManagerStats(),
+  ]);
+
+  return { managers: rows.map(toManagerListItem), stats };
+}
+
+// ==========================================
+// UC42: View Manager Detail
+// ==========================================
+
+/**
+ * Retrieves the detailed profile of a specific Manager account,
+ * including contact info, account status, assigned permissions,
+ * and management history (from audit_logs).
+ *
+ * BR-08: password_hash and token_version are never exposed.
+ * BR-62: Strictly read-only — no data is modified.
+ *
+ * @param managerId - The ID of the Manager account to retrieve
+ * @returns Detailed Manager profile DTO
+ * @throws HttpError 404 if the Manager account does not exist
+ */
+export async function getManagerProfile(managerId: number) {
+  const manager = await managerRepo.findManagerById(managerId);
+  if (!manager) throw new HttpError(404, MSG_MANAGER_NOT_FOUND);
+
+  const historyRows = await managerRepo.findManagementHistory(managerId);
+
+  const managementHistory: ManagementHistoryItem[] = historyRows.map((row) => ({
+    id: row.id,
+    action: row.action,
+    targetUserName: row.target_user_name,
+    reason: row.reason,
+    createdAt: row.created_at,
+  }));
+
+  return {
+    id: manager.id,
+    phoneNumber: manager.phone_number,
+    fullName: manager.full_name,
+    avatarUrl: manager.avatar_url,
+    roles: manager.roles,
+    status: manager.status,
+    createdAt: manager.created_at,
+    managementHistory,
+  };
+}

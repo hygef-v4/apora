@@ -1,0 +1,77 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../models/manager_detail.dart';
+import '../repositories/manager_api_service.dart';
+
+/// Riverpod notifier managing the Manager directory list (UC41).
+///
+/// Supports server-side filtering by status tab (All/Active/Inactive)
+/// and search keyword. Each filter change triggers a fresh API call.
+class ManagerDirectoryNotifier extends AsyncNotifier<ManagerListResult> {
+  ManagerAPIService get _api => ref.read(managerApiServiceProvider);
+
+  /// Current status filter: null = All, 'ACTIVE', 'INACTIVE'.
+  String? statusFilter;
+
+  /// Current search keyword (null when empty).
+  String? searchKeyword;
+
+  @override
+  Future<ManagerListResult> build() =>
+      _api.getManagerList(status: statusFilter, search: searchKeyword);
+
+  /// Refreshes the list with current filter/search state.
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(
+      () => _api.getManagerList(status: statusFilter, search: searchKeyword),
+    );
+  }
+
+  /// Updates the status filter and reloads the list.
+  ///
+  /// [status] — 'ACTIVE' | 'INACTIVE' | null (all).
+  Future<void> setStatusFilter(String? status) {
+    statusFilter = status;
+    return refresh();
+  }
+
+  /// Updates the search keyword and reloads the list.
+  ///
+  /// Trims whitespace; empty string resets to null (no filter).
+  Future<void> setSearch(String keyword) {
+    searchKeyword = keyword.trim().isEmpty ? null : keyword.trim();
+    return refresh();
+  }
+}
+
+/// Provider for the Manager directory list state (UC41).
+final managerDirectoryProvider =
+    AsyncNotifierProvider<ManagerDirectoryNotifier, ManagerListResult>(
+  ManagerDirectoryNotifier.new,
+);
+
+/// Riverpod notifier managing a single Manager's detail view (UC42).
+///
+/// Fetch is triggered explicitly by [fetch] — not automatically on build,
+/// since the Manager ID comes from navigation parameters.
+class ManagerDetailNotifier extends AsyncNotifier<ManagerDetail?> {
+  ManagerAPIService get _api => ref.read(managerApiServiceProvider);
+
+  @override
+  Future<ManagerDetail?> build() async => null;
+
+  /// Loads the detailed profile for the given Manager ID.
+  ///
+  /// [managerId] — The user ID of the Manager to fetch.
+  Future<void> fetch(int managerId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => _api.getManagerDetail(managerId));
+  }
+}
+
+/// Provider for the Manager detail view state (UC42).
+final managerDetailProvider =
+    AsyncNotifierProvider<ManagerDetailNotifier, ManagerDetail?>(
+  ManagerDetailNotifier.new,
+);
