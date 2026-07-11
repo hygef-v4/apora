@@ -96,6 +96,26 @@ class ManagerDetailNotifier extends AsyncNotifier<ManagerDetail?> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => _api.getManagerDetail(managerId));
   }
+
+  /// Toggles the status of the current Manager (ACTIVE <-> INACTIVE) (UC45).
+  ///
+  /// Requires a successful [fetch] to have occurred beforehand.
+  /// Automatically refreshes both the detail view and the directory list upon success.
+  Future<void> toggleManagerStatus() async {
+    final manager = state.value;
+    if (manager == null) return;
+
+    final newStatus = manager.member.status == 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    
+    // Attempt the API update
+    await _api.updateManagerStatus(id: manager.member.id, status: newStatus);
+    
+    // Refresh the detail view
+    await fetch(manager.member.id);
+    
+    // Refresh the directory list so the change reflects globally
+    ref.read(managerDirectoryProvider.notifier).refresh();
+  }
 }
 
 /// Provider for the Manager detail view state (UC42).

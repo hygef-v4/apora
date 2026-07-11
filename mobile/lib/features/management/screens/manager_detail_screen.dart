@@ -9,6 +9,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
 import '../../../core/widgets/status_badge.dart';
+import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/manager_detail.dart';
 import '../providers/manager_notifier.dart';
 
@@ -45,6 +46,7 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
   Widget build(BuildContext context) {
     final detail = ref.watch(managerDetailProvider);
     final member = detail.value?.member;
+    final currentUser = ref.watch(authNotifierProvider).user;
 
     return Scaffold(
       body: Column(
@@ -237,6 +239,25 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
                       ),
 
                     const SizedBox(height: 24),
+
+                    // UC45: Toggle Status Button
+                    // BR-58: Prevent self-deactivation. Hide button if looking at own profile.
+                    if (currentUser?.id != m.id) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: m.isActive ? AppColors.error : AppColors.primary,
+                            side: BorderSide(color: m.isActive ? AppColors.error : AppColors.primary),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          icon: Icon(m.isActive ? Icons.block : Icons.check_circle_outline),
+                          label: Text(m.isActive ? 'Vô hiệu hóa tài khoản' : 'Khôi phục tài khoản'),
+                          onPressed: () => _onToggleStatus(context, m.isActive),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ],
                 );
               },
@@ -245,6 +266,64 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _onToggleStatus(BuildContext context, bool isActive) async {
+    final title = isActive ? 'Vô hiệu hóa tài khoản' : 'Khôi phục tài khoản';
+    final content = isActive 
+      ? 'Bạn có chắc chắn muốn vô hiệu hóa tài khoản Quản lý này? Họ sẽ mất toàn bộ quyền truy cập vào hệ thống.'
+      : 'Bạn có chắc chắn muốn khôi phục hoạt động cho tài khoản Quản lý này?';
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: isActive ? AppColors.error : AppColors.primary,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    if (!context.mounted) return;
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+      
+      await ref.read(managerDetailProvider.notifier).toggleManagerStatus();
+      
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // dismiss loading
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isActive ? 'Đã vô hiệu hóa tài khoản.' : 'Đã khôi phục tài khoản.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // dismiss loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(mapDioError(e))),
+      );
+    }
   }
 }
 

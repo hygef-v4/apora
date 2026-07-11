@@ -85,6 +85,19 @@ class ManagerAPIService {
       'phoneNumber': phone,
     });
   }
+
+  /// Updates the status of an existing Manager account (UC45).
+  ///
+  /// [id] — The Manager's user ID.
+  /// [status] — The Manager's new status ('ACTIVE' or 'INACTIVE').
+  Future<void> updateManagerStatus({
+    required int id,
+    required String status,
+  }) async {
+    await _dio.patch('$_base/$id/status', data: {
+      'status': status,
+    });
+  }
 }
 
 /// Riverpod provider for [ManagerAPIService], injected with the shared Dio client.
