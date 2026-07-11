@@ -216,8 +216,9 @@ export async function updateManagerAccount(
       actorId,
       targetId,
       'MANAGER_UPDATE',
-      changes.join(', '),
+      { full_name: manager.full_name, phone_number: manager.phone_number },
       { full_name: payload.fullName, phone_number: payload.phone },
+      changes.join(', ')
     );
   }
 
@@ -273,8 +274,9 @@ export async function updateManagerStatus(
     actorId,
     targetId,
     actionType,
-    reason,
+    { status: status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' },
     { status },
+    reason
   );
 
   return {
