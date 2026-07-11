@@ -19,7 +19,7 @@ function corsHeaders(origin: string): Record<string, string> {
   };
 }
 
-export function proxy(req: NextRequest) {
+export default function proxy(req: NextRequest) {
   const origin = req.headers.get('origin') ?? '*';
 
   // Preflight
