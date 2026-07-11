@@ -201,6 +201,35 @@ export interface StaffStats {
 }
 
 // ==========================================
+// Module 9: Manager Management DTOs (UC41-UC45)
+// ==========================================
+
+/** 1 dòng trong danh sách Manager (UC41) — profile card trên màn Manager Management. */
+export interface ManagerListItem extends PublicUser {
+  status: UserStatus;
+  createdAt: Date;
+}
+
+/** Thống kê tổng quan Manager (UC41 - Manager Statistics Summary). */
+export interface ManagerStats {
+  total: number;
+  active: number;
+  inactive: number;
+}
+
+/**
+ * 1 mục lịch sử quản lý (UC42 - Management History section).
+ * Nguồn: bảng audit_logs WHERE actor_id = managerId.
+ */
+export interface ManagementHistoryItem {
+  id: number;
+  action: string;
+  targetUserName: string | null;
+  reason: string | null;
+  createdAt: Date;
+}
+
+// ==========================================
 // Module 4: Incident & Task DTOs (UC18-UC23)
 // ==========================================
 

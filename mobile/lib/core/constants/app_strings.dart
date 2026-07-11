@@ -42,4 +42,10 @@ class AppStrings {
       'Dữ liệu chưa lưu sẽ bị mất. Bạn có chắc muốn thoát?';
   static const String msgRoleChangeWarning =
       'Nhân viên này còn công việc đang xử lý. Đổi vai trò có thể khiến công việc cần được phân công lại. Tiếp tục?';
+
+  // Module 9: Quản lý Manager (UC41-UC42)
+  static const String msgManagerEmpty = 'Chưa có tài khoản quản lý nào.';
+  static const String msgManagerNoMatch = 'Không tìm thấy quản lý phù hợp.';
+  static const String msgManagerLoadFailed =
+      'Không tải được danh sách quản lý. Vui lòng thử lại.';
 }
