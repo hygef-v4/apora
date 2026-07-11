@@ -47,7 +47,10 @@ class CommunicationRepository {
     if (data == null) return [];
     
     final list = data as List;
-    return list.map((json) => NotificationModel.fromJson(json)).toList();
+    final notifications = list.map((json) => NotificationModel.fromJson(json)).toList();
+    // Đảm bảo sắp xếp mới nhất lên đầu theo BR-52
+    notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return notifications;
   }
 
   Future<void> markAsRead(int notificationId) async {

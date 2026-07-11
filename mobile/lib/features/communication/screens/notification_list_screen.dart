@@ -11,14 +11,40 @@ import '../../auth_profile/providers/auth_notifier.dart';
 import '../providers/notification_list_provider.dart';
 import '../models/notification_model.dart';
 
-class NotificationListScreen extends ConsumerWidget {
+class NotificationListScreen extends ConsumerStatefulWidget {
   const NotificationListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationListScreen> createState() => _NotificationListScreenState();
+}
+
+class _NotificationListScreenState extends ConsumerState<NotificationListScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      ref.read(notificationListProvider.notifier).fetchMore();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final notificationsAsyncValue = ref.watch(notificationListProvider);
     final user = ref.watch(authNotifierProvider).user;
     final isManagerOrLandlord = user?.isManagement == true;
+    final isLoadingMore = ref.watch(notificationListProvider.notifier).isLoadingMore;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -42,10 +68,18 @@ class NotificationListScreen extends ConsumerWidget {
                   return _buildEmptyState();
                 }
                 return ListView.separated(
+                  controller: _scrollController,
                   padding: const EdgeInsets.all(16),
-                  itemCount: notifications.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  cacheExtent: 1000,
+                  itemCount: notifications.length + (ref.read(notificationListProvider.notifier).isLoadingMore ? 1 : 0),
+                  separatorBuilder: (context, index) => const Divider(height: 1),
                   itemBuilder: (context, index) {
+                    if (index == notifications.length) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
                     final notification = notifications[index];
                     return _buildNotificationCard(context, notification);
                   },
@@ -53,7 +87,19 @@ class NotificationListScreen extends ConsumerWidget {
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Center(
-                child: Text('Lỗi: $error', style: const TextStyle(color: AppColors.error)),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Lỗi: $error', style: const TextStyle(color: AppColors.error)),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        ref.invalidate(notificationListProvider);
+                      },
+                      child: const Text('Thử lại'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

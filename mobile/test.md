@@ -5,8 +5,13 @@
 ## 1. Yêu Cầu Bắt Buộc Về Coverage & Business Rules
 - **100% Coverage:** File test phải bao phủ (cover) toàn bộ các nhánh logic (if/else), các trạng thái (Loading, Success, Error), và giao diện hiển thị của toàn bộ một Use Case. Mọi phương thức, mọi state đều phải được quét qua.
 - **Tuân thủ Business Rules:** Bắt buộc viết test để mô phỏng và kiểm chứng TẤT CẢ các Business Rules (BRs) và Alternative Flows (ATs) có trong đặc tả yêu cầu (SRS) của Use Case đó. Nếu Business Rule yêu cầu bắt lỗi độ dài, định dạng, phân quyền, hoặc kích thước file... thì phải có test case tương ứng.
+- **Check lại Document (SRS/SDD):** Trước khi viết test, bắt buộc phải kiểm tra lại tài liệu đặc tả (SRS/SDD) để tìm và liệt kê đầy đủ các luồng và rules.
+- Mọi Use Case phải được test 100% logic bao gồm cả Happy Path (Luồng chính) và **Alternative Flows (Luồng phụ)**.
+- Các **Business Rules (Quy tắc nghiệp vụ)** (nén ảnh, giao diện theo loại dữ liệu, phân quyền RBAC, v.v.) phải được test đầy đủ theo sát yêu cầu trong tài liệu.
+- Đảm bảo kiểm tra các luồng như lỗi kết nối mạng, báo lỗi từ API, danh sách rỗng (Empty State), và các hiển thị theo trạng thái.
 
-## 2. Yêu Cầu Chung & Đặt Tên File
+
+## 2. Yêu Cầu Chung
 - **Bắt buộc tách file theo Use Case:** Không gom chung các Use Case vào một file test. Mỗi Use Case phải có một file test độc lập.
 - **Tên file:** Phải đặt theo tên của Use Case, tuyệt đối **không được** thêm tiền tố `uc_`.
   - ✅ Đúng: `announce_notification_test.dart`, `view_notifications_test.dart`
@@ -23,13 +28,13 @@ void main() {
   // ...
 }
 ```
-- **Cấu trúc bên trong file test:** Phải chia thành 3 phần (Group) rõ rệt để phân tách logic và kiểm soát coverage, theo thứ tự (UI ưu tiên test trước):
-  1. `1. UI & Widget Tests`
-  2. `2. Domain & State Management (Notifier & State)`
-  3. `3. Repository Layer`
+- **Tách Biệt Tầng Test**:
+   Mỗi màn hình / Use Case phải được tách thành 3 layer test rõ ràng bằng `group`:
+   - `1. UI & Widget Tests`
+   - `2. Domain & State Management`
+   - `3. Repository Layer`
 
 ## 3. Tiêu Chuẩn Phủ Sóng Cho Từng Layer
-
 ### 3.1. Tầng UI & Widget Tests (Ưu Tiên Số 1)
 - **Render:** Phải test giao diện hiển thị đầy đủ các thành phần tĩnh (Text, Input, Button...).
 - **Validation (Business Rules):** Phải viết test để mô phỏng các Alternative Flows (VD: bỏ trống input, input sai định dạng, vượt quá ký tự cho phép) và verify các text báo lỗi hiện lên đúng.
@@ -39,7 +44,6 @@ void main() {
 
 ### 3.2. Tầng Domain & State Management
 - **Initial State:** Phải test giá trị mặc định của Notifier/State khi vừa khởi tạo.
-- **State Transition:** Phải test hàm `copyWith()` (hoặc cơ chế tương đương) của State xem có cập nhật đúng dữ liệu không.
 - **Happy Path:** Gọi phương thức trong Notifier (ví dụ submit) và assert các state chuyển đổi đúng (`isLoading = true` -> `isSuccess = true`).
 - **Error Path:** Bắt buộc test trường hợp API trả về lỗi (Exception) và kiểm tra state `error` chứa đúng message lỗi phân quyền hoặc lỗi hệ thống.
 
