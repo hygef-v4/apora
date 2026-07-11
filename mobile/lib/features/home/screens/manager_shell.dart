@@ -159,6 +159,18 @@ class _ManagementHubTab extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               AppCard(
+                onTap: () => context.push(AppRoutes.tickets),
+                child: const _HubRow(
+                  icon: Icons.build_circle,
+                  iconBg: AppColors.warningBg,
+                  iconColor: AppColors.warning,
+                  title: 'Sự cố & Sửa chữa',
+                  subtitle: 'Theo dõi yêu cầu sửa chữa của cư dân',
+                  trailing: Icon(Icons.chevron_right, color: AppColors.textTertiary),
+                ),
+              ),
+              const SizedBox(height: 10),
+              AppCard(
                 onTap: () => context.push(AppRoutes.managerRoommates),
                 child: const _HubRow(
                   icon: Icons.how_to_reg,

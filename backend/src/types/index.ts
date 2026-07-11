@@ -201,6 +201,109 @@ export interface StaffStats {
 }
 
 // ==========================================
+// Module 4: Incident & Task DTOs (UC18-UC23)
+// ==========================================
+
+/**
+ * 1 dòng trong danh sách sự cố (UC18 - Resident xem của mình / Manager xem tất cả).
+ * camelCase, KHÔNG lộ internal_notes cho Resident.
+ */
+export interface TicketListItem {
+  id: number;
+  category: string;
+  description: string;
+  beforeImages: string[];
+  status: TicketStatus;
+  unitNumber: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Chi tiết một sự cố (UC20 - Manager). Kèm thông tin người báo + task đã phân công
+ * (nếu có) + ghi chú nội bộ (chỉ Manager/staff thấy).
+ */
+export interface TicketDetail extends TicketListItem {
+  residentId: number;
+  residentName: string;
+  residentPhone: string;
+  internalNotes: string | null;
+  /** Task được sinh khi Manager phân công (UC21). Null khi ticket còn PENDING. */
+  assignedTask: TaskSummary | null;
+}
+
+/** Tóm tắt task gắn với ticket (nhúng trong TicketDetail). */
+export interface TaskSummary {
+  id: number;
+  assignedTo: number;
+  assigneeName: string;
+  title: string;
+  status: TaskStatus;
+  assignedAt: Date;
+  completedAt: Date | null;
+}
+
+/**
+ * 1 dòng trong danh sách công việc của nhân viên (UC22).
+ * category lấy từ ticket cha để staff biết loại sự cố.
+ */
+export interface TaskListItem {
+  id: number;
+  ticketId: number;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  category: string;
+  unitNumber: string;
+  assignedAt: Date;
+  completedAt: Date | null;
+}
+
+/** Chi tiết công việc (UC23) - kèm mô tả sự cố gốc + ảnh hoàn thành. */
+export interface TaskDetail extends TaskListItem {
+  ticketDescription: string;
+  ticketBeforeImages: string[];
+  progressNotes: string | null;
+  completionImages: string[];
+}
+
+/**
+ * 1 nhân viên trong bảng phân công (UC21 - Manager chọn người xử lý).
+ * BR: gồm CẢ 3 role vận hành SECURITY_GUARD / JANITOR / TECHNICIAN.
+ */
+export interface StaffWorkloadItem {
+  id: number;
+  fullName: string;
+  roles: StaffRole[];
+  openTaskCount: number;
+}
+
+/** Body tạo sự cố (UC19) - ảnh gửi qua multipart, xử lý riêng ở route. */
+export interface CreateTicketRequest {
+  category: string;
+  description: string;
+}
+
+/** Body đổi trạng thái sự cố (UC20). */
+export interface UpdateTicketStatusRequest {
+  status: TicketStatus;
+  internalNotes?: string;
+}
+
+/** Body phân công sự cố cho nhân viên (UC21). */
+export interface AssignTicketRequest {
+  assignedTo: number;
+  title: string;
+  description?: string;
+}
+
+/** Body cập nhật tiến độ công việc (UC23) - ảnh hoàn thành gửi qua multipart. */
+export interface UpdateTaskProgressRequest {
+  status: TaskStatus;
+  progressNotes?: string;
+}
+
+// ==========================================
 // API Request/Response Types
 // ==========================================
 
