@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/notification_model.dart';
 import '../repositories/communication_repository.dart';
+import '../../auth_profile/providers/auth_notifier.dart';
 
 class NotificationListNotifier extends AsyncNotifier<List<NotificationModel>> {
   int _offset = 0;
@@ -13,6 +14,9 @@ class NotificationListNotifier extends AsyncNotifier<List<NotificationModel>> {
 
   @override
   Future<List<NotificationModel>> build() async {
+    // Theo dõi trạng thái đăng nhập. Khi người dùng đăng xuất/đăng nhập lại, provider này sẽ tự động reset.
+    ref.watch(authNotifierProvider);
+
     _offset = 0;
     _hasMore = true;
     _isLoadingMore = false;

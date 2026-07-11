@@ -65,24 +65,43 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
             child: notificationsAsyncValue.when(
               data: (notifications) {
                 if (notifications.isEmpty) {
-                  return _buildEmptyState();
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(notificationListProvider);
+                    },
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.5,
+                          child: _buildEmptyState(),
+                        ),
+                      ],
+                    ),
+                  );
                 }
-                return ListView.separated(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  cacheExtent: 1000,
-                  itemCount: notifications.length + (ref.read(notificationListProvider.notifier).isLoadingMore ? 1 : 0),
-                  separatorBuilder: (context, index) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    if (index == notifications.length) {
-                      return const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    final notification = notifications[index];
-                    return _buildNotificationCard(context, notification);
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(notificationListProvider);
                   },
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    cacheExtent: 1000,
+                    itemCount: notifications.length + (ref.read(notificationListProvider.notifier).isLoadingMore ? 1 : 0),
+                    separatorBuilder: (context, index) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      if (index == notifications.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final notification = notifications[index];
+                      return _buildNotificationCard(context, notification);
+                    },
+                  ),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),

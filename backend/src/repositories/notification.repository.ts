@@ -35,7 +35,7 @@ export async function createNotificationsBulk(
  */
 export async function getActiveDeviceTokens(userIds: number[]): Promise<string[]> {
   if (userIds.length === 0) return [];
-  
+
   const result = await query(
     `SELECT token FROM device_tokens 
      WHERE status = 'ACTIVE' 
@@ -43,7 +43,7 @@ export async function getActiveDeviceTokens(userIds: number[]): Promise<string[]
        AND user_id = ANY($1::int[])`,
     [userIds]
   );
-  
+
   return result.rows.map((row) => row.token);
 }
 
@@ -72,7 +72,7 @@ export async function markAsRead(notificationId: number, userId: number): Promis
      RETURNING id`,
     [notificationId, userId]
   );
-  
+
   // Trả về true nếu có dòng được update, false nếu không tìm thấy hoặc đã đọc rồi
   return (result.rowCount ?? 0) > 0;
 }

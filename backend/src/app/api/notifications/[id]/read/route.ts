@@ -9,15 +9,16 @@ import { markNotificationAsRead } from '@/services/notification.service';
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // 1. Kiểm tra xác thực
     const session = await requireAuth(req);
-    const userId = session.userId;
+    const userId = session.id;
     
     // 2. Parse ID thông báo
-    const notificationId = parseInt(params.id, 10);
+    const notificationId = parseInt(id, 10);
     if (isNaN(notificationId)) {
       throw new HttpError(400, 'ID thông báo không hợp lệ.');
     }

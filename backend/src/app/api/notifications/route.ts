@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   try {
     // 1. Kiểm tra xác thực (Không truyền array roles => Ai có tài khoản cũng truy cập được)
     const session = await requireAuth(req);
-    const userId = session.userId;
+    const userId = session.id;
 
     // 2. Lấy params
     const { searchParams } = new URL(req.url);
