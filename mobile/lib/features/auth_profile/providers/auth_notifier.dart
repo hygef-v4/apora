@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/network/token_storage.dart';
+import '../../../core/services/push_notification_service.dart';
 import '../models/user.dart';
 import '../repositories/auth_api_service.dart';
 
@@ -76,8 +77,8 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> login(String phone, String password) async {
     state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
     try {
-      // TODO(Module 5): truyền fcmToken khi đã setup Firebase Messaging (BR-44)
-      final res = await _api.signIn(phone, password);
+      final fcmToken = await pushNotificationService.getToken();
+      final res = await _api.signIn(phone, password, fcmToken: fcmToken);
       await _storage.saveSession(
         token: res.token,
         userJson: jsonEncode(res.user.toJson()),
@@ -100,7 +101,8 @@ class AuthNotifier extends Notifier<AuthState> {
   /// (theo alternative flow trong SRS).
   Future<void> logout() async {
     try {
-      await _api.signOut();
+      final fcmToken = await pushNotificationService.getToken();
+      await _api.signOut(fcmToken: fcmToken);
     } catch (_) {
       // Bỏ qua lỗi mạng - vẫn phải xóa phiên local
     } finally {
