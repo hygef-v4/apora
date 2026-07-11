@@ -69,6 +69,22 @@ class ManagerAPIService {
       'phoneNumber': phone,
     });
   }
+
+  /// Updates an existing Manager account (UC44).
+  ///
+  /// [id] — The Manager's user ID.
+  /// [fullName] — The Manager's new full name.
+  /// [phone] — The Manager's new phone number.
+  Future<void> updateManager({
+    required int id,
+    required String fullName,
+    required String phone,
+  }) async {
+    await _dio.put('$_base/$id', data: {
+      'fullName': fullName,
+      'phoneNumber': phone,
+    });
+  }
 }
 
 /// Riverpod provider for [ManagerAPIService], injected with the shared Dio client.

@@ -6,13 +6,16 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
+import '../models/manager_member.dart';
 import '../providers/manager_notifier.dart';
 
 /// UC43: Create Manager Account.
-/// Landlord creates a new Manager account.
-/// Default password is "Apora@123".
+/// UC44: Update Manager Account.
+/// Landlord creates a new Manager account or edits an existing one.
 class ManagerFormScreen extends ConsumerStatefulWidget {
-  const ManagerFormScreen({super.key});
+  const ManagerFormScreen({super.key, this.manager});
+
+  final ManagerMember? manager;
 
   @override
   ConsumerState<ManagerFormScreen> createState() => _ManagerFormScreenState();
@@ -25,8 +28,24 @@ class _ManagerFormScreenState extends ConsumerState<ManagerFormScreen> {
   bool _isSubmitting = false;
   bool _isSuccess = false;
 
-  bool get _isDirty =>
-      _fullNameController.text.isNotEmpty || _phoneController.text.isNotEmpty;
+  bool get _isEditMode => widget.manager != null;
+
+  bool get _isDirty {
+    if (!_isEditMode) {
+      return _fullNameController.text.isNotEmpty || _phoneController.text.isNotEmpty;
+    }
+    return _fullNameController.text.trim() != widget.manager!.fullName ||
+           _phoneController.text.trim() != widget.manager!.phoneNumber;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditMode) {
+      _fullNameController.text = widget.manager!.fullName;
+      _phoneController.text = widget.manager!.phoneNumber;
+    }
+  }
 
   @override
   void dispose() {
@@ -61,14 +80,26 @@ class _ManagerFormScreenState extends ConsumerState<ManagerFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(managerDirectoryProvider.notifier).createManager(
-            fullName: _fullNameController.text.trim(),
-            phone: _phoneController.text.trim(),
-          );
+      if (_isEditMode) {
+        await ref.read(managerDirectoryProvider.notifier).updateManager(
+              widget.manager!.id,
+              fullName: _fullNameController.text.trim(),
+              phone: _phoneController.text.trim(),
+            );
+      } else {
+        await ref.read(managerDirectoryProvider.notifier).createManager(
+              fullName: _fullNameController.text.trim(),
+              phone: _phoneController.text.trim(),
+            );
+      }
+      
       if (!mounted) return;
       setState(() => _isSuccess = true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tạo tài khoản quản lý thành công.')),
+        SnackBar(
+            content: Text(_isEditMode
+                ? 'Cập nhật tài khoản quản lý thành công.'
+                : 'Tạo tài khoản quản lý thành công.')),
       );
       
       // Chờ PopScope cập nhật canPop = true rồi mới pop
@@ -97,9 +128,11 @@ class _ManagerFormScreenState extends ConsumerState<ManagerFormScreen> {
       child: Scaffold(
         body: Column(
           children: [
-            const GradientHeader(
-              title: 'Thêm quản lý',
-              subtitle: 'Cấp tài khoản cho ban quản lý',
+            GradientHeader(
+              title: _isEditMode ? 'Cập nhật quản lý' : 'Thêm quản lý',
+              subtitle: _isEditMode
+                  ? 'Chỉnh sửa thông tin tài khoản'
+                  : 'Cấp tài khoản cho ban quản lý',
               showBack: true,
             ),
             Expanded(
@@ -141,15 +174,16 @@ class _ManagerFormScreenState extends ConsumerState<ManagerFormScreen> {
                                   : null,
                         ),
                         const SizedBox(height: 24),
-                        const Text(
-                          'Tài khoản sẽ được tạo với mật khẩu mặc định là Apora@123',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                            fontStyle: FontStyle.italic,
+                        if (!_isEditMode)
+                          const Text(
+                            'Tài khoản sẽ được tạo với mật khẩu mặc định là Apora@123',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                              fontStyle: FontStyle.italic,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
                         const SizedBox(height: 20),
                         FilledButton(
                           onPressed: _isSubmitting ? null : _submit,
@@ -162,7 +196,7 @@ class _ManagerFormScreenState extends ConsumerState<ManagerFormScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Tạo tài khoản'),
+                              : Text(_isEditMode ? 'Lưu thay đổi' : 'Tạo tài khoản'),
                         ),
                         TextButton(
                           onPressed: () async {

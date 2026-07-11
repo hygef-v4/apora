@@ -148,3 +148,38 @@ export async function saveManager(
   );
   return result.rows[0];
 }
+
+/**
+ * Updates an existing Manager account (UC44).
+ */
+export async function updateManager(
+  id: number,
+  fullName: string,
+  phone: string,
+): Promise<User> {
+  const result = await query(
+    `UPDATE users
+     SET full_name = $2, phone_number = $3
+     WHERE id = $1 AND ${MANAGER_ROLE_SQL} = ANY(roles)
+     RETURNING *`,
+    [id, fullName, phone],
+  );
+  return result.rows[0];
+}
+
+/**
+ * Updates the status of an existing Manager account (UC45).
+ */
+export async function updateManagerStatus(
+  id: number,
+  status: UserStatus,
+): Promise<User> {
+  const result = await query(
+    `UPDATE users
+     SET status = $2
+     WHERE id = $1 AND ${MANAGER_ROLE_SQL} = ANY(roles)
+     RETURNING *`,
+    [id, status],
+  );
+  return result.rows[0];
+}

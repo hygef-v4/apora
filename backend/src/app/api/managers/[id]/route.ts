@@ -43,3 +43,29 @@ export async function GET(
     return jsonError(error);
   }
 }
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const auth = await requireAuth(req, ['LANDLORD']);
+    const { id } = await params;
+    const targetId = parseId(id);
+
+    const body = await req.json();
+
+    if (!body.fullName || !body.phoneNumber) {
+      throw new HttpError(400, 'Họ tên và số điện thoại là bắt buộc.');
+    }
+
+    const data = await managerService.updateManagerAccount(auth.id, targetId, {
+      fullName: body.fullName,
+      phone: body.phoneNumber,
+    });
+
+    return jsonSuccess('Cập nhật tài khoản quản lý thành công.', data);
+  } catch (error) {
+    return jsonError(error);
+  }
+}

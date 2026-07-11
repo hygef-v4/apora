@@ -56,6 +56,21 @@ class ManagerDirectoryNotifier extends AsyncNotifier<ManagerListResult> {
     // Refresh the list immediately after successful creation
     await refresh();
   }
+
+  /// Updates an existing Manager account and refreshes the directory (UC44).
+  ///
+  /// [id] — The Manager's user ID.
+  /// [fullName] — The Manager's new full name.
+  /// [phone] — The Manager's new phone number.
+  Future<void> updateManager(
+    int id, {
+    required String fullName,
+    required String phone,
+  }) async {
+    await _api.updateManager(id: id, fullName: fullName, phone: phone);
+    // Refresh the list immediately after successful update
+    await refresh();
+  }
 }
 
 /// Provider for the Manager directory list state (UC41).

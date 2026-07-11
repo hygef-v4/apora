@@ -60,6 +60,7 @@ class AppRoutes {
   static const String managerList = '/managers';
   static const String managerCreate = '/managers/create';
   static String managerDetailPath(int id) => '/managers/$id';
+  static String managerEditPath(int id) => '/managers/$id/edit';
 
   // Module 3: Hóa đơn (Manager)
   static const String generateBill = '/manager/bills/generate';
@@ -201,6 +202,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => ManagerDetailScreen(
           managerId: int.parse(state.pathParameters['id']!),
         ),
+      ),
+      GoRoute(
+        path: '/managers/:id/edit',
+        builder: (_, state) {
+          final manager = state.extra as dynamic;
+          return ManagerFormScreen(manager: manager);
+        },
       ),
       // Module 3: Hóa đơn & Thanh toán (UC15 - UC17)
       GoRoute(

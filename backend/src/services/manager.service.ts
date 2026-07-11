@@ -170,3 +170,115 @@ export async function createManagerAccount(
     status: newUser.status,
   };
 }
+
+// ==========================================
+// UC44: Update Manager Account
+// ==========================================
+
+/**
+ * Updates an existing Manager account.
+ * BR-02: Phone must be unique.
+ * BR-11: Audit log is recorded.
+ *
+ * @param actorId - The LANDLORD performing the action
+ * @param targetId - The ID of the manager to update
+ * @param payload - The updated details (fullName, phone)
+ */
+export async function updateManagerAccount(
+  actorId: number,
+  targetId: number,
+  payload: { fullName: string; phone: string },
+) {
+  // 1. Verify existence of the manager
+  const manager = await managerRepo.findManagerById(targetId);
+  if (!manager) {
+    throw new HttpError(404, MSG_MANAGER_NOT_FOUND);
+  }
+
+  // 2. Verify phone uniqueness if changed (BR-02)
+  if (manager.phone_number !== payload.phone) {
+    const existingUser = await userRepo.findByPhone(payload.phone);
+    if (existingUser && existingUser.id !== targetId) {
+      throw new HttpError(400, 'Số điện thoại này đã được đăng ký cho tài khoản khác.');
+    }
+  }
+
+  // 3. Save to DB
+  const updatedUser = await managerRepo.updateManager(targetId, payload.fullName, payload.phone);
+
+  // 4. Record audit log (BR-11)
+  const changes = [];
+  if (manager.full_name !== payload.fullName) changes.push(`Tên: ${manager.full_name} -> ${payload.fullName}`);
+  if (manager.phone_number !== payload.phone) changes.push(`SĐT: ${manager.phone_number} -> ${payload.phone}`);
+
+  if (changes.length > 0) {
+    await auditRepo.insertAuditLog(
+      actorId,
+      targetId,
+      'MANAGER_UPDATE',
+      changes.join(', '),
+      { full_name: payload.fullName, phone_number: payload.phone },
+    );
+  }
+
+  return {
+    id: updatedUser.id,
+    fullName: updatedUser.full_name,
+    phoneNumber: updatedUser.phone_number,
+    roles: updatedUser.roles,
+    status: updatedUser.status,
+  };
+}
+
+// ==========================================
+// UC45: Deactivate / Reactivate Manager Account
+// ==========================================
+
+/**
+ * Updates the status (ACTIVE/INACTIVE) of a Manager account.
+ * BR-05: If deactivated, invalidate sessions.
+ * BR-11: Audit log is recorded.
+ *
+ * @param actorId - The LANDLORD performing the action
+ * @param targetId - The ID of the manager to update
+ * @param status - The new status ('ACTIVE' | 'INACTIVE')
+ */
+export async function updateManagerStatus(
+  actorId: number,
+  targetId: number,
+  status: 'ACTIVE' | 'INACTIVE',
+) {
+  const manager = await managerRepo.findManagerById(targetId);
+  if (!manager) {
+    throw new HttpError(404, MSG_MANAGER_NOT_FOUND);
+  }
+
+  if (manager.status === status) {
+    throw new HttpError(400, `Tài khoản đã ở trạng thái ${status}`);
+  }
+
+  const updatedUser = await managerRepo.updateManagerStatus(targetId, status);
+
+  // BR-05: Invalidate sessions if deactivated
+  if (status === 'INACTIVE') {
+    const { invalidateSession } = await import('./user.service');
+    await invalidateSession(targetId);
+  }
+
+  // BR-11: Audit log
+  const actionType = status === 'ACTIVE' ? 'MANAGER_REACTIVATE' : 'MANAGER_DEACTIVATE';
+  const reason = status === 'ACTIVE' ? 'Khôi phục tài khoản' : 'Vô hiệu hóa tài khoản';
+  
+  await auditRepo.insertAuditLog(
+    actorId,
+    targetId,
+    actionType,
+    reason,
+    { status },
+  );
+
+  return {
+    id: updatedUser.id,
+    status: updatedUser.status,
+  };
+}
