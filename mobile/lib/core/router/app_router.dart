@@ -16,6 +16,7 @@ import '../../features/home/screens/resident_home_screen.dart';
 import '../../features/home/screens/task_board_screen.dart';
 import '../../features/home/screens/workspace_select_screen.dart';
 import '../../features/management/screens/manager_detail_screen.dart';
+import '../../features/management/screens/manager_form_screen.dart';
 import '../../features/management/screens/manager_list_screen.dart';
 import '../../features/management/screens/staff_detail_screen.dart';
 import '../../features/management/screens/staff_edit_screen.dart';
@@ -190,6 +191,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.managerList,
         builder: (_, _) => const ManagerListScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.managerCreate,
+        builder: (_, _) => const ManagerFormScreen(),
       ),
       GoRoute(
         path: '/managers/:id',

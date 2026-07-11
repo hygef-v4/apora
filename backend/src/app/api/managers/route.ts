@@ -25,3 +25,29 @@ export async function GET(req: NextRequest) {
     return jsonError(error);
   }
 }
+
+/**
+ * POST /api/managers - UC43: Create Manager Account
+ * 
+ * Payload: { fullName: string, phoneNumber: string }
+ * Access: LANDLORD only (BR-57)
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const auth = await requireAuth(req, ['LANDLORD']);
+    const body = await req.json();
+
+    if (!body.fullName || !body.phoneNumber) {
+      return jsonError(new HttpError(400, 'Họ tên và số điện thoại là bắt buộc.'));
+    }
+
+    const data = await managerService.createManagerAccount(auth.id, {
+      fullName: body.fullName,
+      phone: body.phoneNumber,
+    });
+
+    return jsonSuccess('Tạo tài khoản quản lý thành công.', data);
+  } catch (error) {
+    return jsonError(error);
+  }
+}

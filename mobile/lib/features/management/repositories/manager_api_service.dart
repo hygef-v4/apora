@@ -55,6 +55,20 @@ class ManagerAPIService {
     final res = await _dio.get('$_base/$id');
     return ManagerDetail.fromJson(res.data['data'] as Map<String, dynamic>);
   }
+
+  /// Creates a new Manager account (UC43).
+  ///
+  /// [fullName] — The Manager's full name.
+  /// [phone] — The Manager's phone number (used for login).
+  Future<void> createManager({
+    required String fullName,
+    required String phone,
+  }) async {
+    await _dio.post(_base, data: {
+      'fullName': fullName,
+      'phoneNumber': phone,
+    });
+  }
 }
 
 /// Riverpod provider for [ManagerAPIService], injected with the shared Dio client.

@@ -130,3 +130,21 @@ export async function findManagementHistory(
   );
   return result.rows;
 }
+
+/**
+ * Creates a new Manager account (UC43).
+ * Account is ACTIVE, must_change_password=TRUE (BR-01).
+ */
+export async function saveManager(
+  phone: string,
+  passwordHash: string,
+  fullName: string,
+): Promise<User> {
+  const result = await query(
+    `INSERT INTO users (phone_number, password_hash, full_name, roles, status, must_change_password)
+     VALUES ($1, $2, $3, ARRAY['MANAGER']::text[], 'ACTIVE', TRUE)
+     RETURNING *`,
+    [phone, passwordHash, fullName],
+  );
+  return result.rows[0];
+}

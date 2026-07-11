@@ -43,6 +43,19 @@ class ManagerDirectoryNotifier extends AsyncNotifier<ManagerListResult> {
     searchKeyword = keyword.trim().isEmpty ? null : keyword.trim();
     return refresh();
   }
+
+  /// Creates a new Manager account and refreshes the directory (UC43).
+  ///
+  /// [fullName] — The Manager's full name.
+  /// [phone] — The Manager's phone number.
+  Future<void> createManager({
+    required String fullName,
+    required String phone,
+  }) async {
+    await _api.createManager(fullName: fullName, phone: phone);
+    // Refresh the list immediately after successful creation
+    await refresh();
+  }
 }
 
 /// Provider for the Manager directory list state (UC41).

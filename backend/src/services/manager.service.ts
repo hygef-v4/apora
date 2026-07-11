@@ -12,7 +12,10 @@
  */
 
 import { HttpError } from '@/lib/middleware';
+import * as auditRepo from '@/repositories/audit.repository';
 import * as managerRepo from '@/repositories/manager.repository';
+import * as userRepo from '@/repositories/user.repository';
+import { hashPassword } from '@/lib/auth';
 import {
   ManagementHistoryItem,
   ManagerListItem,
@@ -112,5 +115,58 @@ export async function getManagerProfile(managerId: number) {
     status: manager.status,
     createdAt: manager.created_at,
     managementHistory,
+  };
+}
+
+// ==========================================
+// UC43: Create Manager Account
+// ==========================================
+
+/**
+ * Creates a new Manager account.
+ * BR-02: Phone must be unique.
+ * BR-03: Default password "Apora@123" is hashed.
+ * BR-11: Audit log is recorded.
+ *
+ * @param actorId - The LANDLORD performing the action
+ * @param payload - The Manager's details (fullName, phone)
+ * @returns The newly created user data (without password hash)
+ */
+export async function createManagerAccount(
+  actorId: number,
+  payload: { fullName: string; phone: string },
+) {
+  // 1. Verify phone uniqueness
+  const existingUser = await userRepo.findByPhone(payload.phone);
+  if (existingUser) {
+    throw new HttpError(400, 'Số điện thoại này đã được đăng ký cho tài khoản khác.');
+  }
+
+  // 2. Hash default password (BR-03)
+  const defaultPassword = 'Apora@123';
+  const hashed = await hashPassword(defaultPassword);
+
+  // 3. Save to DB
+  const newUser = await managerRepo.saveManager(
+    payload.phone,
+    hashed,
+    payload.fullName,
+  );
+
+  // 4. Record audit log (BR-11)
+  await auditRepo.insertAuditLog(
+    actorId,
+    newUser.id,
+    'MANAGER_CREATE',
+    null,
+    { full_name: payload.fullName, phone_number: payload.phone },
+  );
+
+  return {
+    id: newUser.id,
+    fullName: newUser.full_name,
+    phoneNumber: newUser.phone_number,
+    roles: newUser.roles,
+    status: newUser.status,
   };
 }
