@@ -117,6 +117,28 @@ class _ManagementHubTab extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.all(14),
             children: [
+              if (ref
+                      .watch(authNotifierProvider)
+                      .user
+                      ?.roles
+                      .contains('LANDLORD') ==
+                  true) ...[
+                AppCard(
+                  onTap: () => context.push(AppRoutes.managerList),
+                  child: const _HubRow(
+                    icon: Icons.admin_panel_settings,
+                    iconBg: AppColors.primary,
+                    iconColor: Colors.white,
+                    title: 'Tài khoản Quản lý viên',
+                    subtitle: 'Danh sách Quản lý viên',
+                    trailing: Icon(
+                      Icons.chevron_right,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
               AppCard(
                 onTap: () => context.push(AppRoutes.staffList),
                 child: const _HubRow(
@@ -125,8 +147,10 @@ class _ManagementHubTab extends ConsumerWidget {
                   iconColor: AppColors.primary,
                   title: 'Nhân viên vận hành',
                   subtitle: 'Bảo vệ, lao công, kỹ thuật viên',
-                  trailing: Icon(Icons.chevron_right,
-                      color: AppColors.textTertiary),
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -160,7 +184,10 @@ class _ManagementHubTab extends ConsumerWidget {
                   iconColor: AppColors.purple,
                   title: 'Hóa đơn & Thu tiền',
                   subtitle: 'Chỉ số điện nước, thanh toán',
-                  trailing: Icon(Icons.chevron_right, color: AppColors.textTertiary),
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -172,7 +199,10 @@ class _ManagementHubTab extends ConsumerWidget {
                   iconColor: AppColors.warning,
                   title: 'Sự cố & Sửa chữa',
                   subtitle: 'Theo dõi yêu cầu sửa chữa của cư dân',
-                  trailing: Icon(Icons.chevron_right, color: AppColors.textTertiary),
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -184,7 +214,10 @@ class _ManagementHubTab extends ConsumerWidget {
                   iconColor: AppColors.success,
                   title: 'Duyệt thành viên',
                   subtitle: 'Xem xét yêu cầu đăng ký tạm trú',
-                  trailing: Icon(Icons.chevron_right, color: AppColors.textTertiary),
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -196,7 +229,10 @@ class _ManagementHubTab extends ConsumerWidget {
                   iconColor: AppColors.info,
                   title: 'Thiết lập đơn giá',
                   subtitle: 'Đơn giá điện, nước, phí quản lý',
-                  trailing: Icon(Icons.chevron_right, color: AppColors.textTertiary),
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ),
             ],
