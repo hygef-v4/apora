@@ -11,6 +11,7 @@ import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../../communication/screens/notification_list_screen.dart';
+import '../../management/screens/apartment_list_screen.dart';
 import 'dashboard_screen.dart';
 
 /// Khung điều hướng của Quản lý/Chủ tòa nhà — bottom nav 5 tab theo thiết kế
@@ -41,14 +42,7 @@ class _ManagerShellState extends State<ManagerShell> {
         index: _index,
         children: [
           const DashboardTab(),
-          const _ComingSoonTab(
-            title: 'Căn hộ',
-            child: ComingSoon(
-              icon: Icons.apartment,
-              title: 'Quản lý căn hộ',
-              moduleNote: 'sẽ có ở Module 6 (Apartment Management)',
-            ),
-          ),
+          const ApartmentListScreen(),
           const _ManagementHubTab(),
           const NotificationListScreen(),
           const _ComingSoonTab(
