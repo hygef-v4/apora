@@ -154,7 +154,7 @@ export async function initializePayment(invoiceId: number, userId: number): Prom
     payos_order_id: mockOrderId,
     transaction_code: null,
     amount: Number(invoice.total_amount),
-    payment_method: 'VietQR / PayOS (Mock)',
+    payment_method: 'VietQR / PayOS',
     status: 'PENDING',
     paid_at: null,
   });
@@ -192,7 +192,7 @@ export async function processPaymentCallback(body: any): Promise<void> {
     // Chế độ Mock
     orderCode = body.orderCode || '';
     success = body.success === true || body.desc === 'success';
-    transactionCode = body.reference || `FT_MOCK_${Date.now()}`;
+    transactionCode = body.reference || `FT_${Date.now()}`;
     paidAt = new Date();
   }
 
@@ -230,19 +230,32 @@ export async function simulateSuccessPayment(invoiceId: number): Promise<Payment
     throw new HttpError(400, 'Hóa đơn đã được thanh toán rồi.');
   }
 
-  const orderCode = `MOCK_ORDER_${invoiceId}${Date.now() % 1000}`;
-  
-  // 1. Ghi nhận giao dịch thành công (SUCCESS)
-  const payment = await billingRepo.savePaymentTransaction({
-    invoice_id: invoiceId,
-    resident_id: invoice.resident_id,
-    payos_order_id: orderCode,
-    transaction_code: `FT_MOCK_SUCCESS_${invoiceId}`,
-    amount: Number(invoice.total_amount),
-    payment_method: 'VietQR / PayOS (Mock)',
-    status: 'SUCCESS',
-    paid_at: new Date(),
-  });
+  // Tìm giao dịch PENDING gần nhất của hóa đơn này để cập nhật
+  const pendingPayment = await billingRepo.findLatestPendingPaymentByInvoiceId(invoiceId);
+
+  let payment: Payment;
+  if (pendingPayment) {
+    // 1. Cập nhật giao dịch PENDING có sẵn sang SUCCESS
+    payment = await billingRepo.updatePaymentStatus(
+      pendingPayment.payos_order_id,
+      'SUCCESS',
+      new Date(),
+      `FT_SUCCESS_${invoiceId}`,
+    );
+  } else {
+    // 1. Nếu không có giao dịch PENDING nào, tạo mới giao dịch SUCCESS (để tương thích)
+    const orderCode = `MOCK_ORDER_${invoiceId}${Date.now() % 1000}`;
+    payment = await billingRepo.savePaymentTransaction({
+      invoice_id: invoiceId,
+      resident_id: invoice.resident_id,
+      payos_order_id: orderCode,
+      transaction_code: `FT_SUCCESS_${invoiceId}`,
+      amount: Number(invoice.total_amount),
+      payment_method: 'VietQR / PayOS',
+      status: 'SUCCESS',
+      paid_at: new Date(),
+    });
+  }
 
   // 2. Chuyển hóa đơn sang PAID
   await billingRepo.updateInvoiceStatus(invoiceId, 'PAID');
