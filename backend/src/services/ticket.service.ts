@@ -9,11 +9,19 @@
  */
 
 import { deleteImagesBatch, uploadImage } from '@/lib/cloudinary';
+import { withTransaction } from '@/lib/db';
 import { HttpError } from '@/lib/middleware';
 import * as notificationRepo from '@/repositories/notification.repository';
+import * as taskRepo from '@/repositories/task.repository';
 import * as ticketRepo from '@/repositories/ticket.repository';
 import { sendPushNotification } from '@/services/firebase.service';
-import { TicketDetail, TicketListItem, TicketStatus, UserRole } from '@/types';
+import {
+  StaffWorkloadItem,
+  TicketDetail,
+  TicketListItem,
+  TicketStatus,
+  UserRole,
+} from '@/types';
 
 const TICKET_STATUSES: TicketStatus[] = [
   'PENDING',
@@ -294,9 +302,13 @@ export async function updateTicketStatus(
   return toTicketDetail(updated!);
 }
 
-/** BR-18: lưu thông báo in-app + đẩy FCM cho cư dân sở hữu ticket. */
-async function notifyResidentStatusChanged(
-  ticket: ticketRepo.TicketDetailRow,
+/**
+ * BR-18: lưu thông báo in-app + đẩy FCM cho cư dân sở hữu ticket.
+ * Export để task.service dùng lại khi tiến độ task kéo trạng thái ticket
+ * đổi theo (UC23: IN_PROGRESS -> PROCESSING, COMPLETED -> RESOLVED).
+ */
+export async function notifyResidentStatusChanged(
+  ticket: { id: number; category: string; resident_id: number },
   newStatus: TicketStatus,
 ): Promise<void> {
   const title = 'Cập nhật yêu cầu sửa chữa';
@@ -312,5 +324,116 @@ async function notifyResidentStatusChanged(
   await sendPushNotification(tokens, title, body, {
     type: 'TICKET',
     referenceId: String(ticket.id),
+  });
+}
+
+// ==========================================
+// UC21: Assign Task
+// ==========================================
+
+/** Tiêu đề task: bắt buộc, tối đa 100 ký tự (VARCHAR(100) trong schema). */
+const TASK_TITLE_MAX = 100;
+
+/** BR-41: bảng tải việc nhân viên cho màn phân công (UC21). */
+export async function getStaffWorkload(): Promise<StaffWorkloadItem[]> {
+  const rows = await ticketRepo.findAssignableStaff();
+  return rows.map((row) => ({
+    id: row.id,
+    fullName: row.full_name,
+    roles: row.roles,
+    openTaskCount: row.open_task_count,
+  }));
+}
+
+/**
+ * UC21: Manager/Landlord phân công sự cố cho nhân viên.
+ * - AT1: title bắt buộc (≤100 ký tự); description tùy chọn ≤500.
+ * - Người nhận phải là nhân viên vận hành ACTIVE (BR-40).
+ * - PRE-02/AT3: ticket phải đang PENDING - check lần cuối NGAY TRONG
+ *   transaction (markTicketAssigned điều kiện status=PENDING) để chống race.
+ * - Tạo task ASSIGNED + đổi ticket sang ASSIGNED trong 1 transaction ACID.
+ * - BR-18: báo cho nhân viên được giao + cư dân (best-effort).
+ */
+export async function assignTicket(
+  managerId: number,
+  ticketId: number,
+  input: { assignedTo?: number; title?: string; description?: string },
+): Promise<TicketDetail> {
+  const title = input.title?.trim() ?? '';
+  if (!title) {
+    throw new HttpError(400, 'Vui lòng nhập tiêu đề công việc.');
+  }
+  if (title.length > TASK_TITLE_MAX) {
+    throw new HttpError(400, `Tiêu đề công việc tối đa ${TASK_TITLE_MAX} ký tự.`);
+  }
+  const description = input.description?.trim() || null;
+  if (description && description.length > DESC_MAX) {
+    throw new HttpError(400, `Mô tả công việc tối đa ${DESC_MAX} ký tự.`);
+  }
+  if (!input.assignedTo || !Number.isInteger(input.assignedTo)) {
+    throw new HttpError(400, 'Vui lòng chọn nhân viên để phân công.');
+  }
+
+  const ticket = await ticketRepo.findTicketDetailById(ticketId);
+  if (!ticket) {
+    throw new HttpError(404, 'Không tìm thấy sự cố.');
+  }
+  if (ticket.status !== 'PENDING') {
+    throw new HttpError(
+      409,
+      'Không thể phân công. Sự cố không còn ở trạng thái "Chờ xử lý".',
+    );
+  }
+
+  const staff = await ticketRepo.findAssignableStaffById(input.assignedTo);
+  if (!staff) {
+    throw new HttpError(400, 'Nhân viên không hợp lệ hoặc đã ngừng hoạt động.');
+  }
+
+  // Giao dịch ACID: đổi ticket + tạo task, không được nửa vời (CLAUDE.md)
+  const task = await withTransaction(async (client) => {
+    const assigned = await ticketRepo.markTicketAssigned(client, ticketId);
+    if (!assigned) {
+      // AT3: Manager khác vừa đổi trạng thái trong lúc mình thao tác
+      throw new HttpError(
+        409,
+        'Không thể phân công. Sự cố không còn ở trạng thái "Chờ xử lý".',
+      );
+    }
+    return taskRepo.insertTask(client, {
+      ticketId,
+      assignedTo: staff.id,
+      assignedBy: managerId,
+      title,
+      description,
+    });
+  });
+
+  // BR-18: báo nhân viên được giao + cư dân biết sự cố đã được tiếp nhận
+  notifyStaffAssigned(staff.id, task.id, title, ticket.unit_number).catch((error) => {
+    console.error('[TicketService] Gửi thông báo phân công thất bại:', error);
+  });
+  notifyResidentStatusChanged(ticket, 'ASSIGNED').catch((error) => {
+    console.error('[TicketService] Gửi thông báo đổi trạng thái thất bại:', error);
+  });
+
+  const updated = await ticketRepo.findTicketDetailById(ticketId);
+  return toTicketDetail(updated!);
+}
+
+/** BR-18: báo cho nhân viên vừa được giao việc (in-app + FCM). */
+async function notifyStaffAssigned(
+  staffId: number,
+  taskId: number,
+  taskTitle: string,
+  unitNumber: string,
+): Promise<void> {
+  const title = 'Công việc mới';
+  const body = `Bạn được phân công: "${taskTitle}" (Phòng ${unitNumber}).`;
+  await notificationRepo.createNotificationsBulk([staffId], title, body, 'TASK', taskId);
+  const tokens = await notificationRepo.getActiveDeviceTokens([staffId]);
+  await sendPushNotification(tokens, title, body, {
+    type: 'TASK',
+    referenceId: String(taskId),
   });
 }
