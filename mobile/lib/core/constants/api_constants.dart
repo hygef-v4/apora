@@ -30,6 +30,7 @@ class ApiConstants {
   static String ticketAssign(int id) => '/tickets/$id/assign'; // POST phân công (UC21)
   static const String staffWorkload = '/staff/workload'; // GET bảng tải việc nhân viên (UC21)
   static const String tasks = '/tasks'; // GET công việc của tôi (UC22)
+  static String taskDetail(int id) => '/tasks/$id'; // GET chi tiết công việc (UC23)
   static String taskProgress(int id) => '/tasks/$id/progress'; // PUT cập nhật tiến độ (UC23)
 }
 

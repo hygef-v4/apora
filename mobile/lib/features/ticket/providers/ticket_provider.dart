@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/dio_client.dart';
+import '../models/task.dart';
 import '../models/ticket.dart';
 
 class TicketState {
@@ -135,4 +136,53 @@ class TicketDetailNotifier extends AsyncNotifier<TicketDetail?> {
 final ticketDetailProvider =
     AsyncNotifierProvider<TicketDetailNotifier, TicketDetail?>(
   TicketDetailNotifier.new,
+);
+
+/// UC21 (BR-41): bảng tải việc nhân viên cho màn phân công.
+/// Fetch tường minh mỗi lần mở màn để số liệu luôn realtime.
+class StaffWorkloadNotifier extends AsyncNotifier<List<StaffWorkload>> {
+  @override
+  Future<List<StaffWorkload>> build() async => const [];
+
+  Future<void> fetch() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final dio = ref.read(dioProvider);
+      final res = await dio.get(ApiConstants.staffWorkload);
+      final raw = res.data['data'] as List;
+      return raw
+          .map((json) => StaffWorkload.fromJson(json as Map<String, dynamic>))
+          .toList();
+    });
+  }
+
+  /// UC21: phân công sự cố. Thành công trả TicketDetail mới (đã ASSIGNED
+  /// kèm task); lỗi ném message tiếng Việt (AT3/AT4) cho màn hình.
+  Future<TicketDetail> assignTicket(
+    int ticketId, {
+    required int assignedTo,
+    required String title,
+    String? description,
+  }) async {
+    try {
+      final dio = ref.read(dioProvider);
+      final desc = description?.trim();
+      final res = await dio.post(
+        ApiConstants.ticketAssign(ticketId),
+        data: {
+          'assignedTo': assignedTo,
+          'title': title.trim(),
+          if (desc != null && desc.isNotEmpty) 'description': desc,
+        },
+      );
+      return TicketDetail.fromJson(res.data['data'] as Map<String, dynamic>);
+    } catch (e) {
+      throw mapDioError(e);
+    }
+  }
+}
+
+final staffWorkloadProvider =
+    AsyncNotifierProvider<StaffWorkloadNotifier, List<StaffWorkload>>(
+  StaffWorkloadNotifier.new,
 );
