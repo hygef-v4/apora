@@ -38,6 +38,8 @@ import '../../features/roommate/screens/roommate_list_screen.dart';
 import '../../features/roommate/screens/roommate_register_screen.dart';
 import '../../features/roommate/screens/manager_roommate_list_screen.dart';
 import '../../features/roommate/screens/manager_roommate_detail_screen.dart';
+import '../../features/ticket/models/ticket.dart';
+import '../../features/ticket/screens/assign_task_screen.dart';
 import '../../features/ticket/screens/ticket_list_screen.dart';
 import '../../features/ticket/screens/ticket_create_screen.dart';
 import '../../features/ticket/screens/ticket_detail_screen.dart';
@@ -93,6 +95,8 @@ class AppRoutes {
   static const String tickets = '/tickets';
   static const String ticketCreate = '/tickets/create';
   static String ticketDetailPath(int id) => '/tickets/$id';
+  static String ticketAssignPath(int id) => '/tickets/$id/assign';
+  static String taskDetailPath(int id) => '/tasks/$id';
 }
 
 /// Xác định màn hình chính theo role (UC01 bước 4):
@@ -353,6 +357,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => TicketDetailScreen(
           ticketId: int.parse(state.pathParameters['id']!),
         ),
+      ),
+      // UC21: màn phân công - nhận TicketDetail (PENDING) qua extra
+      GoRoute(
+        path: '/tickets/:id/assign',
+        builder: (context, state) =>
+            AssignTaskScreen(ticket: state.extra as TicketDetail),
       ),
     ],
   );
