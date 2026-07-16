@@ -76,6 +76,7 @@ function toTaskDetail(row: taskRepo.TaskDetailRow): TaskDetail {
     ...toTaskListItem(row),
     ticketDescription: row.ticket_description,
     ticketBeforeImages: row.ticket_before_images,
+    residentName: row.resident_name,
     progressNotes: row.progress_notes,
     completionImages: row.completion_images,
   };

@@ -40,6 +40,7 @@ import '../../features/roommate/screens/manager_roommate_list_screen.dart';
 import '../../features/roommate/screens/manager_roommate_detail_screen.dart';
 import '../../features/ticket/models/ticket.dart';
 import '../../features/ticket/screens/assign_task_screen.dart';
+import '../../features/ticket/screens/task_detail_screen.dart';
 import '../../features/ticket/screens/ticket_list_screen.dart';
 import '../../features/ticket/screens/ticket_create_screen.dart';
 import '../../features/ticket/screens/ticket_detail_screen.dart';
@@ -363,6 +364,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/tickets/:id/assign',
         builder: (context, state) =>
             AssignTaskScreen(ticket: state.extra as TicketDetail),
+      ),
+      // UC23: chi tiết công việc + cập nhật tiến độ (staff)
+      GoRoute(
+        path: '/tasks/:id',
+        builder: (context, state) => TaskDetailScreen(
+          taskId: int.parse(state.pathParameters['id']!),
+        ),
       ),
     ],
   );

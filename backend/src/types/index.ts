@@ -293,10 +293,12 @@ export interface TaskListItem {
   completedAt: Date | null;
 }
 
-/** Chi tiết công việc (UC23) - kèm mô tả sự cố gốc + ảnh hoàn thành. */
+/** Chi tiết công việc (UC23) - kèm ngữ cảnh sự cố gốc + ảnh hoàn thành. */
 export interface TaskDetail extends TaskListItem {
   ticketDescription: string;
   ticketBeforeImages: string[];
+  /** Người báo sự cố (FID-23 field 7 - Reported By trong thẻ tham chiếu). */
+  residentName: string;
   progressNotes: string | null;
   completionImages: string[];
 }

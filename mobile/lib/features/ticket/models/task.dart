@@ -46,6 +46,7 @@ class TaskItem {
 class TaskDetail extends TaskItem {
   final String ticketDescription;
   final List<String> ticketBeforeImages;
+  final String residentName;
   final String? progressNotes;
   final List<String> completionImages;
 
@@ -62,6 +63,7 @@ class TaskDetail extends TaskItem {
     super.completedAt,
     required this.ticketDescription,
     required this.ticketBeforeImages,
+    required this.residentName,
     this.progressNotes,
     required this.completionImages,
   });
@@ -84,6 +86,7 @@ class TaskDetail extends TaskItem {
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      residentName: json['residentName'] as String,
       progressNotes: json['progressNotes'] as String?,
       completionImages: (json['completionImages'] as List?)
               ?.map((e) => e as String)
