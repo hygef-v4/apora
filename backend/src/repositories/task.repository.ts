@@ -140,10 +140,10 @@ export async function updateTaskProgress(
 ): Promise<void> {
   await client.query(
     `UPDATE tasks
-     SET status = $2,
+     SET status = $2::varchar,
          progress_notes = COALESCE($3, progress_notes),
          completion_images = COALESCE($4::text[], completion_images),
-         completed_at = CASE WHEN $2 = 'COMPLETED' THEN NOW() ELSE completed_at END
+         completed_at = CASE WHEN $2::varchar = 'COMPLETED' THEN NOW() ELSE completed_at END
      WHERE id = $1`,
     [taskId, status, progressNotes, completionImages],
   );
