@@ -18,11 +18,12 @@ export interface TaskRow extends Task {
   assigned_by_name: string;
 }
 
-/** Dòng chi tiết task (UC23): thêm mô tả + ảnh gốc của sự cố. */
+/** Dòng chi tiết task (UC23): thêm mô tả + ảnh gốc + người báo của sự cố. */
 export interface TaskDetailRow extends TaskRow {
   ticket_description: string;
   ticket_before_images: string[];
   ticket_status: string;
+  resident_id: number;
   resident_name: string;
 }
 
@@ -111,6 +112,7 @@ export async function findTaskDetailById(id: number): Promise<TaskDetailRow | nu
             rt.description   AS ticket_description,
             rt.before_images AS ticket_before_images,
             rt.status        AS ticket_status,
+            rt.resident_id,
             res.full_name    AS resident_name
      FROM tasks t
      JOIN repair_tickets rt ON rt.id = t.ticket_id
