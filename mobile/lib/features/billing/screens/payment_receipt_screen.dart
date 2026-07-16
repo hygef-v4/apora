@@ -1,5 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:open_file/open_file.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
@@ -108,7 +113,7 @@ class PaymentReceiptScreen extends StatelessWidget {
                       _buildReceiptRow('Mã giao dịch', payment.transactionCode ?? '#N/A'),
                       _buildReceiptRow('Thời gian', payment.paidAt != null ? _formatDateTime(payment.paidAt!) : _formatDateTime(DateTime.now())),
                       _buildReceiptRow('Hình thức', payment.paymentMethod),
-                      _buildReceiptRow('Căn hộ', 'Căn hộ 502 (Tầng 5)'),
+                      _buildReceiptRow('Căn hộ', invoice.unitNumber != null ? 'Căn hộ ${invoice.unitNumber}' : 'Căn hộ 502 (Tầng 5)'),
                       _buildReceiptRow('Phí dịch vụ cổng', '0 đ'),
                       const Divider(height: 20, color: AppColors.divider),
                       _buildReceiptRow('Số tiền thanh toán', _formatMoney(payment.amount), isBoldValue: true),
@@ -163,15 +168,7 @@ class PaymentReceiptScreen extends StatelessWidget {
                       child: SizedBox(
                         height: 48,
                         child: OutlinedButton.icon(
-                          onPressed: () {
-                            // Giả lập download
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Đang tạo và tải xuống biên lai dạng PDF...'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
+                          onPressed: () => _generateAndSavePDF(context),
                           icon: const Icon(Icons.picture_as_pdf),
                           label: const Text('Tải PDF', style: TextStyle(fontWeight: FontWeight.bold)),
                           style: OutlinedButton.styleFrom(
@@ -250,6 +247,115 @@ class PaymentReceiptScreen extends StatelessWidget {
               color: isBoldValue ? AppColors.primary : AppColors.textPrimary,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _generateAndSavePDF(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đang tạo biên lai PDF...'),
+          duration: Duration(milliseconds: 800),
+        ),
+      );
+
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context context) {
+            return pw.Container(
+              padding: const pw.EdgeInsets.all(32),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Center(
+                    child: pw.Text(
+                      'BIEN LAI GIAO DICH',
+                      style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
+                    ),
+                  ),
+                  pw.Center(
+                    child: pw.Text(
+                      'Xac nhan thanh toan hoa don',
+                      style: const pw.TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  pw.SizedBox(height: 24),
+                  pw.Divider(),
+                  pw.SizedBox(height: 12),
+                  _buildPdfRow('Ma giao dich:', payment.transactionCode ?? '#N/A'),
+                  _buildPdfRow('Thoi gian:', payment.paidAt != null ? _formatDateTime(payment.paidAt!) : _formatDateTime(DateTime.now())),
+                  _buildPdfRow('Hinh thuc:', payment.paymentMethod),
+                  _buildPdfRow('Can ho:', invoice.unitNumber != null ? 'Can ho ${invoice.unitNumber}' : 'Can ho 502'),
+                  _buildPdfRow('Phi dich vu cong:', '0 d'),
+                  pw.SizedBox(height: 12),
+                  pw.Divider(),
+                  pw.SizedBox(height: 12),
+                  _buildPdfRow('So tien thanh toan:', _formatMoney(payment.amount).replaceAll('đ', 'VND')),
+                  pw.SizedBox(height: 32),
+                  pw.Center(
+                    child: pw.Text(
+                      'Cam on quy cu dan da thanh toan!',
+                      style: pw.TextStyle(fontStyle: pw.FontStyle.italic),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+
+      final output = await getTemporaryDirectory();
+      final file = File("${output.path}/bien_lai_${payment.transactionCode ?? invoice.id}.pdf");
+      await file.writeAsBytes(await pdf.save());
+
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Tải PDF Thành Công'),
+            content: Text('Biên lai PDF đã được tạo và lưu tại:\n\n${file.path}'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  OpenFile.open(file.path);
+                },
+                child: const Text('XEM FILE (LOCATE)'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('ĐÓNG'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tạo PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  pw.Widget _buildPdfRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 4),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(label),
+          pw.Text(value, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
         ],
       ),
     );

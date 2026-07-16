@@ -20,3 +20,26 @@ ON CONFLICT (phone_number) DO NOTHING;
 INSERT INTO pricing_settings (electricity_rate, water_rate, mgmt_fee, created_by)
 SELECT 2000.00, 2166.00, 150000.00, 2
 WHERE NOT EXISTS (SELECT 1 FROM pricing_settings);
+
+-- Seed căn hộ mẫu
+INSERT INTO apartments (unit_number, floor, owner_id, status)
+VALUES 
+  ('101', '1', 1, 'OCCUPIED'),
+  ('102', '1', 1, 'EMPTY')
+ON CONFLICT (unit_number) DO NOTHING;
+
+-- Seed hợp đồng thuê hoạt động mẫu cho cư dân
+INSERT INTO contracts (apartment_id, resident_id, start_date, end_date, base_rent_snapshot, status)
+SELECT 
+  (SELECT id FROM apartments WHERE unit_number = '101'),
+  (SELECT id FROM users WHERE phone_number = '0900000003'),
+  '2026-01-01',
+  '2027-01-01',
+  10000.00,
+  'ACTIVE'
+WHERE NOT EXISTS (
+  SELECT 1 FROM contracts c
+  JOIN apartments a ON c.apartment_id = a.id
+  WHERE a.unit_number = '101'
+);
+

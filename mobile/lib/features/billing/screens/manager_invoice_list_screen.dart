@@ -46,6 +46,22 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
     return '${buffer.toString()} đ';
   }
 
+  Widget _buildDetailRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 11, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(billingProvider);
@@ -206,7 +222,42 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
                           ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildDetailRow('Tiền thuê căn hộ:', _formatMoney(invoice.roomRentSnapshot)),
+                          const SizedBox(height: 5),
+                          _buildDetailRow('Phí dịch vụ & Quản lý:', _formatMoney(invoice.mgmtFeeSnapshot)),
+                          const SizedBox(height: 5),
+                          _buildDetailRow(
+                            'Tiền điện (${invoice.electricityConsumption.toInt()} kWh):',
+                            _formatMoney(invoice.electricityConsumption * invoice.electricityRateSnapshot),
+                          ),
+                          const SizedBox(height: 5),
+                          _buildDetailRow(
+                            'Tiền nước (${invoice.waterConsumption.toInt()} m³):',
+                            _formatMoney(invoice.waterConsumption * invoice.waterRateSnapshot),
+                          ),
+                          if (invoice.extraFee > 0) ...[
+                            const SizedBox(height: 5),
+                            _buildDetailRow(
+                              invoice.extraFeeDescription != null && invoice.extraFeeDescription!.isNotEmpty
+                                  ? 'Phí phát sinh (${invoice.extraFeeDescription}):'
+                                  : 'Phí phát sinh:',
+                              _formatMoney(invoice.extraFee),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [

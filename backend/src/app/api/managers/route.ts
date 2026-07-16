@@ -9,7 +9,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { jsonError, jsonSuccess, requireAuth } from '@/lib/middleware';
+import { jsonError, jsonSuccess, requireAuth, HttpError } from '@/lib/middleware';
 import * as managerService from '@/services/manager.service';
 
 export async function GET(req: NextRequest) {
