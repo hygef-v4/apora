@@ -40,7 +40,8 @@ export type TicketStatus =
   | 'RESOLVED'
   | 'CANCELLED';
 
-export type TaskStatus = 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED';
+/** Khớp CHECK của bảng tasks (CANCELLED dùng khi ticket bị hủy sau phân công). */
+export type TaskStatus = 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
 // ==========================================
 // Entity Interfaces (Khớp với bảng DB - Module 1)
@@ -276,7 +277,8 @@ export interface TaskSummary {
 
 /**
  * 1 dòng trong danh sách công việc của nhân viên (UC22).
- * category lấy từ ticket cha để staff biết loại sự cố.
+ * category lấy từ ticket cha để staff biết loại sự cố;
+ * assignedByName là tên Manager/Landlord đã giao (FID-22 field 7).
  */
 export interface TaskListItem {
   id: number;
@@ -286,6 +288,7 @@ export interface TaskListItem {
   status: TaskStatus;
   category: string;
   unitNumber: string;
+  assignedByName: string;
   assignedAt: Date;
   completedAt: Date | null;
 }
