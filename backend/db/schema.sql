@@ -55,8 +55,11 @@ CREATE TABLE IF NOT EXISTS apartments (
   unit_number  VARCHAR(20)  NOT NULL UNIQUE,
   floor        VARCHAR(10)  NOT NULL,
   owner_id     INTEGER REFERENCES users(id),
-  status       VARCHAR(10)  NOT NULL DEFAULT 'EMPTY' CHECK (status IN ('EMPTY', 'OCCUPIED', 'INACTIVE'))
+  status       VARCHAR(10)  NOT NULL DEFAULT 'EMPTY' CHECK (status IN ('EMPTY', 'OCCUPIED', 'INACTIVE')),
+  area_size    DOUBLE PRECISION NOT NULL DEFAULT 0.0 CHECK (area_size >= 0),
+  base_rent    NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (base_rent >= 0)
 );
+
 
 -- 5. CONTRACTS (Tenancy Management)
 CREATE TABLE IF NOT EXISTS contracts (
