@@ -276,6 +276,10 @@ export interface TicketListItem {
   beforeImages: string[];
   status: TicketStatus;
   unitNumber: string;
+  /** FID-18 field 8: tên cư dân báo sự cố. */
+  residentName: string;
+  /** FID-18 field 9: nhân viên đang được giao; null khi chưa phân công. */
+  assigneeName: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

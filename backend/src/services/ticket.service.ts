@@ -81,6 +81,8 @@ function toTicketListItem(row: ticketRepo.TicketRow): TicketListItem {
     beforeImages: row.before_images,
     status: row.status,
     unitNumber: row.unit_number,
+    residentName: row.resident_name,
+    assigneeName: row.assignee_name,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

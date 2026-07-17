@@ -11,10 +11,29 @@ import { PoolClient } from 'pg';
 import { query } from '@/lib/db';
 import { RepairTicket, StaffRole, TaskStatus, TicketStatus } from '@/types';
 
-/** Dòng repair_tickets kèm unit_number (join apartments) cho danh sách/chi tiết. */
+/**
+ * Dòng repair_tickets kèm unit_number + tên người báo + tên nhân viên đang
+ * được giao (FID-18 field 8-9; null khi ticket chưa phân công).
+ */
 export interface TicketRow extends RepairTicket {
   unit_number: string;
+  resident_name: string;
+  assignee_name: string | null;
 }
+
+/** SELECT chung cho danh sách UC18: join căn hộ, người báo và task mới nhất. */
+const TICKET_LIST_SELECT = `
+  SELECT rt.*, a.unit_number, u.full_name AS resident_name,
+         asg.full_name AS assignee_name
+  FROM repair_tickets rt
+  JOIN apartments a ON a.id = rt.apartment_id
+  JOIN users u ON u.id = rt.resident_id
+  LEFT JOIN LATERAL (
+    SELECT t.assigned_to FROM tasks t
+    WHERE t.ticket_id = rt.id AND t.status <> 'CANCELLED'
+    ORDER BY t.assigned_at DESC LIMIT 1
+  ) lt ON TRUE
+  LEFT JOIN users asg ON asg.id = lt.assigned_to`;
 
 /**
  * UC18 (Resident): danh sách sự cố do chính cư dân này báo.
@@ -32,9 +51,7 @@ export async function findTicketsByResident(
   }
 
   const result = await query(
-    `SELECT rt.*, a.unit_number
-     FROM repair_tickets rt
-     JOIN apartments a ON a.id = rt.apartment_id
+    `${TICKET_LIST_SELECT}
      WHERE rt.resident_id = $1${statusClause}
      ORDER BY rt.created_at DESC`,
     params,
@@ -55,9 +72,7 @@ export async function findAllTickets(status?: TicketStatus): Promise<TicketRow[]
   }
 
   const result = await query(
-    `SELECT rt.*, a.unit_number
-     FROM repair_tickets rt
-     JOIN apartments a ON a.id = rt.apartment_id${statusClause}
+    `${TICKET_LIST_SELECT}${statusClause}
      ORDER BY rt.created_at DESC`,
     params,
   );
