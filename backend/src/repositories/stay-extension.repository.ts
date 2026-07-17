@@ -48,7 +48,8 @@ const LIST_SELECT = `
 export async function insertExtension(input: {
   contractId: number;
   residentId: number;
-  currentEndDate: Date;
+  /** 'YYYY-MM-DD' - truyền string để tránh lệch múi giờ khi pg serialize Date. */
+  currentEndDate: string;
   requestedEndDate: string;
   reason: string;
 }): Promise<StayExtensionRow> {

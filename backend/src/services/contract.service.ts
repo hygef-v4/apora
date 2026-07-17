@@ -41,6 +41,17 @@ function toDateOnly(value: Date | string): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
+/**
+ * Format Date -> 'YYYY-MM-DD' theo giờ LOCAL. Không dùng toISOString()
+ * vì pg trả DATE về là Date lúc 00:00 local; đổi sang UTC sẽ lùi 1 ngày.
+ */
+function formatDateLocal(value: Date | string): string {
+  const d = toDateOnly(value);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 /** BR-13: số ngày còn lại = end_date - hôm nay (làm tròn lên, tối thiểu 0). */
 function calcRemainingDays(endDate: Date): number {
   const msPerDay = 24 * 60 * 60 * 1000;
@@ -176,7 +187,7 @@ export async function requestExtension(
   const row = await extensionRepo.insertExtension({
     contractId: contract.id,
     residentId: userId,
-    currentEndDate: contract.end_date,
+    currentEndDate: formatDateLocal(contract.end_date),
     requestedEndDate: rawDate,
     reason,
   });
@@ -258,9 +269,7 @@ export async function reviewExtension(
         'Không thể duyệt: hợp đồng liên quan đã không còn hiệu lực.',
       );
     }
-    const requestedDate = toDateOnly(extension.requested_end_date)
-      .toISOString()
-      .slice(0, 10);
+    const requestedDate = formatDateLocal(extension.requested_end_date);
     // BR-17: cả hai UPDATE cùng thành công hoặc cùng rollback
     await withTransaction(async (client) => {
       const marked = await extensionRepo.markReviewed(
