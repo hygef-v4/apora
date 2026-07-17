@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
 import '../providers/chat_provider.dart';
+import '../../../core/network/dio_client.dart';
 
 class ManagerChatListScreen extends ConsumerStatefulWidget {
   const ManagerChatListScreen({super.key});
@@ -124,7 +125,24 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Lỗi: $err')),
+        error: (err, stack) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(mapDioError(err), textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () {
+                    ref.read(chatSessionsProvider.notifier).refresh();
+                  },
+                  child: const Text('Thử lại'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

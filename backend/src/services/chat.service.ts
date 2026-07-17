@@ -146,14 +146,14 @@ export async function sendMessage(senderId: number, isManager: boolean, receiver
     await triggerChatEvent(channelName, 'new-message', responseMessage);
 
     if (isManager) {
-      const tokensRes = await client.query('SELECT fcm_token FROM fcm_tokens WHERE user_id = $1', [targetResidentId]);
-      const tokens = tokensRes.rows.map(r => r.fcm_token);
+      const tokensRes = await client.query("SELECT token FROM device_tokens WHERE user_id = $1 AND status = 'ACTIVE' AND revoked_at IS NULL", [targetResidentId]);
+      const tokens = tokensRes.rows.map(r => r.token);
       if (tokens.length > 0) {
         await sendPushNotification(tokens, 'Tin nhắn mới từ Ban Quản Lý', isImage ? '[Hình ảnh]' : finalContent, { type: 'CHAT', senderId: senderId.toString() });
       }
     } else {
-      const tokensRes = await client.query("SELECT fcm_token FROM fcm_tokens ft JOIN users u ON ft.user_id = u.id WHERE 'MANAGER' = ANY(u.roles) OR 'LANDLORD' = ANY(u.roles)");
-      const tokens = tokensRes.rows.map(r => r.fcm_token);
+      const tokensRes = await client.query("SELECT dt.token FROM device_tokens dt JOIN users u ON dt.user_id = u.id WHERE ('MANAGER' = ANY(u.roles) OR 'LANDLORD' = ANY(u.roles)) AND dt.status = 'ACTIVE' AND dt.revoked_at IS NULL");
+      const tokens = tokensRes.rows.map(r => r.token);
       if (tokens.length > 0) {
         await sendPushNotification(tokens, `Tin nhắn mới từ phòng ${senderData.full_name}`, isImage ? '[Hình ảnh]' : finalContent, { type: 'CHAT', senderId: senderId.toString(), residentId: targetResidentId.toString() });
       }

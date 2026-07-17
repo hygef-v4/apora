@@ -172,7 +172,9 @@ CREATE TABLE IF NOT EXISTS messages (
   room_id     INTEGER NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
   sender_id   INTEGER NOT NULL REFERENCES users(id),
   text        TEXT NOT NULL,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  is_image BOOLEAN DEFAULT FALSE,
+  is_read BOOLEAN DEFAULT FALSE
 );
 
 -- 13. STAY_EXTENSIONS (Tenancy Management) - BR-17
@@ -243,7 +245,3 @@ CREATE TABLE IF NOT EXISTS pricing_settings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_pricing_settings_effective ON pricing_settings (effective_from DESC);
-
--- UC28: Live Chat Extensions
-ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_image BOOLEAN DEFAULT FALSE;
-ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
