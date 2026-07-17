@@ -91,7 +91,7 @@ export interface ContractWithApartmentRow {
 export async function findLatestContractByResident(
   residentId: number,
 ): Promise<ContractWithApartmentRow | null> {
-  const result = await query<ContractWithApartmentRow>(
+  const result = await query(
     `SELECT c.*, a.unit_number, a.floor, a.status AS apartment_status
      FROM contracts c
      JOIN apartments a ON a.id = c.apartment_id
@@ -115,25 +115,11 @@ export interface ResidentApartmentRow {
 export async function findApartmentByOwner(
   residentId: number,
 ): Promise<ResidentApartmentRow | null> {
-  const result = await query<ResidentApartmentRow>(
+  const result = await query(
     `SELECT id, unit_number, floor, status
      FROM apartments WHERE owner_id = $1
      ORDER BY id LIMIT 1`,
     [residentId],
-  );
-  return result.rows[0] ?? null;
-}
-
-/** UC09: hợp đồng theo id (kèm căn hộ) để hiển thị màn duyệt. */
-export async function findContractById(
-  contractId: number,
-): Promise<ContractWithApartmentRow | null> {
-  const result = await query<ContractWithApartmentRow>(
-    `SELECT c.*, a.unit_number, a.floor, a.status AS apartment_status
-     FROM contracts c
-     JOIN apartments a ON a.id = c.apartment_id
-     WHERE c.id = $1`,
-    [contractId],
   );
   return result.rows[0] ?? null;
 }

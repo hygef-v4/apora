@@ -52,7 +52,7 @@ export async function insertExtension(input: {
   requestedEndDate: string;
   reason: string;
 }): Promise<StayExtensionRow> {
-  const result = await query<StayExtensionRow>(
+  const result = await query(
     `WITH ins AS (
        INSERT INTO stay_extensions
          (contract_id, resident_id, current_end_date, requested_end_date, reason)
@@ -82,7 +82,7 @@ export async function insertExtension(input: {
 export async function findPendingByContract(
   contractId: number,
 ): Promise<{ id: number } | null> {
-  const result = await query<{ id: number }>(
+  const result = await query(
     `SELECT id FROM stay_extensions
      WHERE contract_id = $1 AND status = 'PENDING'
      ORDER BY id DESC LIMIT 1`,
@@ -96,7 +96,7 @@ export async function findExtensions(
   status?: StayExtensionStatus,
 ): Promise<StayExtensionRow[]> {
   const statusClause = status ? ' WHERE se.status = $1' : '';
-  const result = await query<StayExtensionRow>(
+  const result = await query(
     `${LIST_SELECT}${statusClause} ORDER BY se.created_at DESC`,
     status ? [status] : [],
   );
@@ -107,7 +107,7 @@ export async function findExtensions(
 export async function findExtensionDetailById(
   id: number,
 ): Promise<StayExtensionDetailRow | null> {
-  const result = await query<StayExtensionDetailRow>(
+  const result = await query(
     `SELECT se.*, u.full_name AS resident_name, u.phone_number AS resident_phone,
             a.unit_number, a.floor,
             c.start_date AS contract_start_date, c.end_date AS contract_end_date,
