@@ -98,6 +98,8 @@ function toDetail(row: extensionRepo.StayExtensionDetailRow): StayExtensionDetai
  * - AT2: chưa có hợp đồng -> contract = null, kèm căn hộ đứng tên (nếu có).
  */
 export async function getMyContract(userId: number): Promise<MyContractResponse> {
+  // Lazy expire: dọn hợp đồng quá hạn trước khi đọc (thay cho cron job)
+  await contractRepo.expireOverdueContracts();
   const row = await contractRepo.findLatestContractByResident(userId);
   if (!row) {
     const apartment = await contractRepo.findApartmentByOwner(userId);
@@ -162,6 +164,8 @@ export async function requestExtension(
     throw new HttpError(400, 'Ngày kết thúc mới không hợp lệ (định dạng YYYY-MM-DD).');
   }
 
+  // Lazy expire trước khi kiểm tra BR-12: hợp đồng quá hạn không được gia hạn
+  await contractRepo.expireOverdueContracts();
   const contract = await contractRepo.findLatestContractByResident(userId);
   if (!contract || contract.status !== 'ACTIVE') {
     // BR-12: không có hợp đồng ACTIVE thì không được xin gia hạn
@@ -215,6 +219,8 @@ export async function getExtensions(filter: {
 
 /** UC09: chi tiết yêu cầu gia hạn (màn duyệt). */
 export async function getExtensionDetail(id: number): Promise<StayExtensionDetail> {
+  // Lazy expire để màn duyệt thấy đúng trạng thái hợp đồng (AT3)
+  await contractRepo.expireOverdueContracts();
   const row = await extensionRepo.findExtensionDetailById(id);
   if (!row) {
     throw new HttpError(404, 'Không tìm thấy yêu cầu gia hạn.');
@@ -253,6 +259,8 @@ export async function reviewExtension(
     }
   }
 
+  // Lazy expire trước khi duyệt: hợp đồng quá hạn sẽ chặn APPROVE ở AT3
+  await contractRepo.expireOverdueContracts();
   const extension = await extensionRepo.findExtensionDetailById(extensionId);
   if (!extension) {
     throw new HttpError(404, 'Không tìm thấy yêu cầu gia hạn.');

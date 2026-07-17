@@ -68,16 +68,69 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     setState(() => _avatarBytes = compressed);
   }
 
+  /// Đổi SĐT = đổi username đăng nhập -> backend yêu cầu xác nhận mật khẩu
+  /// hiện tại. Trả về null nếu người dùng hủy.
+  Future<String?> _askCurrentPassword() async {
+    final passwordController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Xác nhận đổi số điện thoại'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Số điện thoại là tên đăng nhập của bạn. '
+              'Vui lòng nhập mật khẩu hiện tại để xác nhận thay đổi.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Mật khẩu hiện tại'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+    return (confirmed ?? false) ? passwordController.text : null;
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final user = ref.read(profileNotifierProvider).value;
+    final phoneChanged =
+        user != null && _phoneController.text.trim() != user.phoneNumber;
+    String? currentPassword;
+    if (phoneChanged) {
+      currentPassword = await _askCurrentPassword();
+      if (currentPassword == null) return; // người dùng hủy
+    }
+
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(profileNotifierProvider.notifier).updateProfile(
-            fullName: _fullNameController.text.trim(),
-            phone: _phoneController.text.trim(),
-            avatarBytes: _avatarBytes,
-          );
-      _showMessage('Cập nhật hồ sơ thành công.');
+      final avatarUploadFailed =
+          await ref.read(profileNotifierProvider.notifier).updateProfile(
+                fullName: _fullNameController.text.trim(),
+                phone: _phoneController.text.trim(),
+                avatarBytes: _avatarBytes,
+                currentPassword: currentPassword,
+              );
+      _showMessage(avatarUploadFailed
+          ? AppStrings.msgAvatarUploadFailed
+          : 'Cập nhật hồ sơ thành công.');
       if (mounted) context.go(AppRoutes.profile);
     } catch (e) {
       _showMessage(mapDioError(e));

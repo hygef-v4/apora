@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../providers/auth_notifier.dart';
@@ -150,10 +151,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                                 'Tối thiểu 8 ký tự, gồm 1 chữ hoa và 1 chữ số.',
                             prefixIcon: Icon(Icons.lock, size: 20),
                           ),
-                          validator: (value) =>
-                              (value == null || value.isEmpty)
-                                  ? AppStrings.msgFieldRequired
-                                  : null,
+                          // BR-09: validate ngay trên client, không chờ server
+                          validator: Validators.passwordComplexity,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
@@ -176,6 +175,16 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                         TextButton(
                           onPressed: _isSubmitting ? null : _sendOtp,
                           child: const Text('Gửi lại OTP'),
+                        ),
+                        // Gõ nhầm SĐT -> quay lại bước 1 sửa, không phải thoát màn
+                        TextButton(
+                          onPressed: _isSubmitting
+                              ? null
+                              : () => setState(() {
+                                    _otpSent = false;
+                                    _otpController.clear();
+                                  }),
+                          child: const Text('Đổi số điện thoại'),
                         ),
                       ],
                     ],

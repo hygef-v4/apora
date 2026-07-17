@@ -111,14 +111,15 @@ export async function requireAuth(
     throw new HttpError(403, 'Bạn cần đổi mật khẩu mặc định trước khi tiếp tục sử dụng.');
   }
 
+  // Luôn dùng roles mới nhất từ DB (role có thể đổi sau khi ký token - UC39),
+  // kể cả với endpoint không truyền allowedRoles nhưng có rẽ nhánh theo role.
+  payload.roles = user.roles as UserRole[];
+
   if (allowedRoles && allowedRoles.length > 0) {
-    const roles: UserRole[] = user.roles;
-    const permitted = roles.some((r) => allowedRoles.includes(r));
+    const permitted = payload.roles.some((r) => allowedRoles.includes(r));
     if (!permitted) {
       throw new HttpError(403, 'Bạn không có quyền thực hiện thao tác này.');
     }
-    // Dùng roles mới nhất từ DB (phòng trường hợp role đổi sau khi ký token)
-    payload.roles = roles;
   }
 
   return payload;
