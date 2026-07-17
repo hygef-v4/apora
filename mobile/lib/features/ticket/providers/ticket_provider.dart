@@ -89,3 +89,50 @@ class TicketNotifier extends Notifier<TicketState> {
 
 final ticketProvider =
     NotifierProvider<TicketNotifier, TicketState>(() => TicketNotifier());
+
+/// Chi tiết 1 sự cố (UC20) - fetch tường minh theo id
+/// (cùng pattern với StaffDetailNotifier của Module 8).
+class TicketDetailNotifier extends AsyncNotifier<TicketDetail?> {
+  @override
+  Future<TicketDetail?> build() async => null;
+
+  Future<void> fetch(int ticketId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final dio = ref.read(dioProvider);
+      final res = await dio.get(ApiConstants.ticketDetail(ticketId));
+      return TicketDetail.fromJson(res.data['data'] as Map<String, dynamic>);
+    });
+  }
+
+  /// UC20: Manager/Landlord đổi trạng thái + ghi chú nội bộ (BR-40).
+  /// Thành công thì cập nhật luôn state từ response; lỗi ném ra
+  /// (đã map tiếng Việt) để màn hình hiển thị SnackBar (AT2).
+  Future<void> updateStatus(
+    int ticketId, {
+    required String status,
+    String? internalNotes,
+  }) async {
+    try {
+      final dio = ref.read(dioProvider);
+      final notes = internalNotes?.trim();
+      final res = await dio.put(
+        ApiConstants.ticketStatus(ticketId),
+        data: {
+          'status': status,
+          if (notes != null && notes.isNotEmpty) 'internalNotes': notes,
+        },
+      );
+      state = AsyncData(
+        TicketDetail.fromJson(res.data['data'] as Map<String, dynamic>),
+      );
+    } catch (e) {
+      throw mapDioError(e);
+    }
+  }
+}
+
+final ticketDetailProvider =
+    AsyncNotifierProvider<TicketDetailNotifier, TicketDetail?>(
+  TicketDetailNotifier.new,
+);

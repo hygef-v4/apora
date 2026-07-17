@@ -42,6 +42,7 @@ import '../../features/roommate/screens/manager_roommate_list_screen.dart';
 import '../../features/roommate/screens/manager_roommate_detail_screen.dart';
 import '../../features/ticket/screens/ticket_list_screen.dart';
 import '../../features/ticket/screens/ticket_create_screen.dart';
+import '../../features/ticket/screens/ticket_detail_screen.dart';
 
 /// Đường dẫn route tập trung.
 class AppRoutes {
@@ -95,6 +96,7 @@ class AppRoutes {
   // Module 4: Sự cố & Công việc (UC18-UC23)
   static const String tickets = '/tickets';
   static const String ticketCreate = '/tickets/create';
+  static String ticketDetailPath(int id) => '/tickets/$id';
 }
 
 /// Xác định màn hình chính theo role (UC01 bước 4):
@@ -360,6 +362,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.tickets,
         builder: (context, state) => const TicketListScreen(showBack: true),
+      ),
+      // Đăng ký sau '/tickets/create' để ':id' không nuốt mất 'create'
+      GoRoute(
+        path: '/tickets/:id',
+        builder: (context, state) => TicketDetailScreen(
+          ticketId: int.parse(state.pathParameters['id']!),
+        ),
       ),
     ],
   );
