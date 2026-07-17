@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -130,7 +131,11 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       _showSnack(status == 'COMPLETED'
           ? 'Đã hoàn thành công việc. Sự cố chuyển sang "Đã xong".'
           : 'Đã bắt đầu xử lý công việc.');
-      if (status == 'COMPLETED') setState(_images.clear);
+      if (status == 'COMPLETED') {
+        setState(_images.clear);
+        // FID-23 field 13: hoàn thành xong quay về danh sách công việc
+        if (mounted && context.canPop()) context.pop();
+      }
     } catch (e) {
       // AT4: lỗi mạng/server -> giữ nguyên dữ liệu đã nhập
       _showSnack(e.toString());

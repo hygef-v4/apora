@@ -28,10 +28,27 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
     (value: 'COMPLETED', label: 'Hoàn thành'),
   ];
 
+  /// Lọc phía client (tải toàn bộ 1 lần) để tab "Đang làm" đếm được
+  /// số việc chưa xong (FID-22 field 1) mà không cần gọi lại API.
+  String? _filter;
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(taskProvider.notifier).fetchTasks());
+  }
+
+  List<TaskItem> _applyFilter(List<TaskItem> all) {
+    switch (_filter) {
+      case 'ACTIVE':
+        return all
+            .where((t) => t.status == 'ASSIGNED' || t.status == 'IN_PROGRESS')
+            .toList();
+      case 'COMPLETED':
+        return all.where((t) => t.status == 'COMPLETED').toList();
+      default:
+        return all;
+    }
   }
 
   StatusBadge _statusBadge(String status) {
@@ -62,6 +79,10 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
   Widget build(BuildContext context) {
     final state = ref.watch(taskProvider);
     final notifier = ref.read(taskProvider.notifier);
+    // FID-22 field 1: số việc chưa xong hiện trên tab "Đang làm"
+    final activeCount = state.tasks
+        .where((t) => t.status == 'ASSIGNED' || t.status == 'IN_PROGRESS')
+        .length;
 
     return Column(
       children: [
@@ -75,11 +96,14 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (_, i) {
               final f = _filters[i];
-              final selected = state.statusFilter == f.value;
+              final selected = _filter == f.value;
+              final label = f.value == 'ACTIVE' && activeCount > 0
+                  ? '${f.label} ($activeCount)'
+                  : f.label;
               return ChoiceChip(
-                label: Text(f.label),
+                label: Text(label),
                 selected: selected,
-                onSelected: (_) => notifier.fetchTasks(status: f.value),
+                onSelected: (_) => setState(() => _filter = f.value),
                 selectedColor: AppColors.primary,
                 labelStyle: TextStyle(
                   fontSize: 12,
@@ -106,26 +130,26 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
       return _emptyOrError(
         icon: Icons.error_outline,
         message: state.errorMessage!,
-        onRetry: () => notifier.fetchTasks(status: state.statusFilter),
+        onRetry: () => notifier.fetchTasks(),
       );
     }
-    if (state.tasks.isEmpty) {
+    final visible = _applyFilter(state.tasks);
+    if (visible.isEmpty) {
       // AT1/AT2: trạng thái rỗng theo filter đang chọn
-      final f = state.statusFilter;
       return _emptyOrError(
         icon: Icons.assignment_outlined,
-        message: f == null
+        message: _filter == null
             ? 'Chưa có công việc nào được giao cho bạn.'
-            : 'Không có công việc "${f == 'ACTIVE' ? 'Đang làm' : 'Hoàn thành'}".',
+            : 'Không có công việc "${_filter == 'ACTIVE' ? 'Đang làm' : 'Hoàn thành'}".',
       );
     }
     return RefreshIndicator(
       color: AppColors.primary,
-      onRefresh: () => notifier.fetchTasks(status: state.statusFilter),
+      onRefresh: () => notifier.fetchTasks(),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: state.tasks.length,
-        itemBuilder: (_, i) => _taskCard(state.tasks[i]),
+        itemCount: visible.length,
+        itemBuilder: (_, i) => _taskCard(visible[i]),
       ),
     );
   }
@@ -139,8 +163,7 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
         onTap: () async {
           await context.push(AppRoutes.taskDetailPath(t.id));
           if (!mounted) return;
-          final notifier = ref.read(taskProvider.notifier);
-          notifier.fetchTasks(status: ref.read(taskProvider).statusFilter);
+          ref.read(taskProvider.notifier).fetchTasks();
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
