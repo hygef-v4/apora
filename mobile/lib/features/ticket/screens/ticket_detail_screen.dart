@@ -73,8 +73,12 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           color: AppColors.error,
           backgroundColor: AppColors.errorBg,
         );
-      default: // PENDING
-        return StatusBadge.warning(label);
+      default: // PENDING - cam (FID-20 field 1)
+        return const StatusBadge(
+          text: 'Chờ xử lý',
+          color: Color(0xFFEA580C),
+          backgroundColor: Color(0xFFFFEDD5),
+        );
     }
   }
 
