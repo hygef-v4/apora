@@ -8,6 +8,9 @@
  */
 
 import { HttpError } from '@/lib/middleware';
+import { withTransaction } from '@/lib/db';
+import { hashPassword, validatePhoneNumber } from '@/lib/auth';
+import { deleteImagesBatch } from '@/lib/cloudinary';
 import * as aptRepo from '@/repositories/apartment.repository';
 import { Apartment, ApartmentDetailResponse, ApartmentListItem, UserRole } from '@/types';
 
@@ -186,3 +189,253 @@ export async function modifyApartment(
   // Status, owner_id are kept unchanged.
   return aptRepo.updateApartment(id, floor.trim(), roomNumber.trim(), areaSize, baseRent);
 }
+
+/**
+ * Process check-in for an empty apartment (UC33).
+ * Creates a new Resident user, contract record, updates apartment status,
+ * inserts notifications and audit log. Done as a single ACID transaction (BR-65).
+ *
+ * @param actorId ID of the Landlord/Manager executing the action
+ * @param apartmentId Apartment ID
+ * @param data Check-in form parameters
+ * @returns The created contract record
+ */
+export async function processCheckin(
+  actorId: number,
+  apartmentId: number,
+  data: {
+    fullName: string;
+    phone: string;
+    startDate: string;
+    endDate: string;
+    depositValue?: number;
+  },
+): Promise<any> {
+  const { fullName, phone, startDate, endDate, depositValue } = data;
+
+  // Basic validations
+  if (!fullName || fullName.trim() === '') {
+    throw new HttpError(400, 'Vui lòng nhập họ và tên cư dân.');
+  }
+  if (!phone || phone.trim() === '') {
+    throw new HttpError(400, 'Vui lòng nhập số điện thoại.');
+  }
+  const phoneError = validatePhoneNumber(phone.trim());
+  if (phoneError) {
+    throw new HttpError(400, phoneError);
+  }
+  if (!startDate || !endDate) {
+    throw new HttpError(400, 'Vui lòng nhập ngày bắt đầu và kết thúc hợp đồng.');
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    throw new HttpError(400, 'Ngày hợp đồng không đúng định dạng.');
+  }
+  if (start >= end) {
+    throw new HttpError(400, 'Ngày bắt đầu hợp đồng phải trước ngày kết thúc.');
+  }
+  if (depositValue !== undefined && (isNaN(depositValue) || depositValue < 0)) {
+    throw new HttpError(400, 'Tiền đặt cọc phải là số không âm.');
+  }
+
+  // Execute check-in inside a transaction (BR-65)
+  return withTransaction(async (client) => {
+    // 1. Lock and verify apartment status is EMPTY (BR-47)
+    const aptRes = await client.query(
+      'SELECT id, unit_number, base_rent, status FROM apartments WHERE id = $1 FOR UPDATE',
+      [apartmentId],
+    );
+    const apartment = aptRes.rows[0];
+    if (!apartment) {
+      throw new HttpError(404, 'Không tìm thấy căn hộ trong hệ thống.');
+    }
+    if (apartment.status !== 'EMPTY') {
+      throw new HttpError(400, 'Căn hộ phải ở trạng thái EMPTY để thực hiện check-in.');
+    }
+
+    // 2. Verify unique phone number across the system (BR-02)
+    const userRes = await client.query(
+      'SELECT id FROM users WHERE phone_number = $1 FOR UPDATE',
+      [phone.trim()],
+    );
+    if (userRes.rows.length > 0) {
+      throw new HttpError(409, 'Số điện thoại này đã được sử dụng cho tài khoản khác.');
+    }
+
+    // 3. Create RESIDENT user with default password (BR-01)
+    const defaultPasswordHash = await hashPassword('Apora@123');
+    const newUserRes = await client.query(
+      `INSERT INTO users (phone_number, password_hash, full_name, roles, status, must_change_password)
+       VALUES ($1, $2, $3, ARRAY['RESIDENT']::text[], 'ACTIVE', TRUE)
+       RETURNING id, phone_number, full_name`,
+      [phone.trim(), defaultPasswordHash, fullName.trim()],
+    );
+    const residentId = newUserRes.rows[0].id;
+
+    // 4. Create Contract with snapshot rent amount
+    const contractRes = await client.query(
+      `INSERT INTO contracts (apartment_id, resident_id, start_date, end_date, base_rent_snapshot, status)
+       VALUES ($1, $2, $3, $4, $5, 'ACTIVE')
+       RETURNING *`,
+      [apartmentId, residentId, startDate, endDate, apartment.base_rent],
+    );
+    const contract = contractRes.rows[0];
+
+    // 5. Update apartment status to OCCUPIED and assign owner (BR-47)
+    await client.query(
+      `UPDATE apartments
+       SET status = 'OCCUPIED', owner_id = $2
+       WHERE id = $1`,
+      [apartmentId, residentId],
+    );
+
+    // 6. Log the action to audit_logs (BR-04)
+    await client.query(
+      `INSERT INTO audit_logs (actor_id, target_user_id, action, old_value, new_value, reason)
+       VALUES ($1, $2, 'APARTMENT_CHECKIN', NULL, $3, $4)`,
+      [
+        actorId,
+        residentId,
+        {
+          apartmentId,
+          unitNumber: apartment.unit_number,
+          contractId: contract.id,
+          startDate,
+          endDate,
+        },
+        `Nhận phòng căn hộ ${apartment.unit_number}`,
+      ],
+    );
+
+    // 7. Send a notification to the new resident
+    await client.query(
+      `INSERT INTO notifications (user_id, title, body, type, reference_id)
+       VALUES ($1, $2, $3, 'SYSTEM', $4)`,
+      [
+        residentId,
+        'Nhận phòng thành công',
+        `Chào mừng bạn đến với căn hộ ${apartment.unit_number}! Mật khẩu đăng nhập mặc định của bạn là: Apora@123`,
+        apartmentId,
+      ],
+    );
+
+    return contract;
+  });
+}
+
+/**
+ * Process check-out for an occupied apartment (UC34).
+ * Terminates active contract, soft-deletes the resident, anonymizes roommates,
+ * revokes FCM tokens, updates apartment status to EMPTY. Done as a single ACID transaction (BR-65).
+ * Batch deletes roommate images from Cloudinary (BR-20).
+ *
+ * @param actorId ID of the Landlord/Manager executing the action
+ * @param apartmentId Apartment ID
+ */
+export async function processCheckout(
+  actorId: number,
+  apartmentId: number,
+): Promise<void> {
+  const roommatesToPurge: any[] = await withTransaction(async (client) => {
+    // 1. Lock and verify apartment is OCCUPIED (BR-47)
+    const aptRes = await client.query(
+      'SELECT id, unit_number, owner_id, status FROM apartments WHERE id = $1 FOR UPDATE',
+      [apartmentId],
+    );
+    const apartment = aptRes.rows[0];
+    if (!apartment) {
+      throw new HttpError(404, 'Không tìm thấy căn hộ trong hệ thống.');
+    }
+    if (apartment.status !== 'OCCUPIED' || !apartment.owner_id) {
+      throw new HttpError(400, 'Căn hộ phải ở trạng thái OCCUPIED để thực hiện check-out.');
+    }
+    const residentId = apartment.owner_id;
+
+    // 2. Terminate the active contract
+    await client.query(
+      `UPDATE contracts
+       SET status = 'EXPIRED'
+       WHERE apartment_id = $1 AND status = 'ACTIVE'`,
+      [apartmentId],
+    );
+
+    // 3. Soft-delete resident: status to INACTIVE, bump token_version (BR-49, BR-07)
+    await client.query(
+      `UPDATE users
+       SET status = 'INACTIVE', token_version = token_version + 1
+       WHERE id = $1`,
+      [residentId],
+    );
+
+    // 4. Revoke active device FCM tokens
+    await client.query(
+      `UPDATE device_tokens
+       SET status = 'REVOKED', revoked_at = NOW()
+       WHERE user_id = $1 AND status = 'ACTIVE'`,
+      [residentId],
+    );
+
+    // 5. Query and collect roommate images for Cloudinary deletion (BR-20)
+    const roommatesRes = await client.query(
+      `SELECT id, cccd_front_url, cccd_back_url 
+       FROM roommates 
+       WHERE apartment_id = $1`,
+      [apartmentId],
+    );
+    const roommates = roommatesRes.rows;
+
+    // 6. Anonymize roommates: nullify photo URLs and mask CCCD (BR-20)
+    await client.query(
+      `UPDATE roommates
+       SET cccd_front_url = NULL,
+           cccd_back_url = NULL,
+           cccd_number = 'MASK_' || id
+       WHERE apartment_id = $1`,
+      [apartmentId],
+    );
+
+    // 7. Update apartment status to EMPTY and clear owner (BR-47)
+    await client.query(
+      `UPDATE apartments
+       SET status = 'EMPTY', owner_id = NULL
+       WHERE id = $1`,
+      [apartmentId],
+    );
+
+    // 8. Log the action to audit_logs (BR-04)
+    await client.query(
+      `INSERT INTO audit_logs (actor_id, target_user_id, action, old_value, new_value, reason)
+       VALUES ($1, $2, 'APARTMENT_CHECKOUT', $3, NULL, $4)`,
+      [
+        actorId,
+        residentId,
+        {
+          apartmentId,
+          unitNumber: apartment.unit_number,
+        },
+        `Trả phòng căn hộ ${apartment.unit_number}`,
+      ],
+    );
+
+    return roommates;
+  });
+
+  // Batch delete Cloudinary files asynchronously outside the SQL transaction block
+  const urlsToPurge: string[] = [];
+  for (const rm of roommatesToPurge) {
+    if (rm.cccd_front_url) urlsToPurge.push(rm.cccd_front_url);
+    if (rm.cccd_back_url) urlsToPurge.push(rm.cccd_back_url);
+  }
+
+  if (urlsToPurge.length > 0) {
+    deleteImagesBatch(urlsToPurge).catch((error) => {
+      console.error(
+        `[ApartmentService] Xóa ảnh CCCD roommates trên Cloudinary thất bại cho căn hộ ${apartmentId}:`,
+        error,
+      );
+    });
+  }
+}
+

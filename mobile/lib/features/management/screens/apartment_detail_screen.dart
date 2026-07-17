@@ -389,11 +389,7 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
                       if (detail.status == 'EMPTY')
                         ElevatedButton.icon(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Tính năng Check-in sẽ có ở module Tenancy Management (Module 2).'),
-                              ),
-                            );
+                            context.push('/manager/apartments/${detail.id}/checkin');
                           },
                           icon: const Icon(Icons.login),
                           label: const Text('Nhận phòng (Check-in)'),
@@ -409,11 +405,7 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
                       else if (detail.status == 'OCCUPIED')
                         OutlinedButton.icon(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Tính năng Checkout sẽ có ở module Tenancy Management (Module 2).'),
-                              ),
-                            );
+                            context.push('/manager/apartments/${detail.id}/checkout');
                           },
                           icon: const Icon(Icons.logout, color: AppColors.warning),
                           label: const Text('Trả phòng (Checkout)', style: TextStyle(color: AppColors.warning)),
