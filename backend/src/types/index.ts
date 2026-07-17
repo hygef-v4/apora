@@ -97,6 +97,8 @@ export interface Apartment {
   floor: string;
   owner_id: number | null;
   status: ApartmentStatus;
+  area_size: number;
+  base_rent: number;
 }
 
 /** Bảng REPAIR_TICKETS (theo SD Module 4 - RepairTicket entity). */
@@ -366,3 +368,65 @@ export interface JwtPayload {
   iat?: number;
   exp?: number;
 }
+
+// ==========================================
+// Module 6: Apartment Management DTOs
+// ==========================================
+
+export interface ApartmentListItem extends Apartment {
+  owner_name: string | null;
+  owner_phone: string | null;
+  unpaid_invoice_count: number;
+  unresolved_ticket_count: number;
+}
+
+export interface ApartmentDetailResponse {
+  id: number;
+  unit_number: string;
+  floor: string;
+  status: ApartmentStatus;
+  area_size: number;
+  base_rent: number;
+  owner_id: number | null;
+  owner_name: string | null;
+  owner_phone: string | null;
+  roommates: {
+    id: number;
+    full_name: string;
+    phone_number: string | null;
+    cccd_number: string;
+    cccd_front_url: string | null;
+    cccd_back_url: string | null;
+    status: string;
+    created_at: Date;
+  }[];
+  recent_bills: {
+    id: number;
+    month_year: string;
+    total_amount: number;
+    status: string;
+    created_at: Date;
+  }[] | null;
+  recent_tickets: {
+    id: number;
+    category: string;
+    description: string;
+    status: string;
+    created_at: Date;
+  }[];
+}
+
+export interface CreateApartmentRequest {
+  floor: string;
+  roomNumber: string;
+  areaSize: number;
+  baseRent: number;
+}
+
+export interface UpdateApartmentRequest {
+  floor: string;
+  roomNumber: string;
+  areaSize: number;
+  baseRent: number;
+}
+

@@ -123,6 +123,18 @@ export async function findPaymentByOrderId(orderId: string): Promise<Payment | n
   return res.rows[0] || null;
 }
 
+/** Find the latest pending payment for an invoice. */
+export async function findLatestPendingPaymentByInvoiceId(invoiceId: number): Promise<Payment | null> {
+  const res = await query(
+    `SELECT * FROM payments
+     WHERE invoice_id = $1 AND status = 'PENDING'
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [invoiceId],
+  );
+  return res.rows[0] || null;
+}
+
 /** Update payment transaction log status. */
 export async function updatePaymentStatus(
   orderId: string,

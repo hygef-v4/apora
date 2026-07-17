@@ -169,6 +169,14 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppCard(
+        // UC20 (TRG-01): bấm thẻ mở chi tiết; quay lại làm mới theo bộ lọc
+        // hiện tại (Manager có thể vừa đổi trạng thái trong màn chi tiết).
+        onTap: () async {
+          await context.push(AppRoutes.ticketDetailPath(t.id));
+          if (!mounted) return;
+          final notifier = ref.read(ticketProvider.notifier);
+          notifier.fetchTickets(status: ref.read(ticketProvider).statusFilter);
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

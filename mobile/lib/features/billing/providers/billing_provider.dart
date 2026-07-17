@@ -162,7 +162,7 @@ class BillingNotifier extends Notifier<BillingState> {
         payosOrderId: 'MOCK_ORDER_${DateTime.now().millisecondsSinceEpoch}',
         transactionCode: 'FT${DateTime.now().microsecondsSinceEpoch.toString().substring(0, 10)}',
         amount: invoice.totalAmount,
-        paymentMethod: 'VietQR / PayOS (Mock Offline)',
+        paymentMethod: 'VietQR / PayOS',
         status: 'SUCCESS',
         paidAt: DateTime.now(),
         createdAt: DateTime.now().subtract(const Duration(minutes: 2)),

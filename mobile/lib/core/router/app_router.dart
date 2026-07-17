@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -22,6 +22,11 @@ import '../../features/management/screens/staff_detail_screen.dart';
 import '../../features/management/screens/staff_edit_screen.dart';
 import '../../features/management/screens/staff_form_screen.dart';
 import '../../features/management/screens/staff_list_screen.dart';
+import '../../features/management/screens/apartment_list_screen.dart';
+import '../../features/management/screens/apartment_detail_screen.dart';
+import '../../features/management/screens/apartment_form_screen.dart';
+import '../../features/management/models/apartment.dart';
+import '../../features/management/providers/apartment_notifier.dart';
 import '../../features/billing/models/invoice.dart';
 import '../../features/billing/models/payment.dart';
 import '../../features/billing/screens/payment_webview.dart';
@@ -37,6 +42,7 @@ import '../../features/ticket/screens/ticket_list_screen.dart';
 import '../../features/ticket/screens/ticket_create_screen.dart';
 import '../../features/chat/screens/chat_list_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
+import '../../features/ticket/screens/ticket_detail_screen.dart';
 
 /// Đường dẫn route tập trung.
 class AppRoutes {
@@ -84,9 +90,16 @@ class AppRoutes {
   static const String roommateRegister = '/resident/roommates/register';
   static const String managerRoommates = '/manager/roommates';
 
+  // Module 6: Quản lý Căn hộ (UC29-UC32)
+  static const String apartmentList = '/manager/apartments';
+  static const String apartmentCreate = '/manager/apartments/create';
+  static String apartmentDetailPath(int id) => '/manager/apartments/$id';
+  static String apartmentEditPath(int id) => '/manager/apartments/$id/edit';
+
   // Module 4: Sự cố & Công việc (UC18-UC23)
   static const String tickets = '/tickets';
   static const String ticketCreate = '/tickets/create';
+  static String ticketDetailPath(int id) => '/tickets/$id';
 }
 
 /// Xác định màn hình chính theo role (UC01 bước 4):
@@ -307,6 +320,48 @@ final routerProvider = Provider<GoRouter>((ref) {
           roommateId: int.parse(state.pathParameters['id']!),
         ),
       ),
+      // Module 6: Căn hộ (UC29-UC32)
+      GoRoute(
+        path: AppRoutes.apartmentList,
+        builder: (context, state) => const ApartmentListScreen(showBack: true),
+      ),
+      GoRoute(
+        path: AppRoutes.apartmentCreate,
+        builder: (context, state) => const ApartmentFormScreen(),
+      ),
+      GoRoute(
+        path: '/manager/apartments/:id',
+        builder: (context, state) => ApartmentDetailScreen(
+          apartmentId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/manager/apartments/:id/edit',
+        builder: (context, state) {
+          final apartment = state.extra as Apartment?;
+          if (apartment != null) {
+            return ApartmentFormScreen(apartment: apartment);
+          }
+          final detail = ref.read(apartmentDetailProvider).value;
+          if (detail != null) {
+            final apt = Apartment(
+              id: detail.id,
+              unitNumber: detail.unitNumber,
+              floor: detail.floor,
+              status: detail.status,
+              areaSize: detail.areaSize,
+              baseRent: detail.baseRent,
+              ownerId: detail.ownerId,
+              ownerName: detail.ownerName,
+              ownerPhone: detail.ownerPhone,
+              unpaidInvoiceCount: 0,
+              unresolvedTicketCount: 0,
+            );
+            return ApartmentFormScreen(apartment: apt);
+          }
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        },
+      ),
       // Module 4: Sự cố & Công việc (UC18-UC23)
       GoRoute(
         path: AppRoutes.ticketCreate,
@@ -315,6 +370,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.tickets,
         builder: (context, state) => const TicketListScreen(showBack: true),
+      ),
+      // Đăng ký sau '/tickets/create' để ':id' không nuốt mất 'create'
+      GoRoute(
+        path: '/tickets/:id',
+        builder: (context, state) => TicketDetailScreen(
+          ticketId: int.parse(state.pathParameters['id']!),
+        ),
       ),
     ],
   );

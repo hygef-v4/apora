@@ -8,7 +8,7 @@
  */
 
 import { query } from '@/lib/db';
-import { RepairTicket, TicketStatus } from '@/types';
+import { RepairTicket, TaskStatus, TicketStatus } from '@/types';
 
 /** Dòng repair_tickets kèm unit_number (join apartments) cho danh sách/chi tiết. */
 export interface TicketRow extends RepairTicket {
@@ -87,6 +87,78 @@ export async function findActiveApartmentByResident(
     [residentId],
   );
   return result.rows[0] ?? null;
+}
+
+/**
+ * Dòng chi tiết sự cố (UC20): ticket + người báo cáo + task mới nhất (nếu có).
+ * Cột task_* NULL khi ticket chưa được phân công (UC21).
+ */
+export interface TicketDetailRow extends TicketRow {
+  resident_name: string;
+  resident_phone: string;
+  task_id: number | null;
+  task_assigned_to: number | null;
+  task_assignee_name: string | null;
+  task_title: string | null;
+  task_status: TaskStatus | null;
+  task_assigned_at: Date | null;
+  task_completed_at: Date | null;
+}
+
+/**
+ * UC20: chi tiết một sự cố theo id.
+ * Join users để lấy người báo cáo; LATERAL lấy task mới nhất gắn với ticket
+ * (thiết kế 1 ticket - 1 task, LIMIT 1 phòng thủ nếu có dữ liệu cũ trùng).
+ */
+export async function findTicketDetailById(id: number): Promise<TicketDetailRow | null> {
+  const result = await query(
+    `SELECT rt.*, a.unit_number,
+            u.full_name  AS resident_name,
+            u.phone_number AS resident_phone,
+            t.id          AS task_id,
+            t.assigned_to AS task_assigned_to,
+            su.full_name  AS task_assignee_name,
+            t.title       AS task_title,
+            t.status      AS task_status,
+            t.assigned_at AS task_assigned_at,
+            t.completed_at AS task_completed_at
+     FROM repair_tickets rt
+     JOIN apartments a ON a.id = rt.apartment_id
+     JOIN users u ON u.id = rt.resident_id
+     LEFT JOIN LATERAL (
+       SELECT * FROM tasks
+       WHERE ticket_id = rt.id
+       ORDER BY assigned_at DESC
+       LIMIT 1
+     ) t ON TRUE
+     LEFT JOIN users su ON su.id = t.assigned_to
+     WHERE rt.id = $1`,
+    [id],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * UC20: đổi trạng thái + ghi chú nội bộ (transition đã validate ở service - BR-40).
+ * - internalNotes null = giữ nguyên ghi chú cũ.
+ * - purgeImages true (khi CANCELLED - BR-38): xóa luôn URL ảnh trong DB,
+ *   ảnh trên Cloudinary do service xóa.
+ */
+export async function updateTicketStatus(
+  id: number,
+  status: TicketStatus,
+  internalNotes: string | null,
+  purgeImages: boolean,
+): Promise<void> {
+  await query(
+    `UPDATE repair_tickets
+     SET status = $2,
+         internal_notes = COALESCE($3, internal_notes),
+         before_images = CASE WHEN $4 THEN '{}'::text[] ELSE before_images END,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [id, status, internalNotes, purgeImages],
+  );
 }
 
 /**
