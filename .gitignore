@@ -50,6 +50,8 @@ backend/node_modules/
 backend/.next/
 backend/out/
 backend/build/
+# Cache build incremental của TypeScript - sinh lại mỗi lần compile
+*.tsbuildinfo
 
 # npm/yarn debug logs
 npm-debug.log*

@@ -7,6 +7,10 @@ class Ticket {
   final List<String> beforeImages;
   final String status; // PENDING | ASSIGNED | PROCESSING | RESOLVED | CANCELLED
   final String unitNumber;
+  /// FID-18 field 8: tên cư dân báo sự cố.
+  final String reporterName;
+  /// FID-18 field 9: nhân viên đang được giao; null khi chưa phân công.
+  final String? assigneeName;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -17,6 +21,8 @@ class Ticket {
     required this.beforeImages,
     required this.status,
     required this.unitNumber,
+    required this.reporterName,
+    this.assigneeName,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -30,6 +36,8 @@ class Ticket {
           (json['beforeImages'] as List?)?.map((e) => e as String).toList() ?? const [],
       status: json['status'] as String,
       unitNumber: json['unitNumber'] as String,
+      reporterName: json['residentName'] as String? ?? '',
+      assigneeName: json['assigneeName'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -87,6 +95,8 @@ class TicketDetail extends Ticket {
     required super.beforeImages,
     required super.status,
     required super.unitNumber,
+    required super.reporterName,
+    super.assigneeName,
     required super.createdAt,
     required super.updatedAt,
     required this.residentId,
@@ -105,6 +115,8 @@ class TicketDetail extends Ticket {
       beforeImages: base.beforeImages,
       status: base.status,
       unitNumber: base.unitNumber,
+      reporterName: base.reporterName,
+      assigneeName: base.assigneeName,
       createdAt: base.createdAt,
       updatedAt: base.updatedAt,
       residentId: json['residentId'] as int,

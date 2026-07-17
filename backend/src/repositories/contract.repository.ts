@@ -6,6 +6,7 @@
 
 import { query } from '@/lib/db';
 import { PoolClient } from 'pg';
+import { ApartmentStatus, ContractStatus } from '@/types';
 
 /**
  * Insert a new contract record.
@@ -62,4 +63,82 @@ export async function terminateActiveContract(
   } else {
     await query(sql, params);
   }
+}
+
+// ==========================================
+// Module 2: UC06-UC09 (Tenancy & Stay Extension)
+// ==========================================
+
+/** Dòng contracts kèm thông tin căn hộ (join apartments) cho UC06/UC09. */
+export interface ContractWithApartmentRow {
+  id: number;
+  apartment_id: number;
+  resident_id: number;
+  start_date: Date;
+  end_date: Date;
+  base_rent_snapshot: string; // NUMERIC trả về string từ pg
+  status: ContractStatus;
+  created_at: Date;
+  unit_number: string;
+  floor: string;
+  apartment_status: ApartmentStatus;
+}
+
+/**
+ * UC06: hợp đồng của cư dân - ưu tiên ACTIVE, không có thì lấy bản mới nhất
+ * (để AT1 hiển thị hợp đồng EXPIRED). BR-23: chỉ query theo resident_id.
+ */
+export async function findLatestContractByResident(
+  residentId: number,
+): Promise<ContractWithApartmentRow | null> {
+  const result = await query(
+    `SELECT c.*, a.unit_number, a.floor, a.status AS apartment_status
+     FROM contracts c
+     JOIN apartments a ON a.id = c.apartment_id
+     WHERE c.resident_id = $1
+     ORDER BY (c.status = 'ACTIVE') DESC, c.created_at DESC
+     LIMIT 1`,
+    [residentId],
+  );
+  return result.rows[0] ?? null;
+}
+
+/** Dòng apartments tối giản cho UC06 AT2 (cư dân có phòng nhưng chưa có hợp đồng). */
+export interface ResidentApartmentRow {
+  id: number;
+  unit_number: string;
+  floor: string;
+  status: ApartmentStatus;
+}
+
+/** UC06 AT2: căn hộ mà cư dân đứng tên (owner_id) khi chưa có hợp đồng nào. */
+export async function findApartmentByOwner(
+  residentId: number,
+): Promise<ResidentApartmentRow | null> {
+  const result = await query(
+    `SELECT id, unit_number, floor, status
+     FROM apartments WHERE owner_id = $1
+     ORDER BY id LIMIT 1`,
+    [residentId],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * UC09 (BR-17): dời end_date khi duyệt gia hạn - chạy TRONG transaction.
+ * Chỉ áp dụng cho hợp đồng còn ACTIVE (AT3: hợp đồng đã bị kết thúc
+ * bởi Manager khác thì trả false để service báo lỗi 409).
+ */
+export async function extendContractEndDate(
+  client: PoolClient,
+  contractId: number,
+  newEndDate: string,
+): Promise<boolean> {
+  const result = await client.query(
+    `UPDATE contracts SET end_date = $2
+     WHERE id = $1 AND status = 'ACTIVE'
+     RETURNING id`,
+    [contractId, newEndDate],
+  );
+  return (result.rowCount ?? 0) > 0;
 }

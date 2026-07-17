@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
@@ -71,8 +73,12 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           color: AppColors.error,
           backgroundColor: AppColors.errorBg,
         );
-      default: // PENDING
-        return StatusBadge.warning(label);
+      default: // PENDING - cam (FID-20 field 1)
+        return const StatusBadge(
+          text: 'Chờ xử lý',
+          color: Color(0xFFEA580C),
+          backgroundColor: Color(0xFFFFEDD5),
+        );
     }
   }
 
@@ -371,6 +377,39 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                     value: _formatDate(ticket.assignedTask!.completedAt!),
                   ),
               ],
+            ),
+          ),
+        ],
+
+        // UC21: ticket PENDING -> Manager phân công tạo task cho nhân viên
+        if (isManager && ticket.status == 'PENDING') ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.assignment_ind_outlined),
+              label: const Text('PHÂN CÔNG CHO NHÂN VIÊN',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              onPressed: () async {
+                final assigned = await context.push<bool>(
+                  AppRoutes.ticketAssignPath(ticket.id),
+                  extra: ticket,
+                );
+                // Phân công xong -> tải lại chi tiết (đã ASSIGNED + có task)
+                if (assigned == true && mounted) {
+                  ref
+                      .read(ticketDetailProvider.notifier)
+                      .fetch(widget.ticketId);
+                }
+              },
             ),
           ),
         ],

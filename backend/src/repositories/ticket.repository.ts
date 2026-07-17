@@ -7,13 +7,33 @@
  * @see docs/PRM393_SoftwareDesign_Group5.docx - Module 4 (RepairTicketRepository)
  */
 
+import { PoolClient } from 'pg';
 import { query } from '@/lib/db';
-import { RepairTicket, TaskStatus, TicketStatus } from '@/types';
+import { RepairTicket, StaffRole, TaskStatus, TicketStatus } from '@/types';
 
-/** Dòng repair_tickets kèm unit_number (join apartments) cho danh sách/chi tiết. */
+/**
+ * Dòng repair_tickets kèm unit_number + tên người báo + tên nhân viên đang
+ * được giao (FID-18 field 8-9; null khi ticket chưa phân công).
+ */
 export interface TicketRow extends RepairTicket {
   unit_number: string;
+  resident_name: string;
+  assignee_name: string | null;
 }
+
+/** SELECT chung cho danh sách UC18: join căn hộ, người báo và task mới nhất. */
+const TICKET_LIST_SELECT = `
+  SELECT rt.*, a.unit_number, u.full_name AS resident_name,
+         asg.full_name AS assignee_name
+  FROM repair_tickets rt
+  JOIN apartments a ON a.id = rt.apartment_id
+  JOIN users u ON u.id = rt.resident_id
+  LEFT JOIN LATERAL (
+    SELECT t.assigned_to FROM tasks t
+    WHERE t.ticket_id = rt.id AND t.status <> 'CANCELLED'
+    ORDER BY t.assigned_at DESC LIMIT 1
+  ) lt ON TRUE
+  LEFT JOIN users asg ON asg.id = lt.assigned_to`;
 
 /**
  * UC18 (Resident): danh sách sự cố do chính cư dân này báo.
@@ -31,9 +51,7 @@ export async function findTicketsByResident(
   }
 
   const result = await query(
-    `SELECT rt.*, a.unit_number
-     FROM repair_tickets rt
-     JOIN apartments a ON a.id = rt.apartment_id
+    `${TICKET_LIST_SELECT}
      WHERE rt.resident_id = $1${statusClause}
      ORDER BY rt.created_at DESC`,
     params,
@@ -54,9 +72,7 @@ export async function findAllTickets(status?: TicketStatus): Promise<TicketRow[]
   }
 
   const result = await query(
-    `SELECT rt.*, a.unit_number
-     FROM repair_tickets rt
-     JOIN apartments a ON a.id = rt.apartment_id${statusClause}
+    `${TICKET_LIST_SELECT}${statusClause}
      ORDER BY rt.created_at DESC`,
     params,
   );
@@ -158,6 +174,93 @@ export async function updateTicketStatus(
          updated_at = NOW()
      WHERE id = $1`,
     [id, status, internalNotes, purgeImages],
+  );
+}
+
+// ==========================================
+// UC21: Assign Task
+// ==========================================
+
+/** 1 nhân viên khả dụng để phân công (UC21 - BR-41). */
+export interface AssignableStaffRow {
+  id: number;
+  full_name: string;
+  roles: StaffRole[];
+  open_task_count: number;
+}
+
+/**
+ * UC21 (BR-41): danh sách nhân viên ACTIVE thuộc CẢ 3 role vận hành
+ * (SECURITY_GUARD / JANITOR / TECHNICIAN) kèm số task đang hoạt động
+ * (ASSIGNED + IN_PROGRESS) để Manager cân nhắc tải việc.
+ */
+export async function findAssignableStaff(): Promise<AssignableStaffRow[]> {
+  const result = await query(
+    `SELECT u.id, u.full_name, u.roles,
+            COALESCE(t.open_count, 0)::int AS open_task_count
+     FROM users u
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*) AS open_count
+       FROM tasks
+       WHERE tasks.assigned_to = u.id
+         AND tasks.status IN ('ASSIGNED', 'IN_PROGRESS')
+     ) t ON TRUE
+     WHERE u.roles && ARRAY['SECURITY_GUARD','JANITOR','TECHNICIAN']::text[]
+       AND u.status = 'ACTIVE'
+     ORDER BY t.open_count ASC, u.full_name ASC`,
+  );
+  return result.rows;
+}
+
+/**
+ * UC21: nhân viên hợp lệ để nhận việc - phải ACTIVE và giữ role vận hành.
+ * Trả null nếu không thỏa (service báo lỗi 400).
+ */
+export async function findAssignableStaffById(
+  staffId: number,
+): Promise<AssignableStaffRow | null> {
+  const result = await query(
+    `SELECT u.id, u.full_name, u.roles, 0::int AS open_task_count
+     FROM users u
+     WHERE u.id = $1
+       AND u.status = 'ACTIVE'
+       AND u.roles && ARRAY['SECURITY_GUARD','JANITOR','TECHNICIAN']::text[]`,
+    [staffId],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * UC21 (chạy trong transaction): chuyển ticket PENDING -> ASSIGNED.
+ * Điều kiện status = 'PENDING' nằm ngay trong UPDATE để chống race khi
+ * 2 Manager phân công cùng lúc (AT3) - trả false nếu ticket đã đổi trạng thái.
+ */
+export async function markTicketAssigned(
+  client: PoolClient,
+  ticketId: number,
+): Promise<boolean> {
+  const result = await client.query(
+    `UPDATE repair_tickets
+     SET status = 'ASSIGNED', updated_at = NOW()
+     WHERE id = $1 AND status = 'PENDING'
+     RETURNING id`,
+    [ticketId],
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+/**
+ * UC23 (chạy trong transaction): đồng bộ trạng thái ticket theo tiến độ task
+ * (task IN_PROGRESS -> ticket PROCESSING, task COMPLETED -> ticket RESOLVED).
+ */
+export async function setTicketStatus(
+  client: PoolClient,
+  ticketId: number,
+  status: TicketStatus,
+): Promise<void> {
+  await client.query(
+    `UPDATE repair_tickets SET status = $2, updated_at = NOW() WHERE id = $1`,
+    [ticketId, status],
   );
 }
 

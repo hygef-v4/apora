@@ -3,13 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
-import '../../../core/widgets/coming_soon.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
+import '../../ticket/screens/task_list_screen.dart';
 
 /// Khung danh sách công việc cho Staff — theo màn 19 trong thiết kế.
-/// Dữ liệu Task thật sẽ nối khi làm Module 4 (Incident & Task).
+/// Thân danh sách là TaskListBody (UC22 - Module 4).
 class TaskBoardScreen extends ConsumerWidget {
   const TaskBoardScreen({super.key});
 
@@ -65,14 +65,8 @@ class TaskBoardScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const Expanded(
-            child: ComingSoon(
-              icon: Icons.assignment,
-              title: 'Công việc của tôi',
-              moduleNote:
-                  'danh sách công việc được giao sẽ có ở Module 4 (Incident & Task)',
-            ),
-          ),
+          // UC22: danh sách công việc được giao (filter + pull-to-refresh)
+          const Expanded(child: TaskListBody()),
         ],
       ),
     );
