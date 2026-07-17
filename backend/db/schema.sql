@@ -240,3 +240,7 @@ CREATE TABLE IF NOT EXISTS pricing_settings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_pricing_settings_effective ON pricing_settings (effective_from DESC);
+
+-- UC28: Live Chat Extensions
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_image BOOLEAN DEFAULT FALSE;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;

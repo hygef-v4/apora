@@ -44,7 +44,6 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
     final notificationsAsyncValue = ref.watch(notificationListProvider);
     final user = ref.watch(authNotifierProvider).user;
     final isManagerOrLandlord = user?.isManagement == true;
-    final isLoadingMore = ref.watch(notificationListProvider.notifier).isLoadingMore;
 
     return Scaffold(
       backgroundColor: AppColors.background,

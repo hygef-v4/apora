@@ -12,6 +12,7 @@ import '../../../core/widgets/initials_avatar.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../../billing/screens/invoice_list_screen.dart';
 import '../../ticket/screens/ticket_list_screen.dart';
+import '../../chat/screens/chat_screen.dart';
 
 
 /// Khung trang chủ Cư dân — theo màn 10 trong thiết kế.
@@ -133,11 +134,10 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
 
           // Tab Yêu cầu -> danh sách sự cố của cư dân (UC18/UC19, nhúng nên không back)
           const TicketListScreen(),
-          const _ResidentComingSoon(
-            title: 'Tin nhắn',
-            icon: Icons.chat_bubble,
-            note: 'sẽ có ở Module 5 (Live Chat)',
-          ),
+          
+          // Tab Tin nhắn (Live Chat - UC28)
+          const ChatScreen(title: 'Chat với Ban Quản Lý'),
+          
           // Tab Cá nhân
           Column(
             children: [

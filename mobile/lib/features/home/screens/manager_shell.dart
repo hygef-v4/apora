@@ -229,6 +229,21 @@ class _ManagementHubTab extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 10),
+              AppCard(
+                onTap: () => context.push(AppRoutes.chatList),
+                child: const _HubRow(
+                  icon: Icons.chat,
+                  iconBg: AppColors.infoBg,
+                  iconColor: AppColors.primary,
+                  title: 'Hỗ trợ cư dân (Live Chat)',
+                  subtitle: 'Trao đổi và giải đáp thắc mắc',
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
             ],
           ),
         ),

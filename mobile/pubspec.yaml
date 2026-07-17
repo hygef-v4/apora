@@ -49,6 +49,7 @@ dependencies:
   firebase_messaging: ^16.4.1
   flutter_local_notifications: ^22.0.1
   intl: ^0.20.3
+  pusher_channels_flutter: ^2.6.0
 
 dev_dependencies:
   flutter_test:

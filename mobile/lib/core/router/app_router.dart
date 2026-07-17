@@ -35,6 +35,8 @@ import '../../features/roommate/screens/manager_roommate_list_screen.dart';
 import '../../features/roommate/screens/manager_roommate_detail_screen.dart';
 import '../../features/ticket/screens/ticket_list_screen.dart';
 import '../../features/ticket/screens/ticket_create_screen.dart';
+import '../../features/chat/screens/chat_list_screen.dart';
+import '../../features/chat/screens/chat_screen.dart';
 
 /// Đường dẫn route tập trung.
 class AppRoutes {
@@ -71,6 +73,11 @@ class AppRoutes {
   static const String announce = '/manager/announce';
   static const String notifications = '/notifications';
   static const String notificationDetail = '/notifications/detail';
+
+  // Module Chat
+  static const String chatList = '/manager/chat';
+  static const String chatResident = '/resident/chat';
+  static String chatDetailPath(int id) => '/manager/chat/$id';
 
   // Module 2: Thành viên phòng (UC10-UC12)
   static const String roommates = '/resident/roommates';
@@ -263,6 +270,23 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final notif = state.extra as dynamic; // Cast to NotificationModel in screen
           return NotificationDetailScreen(notification: notif);
+        },
+      ),
+      // Module Chat
+      GoRoute(
+        path: AppRoutes.chatList,
+        builder: (context, state) => const ManagerChatListScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.chatResident,
+        builder: (context, state) => const ChatScreen(title: 'Chat với Ban Quản Lý'),
+      ),
+      GoRoute(
+        path: '/manager/chat/:id',
+        builder: (context, state) {
+          final residentId = int.parse(state.pathParameters['id']!);
+          final title = state.extra as String? ?? 'Chat với Cư Dân';
+          return ChatScreen(partnerId: residentId, title: title);
         },
       ),
       GoRoute(
