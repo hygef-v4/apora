@@ -26,6 +26,24 @@ class ChatSessionModel {
     );
   }
 
+  ChatSessionModel copyWith({
+    int? residentId,
+    String? residentName,
+    String? lastMessage,
+    bool? isLastMessageImage,
+    int? unreadCount,
+    DateTime? updatedAt,
+  }) {
+    return ChatSessionModel(
+      residentId: residentId ?? this.residentId,
+      residentName: residentName ?? this.residentName,
+      lastMessage: lastMessage ?? this.lastMessage,
+      isLastMessageImage: isLastMessageImage ?? this.isLastMessageImage,
+      unreadCount: unreadCount ?? this.unreadCount,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'resident_id': residentId,

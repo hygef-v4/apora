@@ -7,7 +7,7 @@ import '../repositories/chat_repository.dart';
 import '../services/pusher_service.dart';
 
 // Provides the list of active chat sessions for Managers
-final chatSessionsProvider = AsyncNotifierProvider<ChatSessionsNotifier, List<ChatSessionModel>>(
+final chatSessionsProvider = AsyncNotifierProvider.autoDispose<ChatSessionsNotifier, List<ChatSessionModel>>(
   ChatSessionsNotifier.new,
 );
 
@@ -22,10 +22,24 @@ class ChatSessionsNotifier extends AsyncNotifier<List<ChatSessionModel>> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => ref.read(chatRepositoryProvider).getChatSessions());
   }
+
+  void markSessionAsRead(int? partnerId) {
+    if (partnerId == null || !state.hasValue) return;
+    
+    final currentState = state.value!;
+    final updatedList = currentState.map((session) {
+      if (session.residentId == partnerId) {
+        return session.copyWith(unreadCount: 0);
+      }
+      return session;
+    }).toList();
+    
+    state = AsyncData(updatedList);
+  }
 }
 
 // Provides the messages for the currently open chat
-final chatMessagesProvider = AsyncNotifierProvider<ChatMessagesNotifier, List<ChatMessageModel>>(
+final chatMessagesProvider = AsyncNotifierProvider.autoDispose<ChatMessagesNotifier, List<ChatMessageModel>>(
   ChatMessagesNotifier.new,
 );
 
@@ -124,6 +138,9 @@ class ChatMessagesNotifier extends AsyncNotifier<List<ChatMessageModel>> {
         final updatedList = currentState.map((m) => m.copyWith(isRead: true)).toList();
         state = AsyncData(updatedList);
       }
+      
+      // Update the chat session list unread count
+      ref.read(chatSessionsProvider.notifier).markSessionAsRead(_partnerId);
     } catch (e) {
       // ignore
     }

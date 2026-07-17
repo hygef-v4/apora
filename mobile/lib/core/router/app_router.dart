@@ -186,6 +186,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/',
+        redirect: (context, state) {
+          final auth = authListenable.value;
+          return auth.isAuthenticated ? homePathForRoles(auth.roles) : AppRoutes.login;
+        },
+      ),
       GoRoute(path: AppRoutes.login, builder: (_, _) => const LoginScreen()),
       GoRoute(
         path: AppRoutes.forgotPassword,

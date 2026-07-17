@@ -117,7 +117,7 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
                   ),
                   onTap: () {
                     // Navigate to individual chat screen
-                    context.push('/chat/${session.residentId}', extra: session.residentName);
+                    context.push(AppRoutes.chatDetailPath(session.residentId), extra: session.residentName);
                   },
                 );
               },
