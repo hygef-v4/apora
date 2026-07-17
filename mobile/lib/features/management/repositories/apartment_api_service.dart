@@ -60,6 +60,29 @@ class ApartmentAPIService {
     });
     return Apartment.fromJson(res.data['data'] as Map<String, dynamic>);
   }
+
+  /// UC33: Nhận phòng (Check-in)
+  Future<void> checkIn(
+    int id, {
+    required String fullName,
+    required String phoneNumber,
+    required String startDate,
+    required String endDate,
+    required double depositValue,
+  }) async {
+    await _dio.post('$_base/$id/checkin', data: {
+      'fullName': fullName,
+      'phone': phoneNumber,
+      'startDate': startDate,
+      'endDate': endDate,
+      'depositValue': depositValue,
+    });
+  }
+
+  /// UC34: Trả phòng (Checkout)
+  Future<void> checkOut(int id) async {
+    await _dio.post('$_base/$id/checkout');
+  }
 }
 
 final apartmentApiServiceProvider = Provider<ApartmentAPIService>((ref) {

@@ -25,6 +25,8 @@ import '../../features/management/screens/staff_list_screen.dart';
 import '../../features/management/screens/apartment_list_screen.dart';
 import '../../features/management/screens/apartment_detail_screen.dart';
 import '../../features/management/screens/apartment_form_screen.dart';
+import '../../features/management/screens/apartment_checkin_screen.dart';
+import '../../features/management/screens/apartment_checkout_screen.dart';
 import '../../features/management/models/apartment.dart';
 import '../../features/management/providers/apartment_notifier.dart';
 import '../../features/billing/models/invoice.dart';
@@ -91,6 +93,8 @@ class AppRoutes {
   static const String apartmentCreate = '/manager/apartments/create';
   static String apartmentDetailPath(int id) => '/manager/apartments/$id';
   static String apartmentEditPath(int id) => '/manager/apartments/$id/edit';
+  static String apartmentCheckinPath(int id) => '/manager/apartments/$id/checkin';
+  static String apartmentCheckoutPath(int id) => '/manager/apartments/$id/checkout';
 
   // Module 4: Sự cố & Công việc (UC18-UC23)
   static const String tickets = '/tickets';
@@ -342,6 +346,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         },
+      ),
+      GoRoute(
+        path: '/manager/apartments/:id/checkin',
+        builder: (context, state) => ApartmentCheckinScreen(
+          apartmentId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/manager/apartments/:id/checkout',
+        builder: (context, state) => ApartmentCheckoutScreen(
+          apartmentId: int.parse(state.pathParameters['id']!),
+        ),
       ),
       // Module 4: Sự cố & Công việc (UC18-UC23)
       GoRoute(
