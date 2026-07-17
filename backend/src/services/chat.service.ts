@@ -8,24 +8,28 @@ export async function getChatSessions(userId: number, isManager: boolean, limit:
   if (isManager) {
     const sql = `
       SELECT 
-        cr.resident_id,
+        u.id as resident_id,
         u.full_name as resident_name,
         cr.last_message,
         cr.updated_at,
         (SELECT COUNT(*) FROM messages m WHERE m.room_id = cr.id AND m.is_read = FALSE AND m.sender_id != $1) as unread_count,
         (SELECT is_image FROM messages m WHERE m.room_id = cr.id ORDER BY m.created_at DESC LIMIT 1) as is_last_message_image
-      FROM chat_rooms cr
-      JOIN users u ON cr.resident_id = u.id
-      ORDER BY cr.updated_at DESC
+      FROM users u
+      LEFT JOIN chat_rooms cr ON cr.resident_id = u.id
+      WHERE u.status = 'ACTIVE' AND 'RESIDENT' = ANY(u.roles)
+      ORDER BY 
+        (SELECT COUNT(*) FROM messages m WHERE m.room_id = cr.id AND m.is_read = FALSE AND m.sender_id != $1) DESC NULLS LAST,
+        cr.updated_at DESC NULLS LAST,
+        u.full_name ASC
       LIMIT $2 OFFSET $3
     `;
     const result = await query(sql, [userId, limit, offset]);
     return result.rows.map(r => ({
       resident_id: r.resident_id,
       resident_name: r.resident_name,
-      last_message: r.last_message,
-      updated_at: r.updated_at,
-      unread_count: parseInt(r.unread_count, 10),
+      last_message: r.last_message || '',
+      updated_at: r.updated_at || new Date().toISOString(),
+      unread_count: parseInt(r.unread_count || '0', 10),
       is_last_message_image: r.is_last_message_image || false
     }));
   } else {

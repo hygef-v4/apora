@@ -101,7 +101,7 @@ class ChatMessagesNotifier extends AsyncNotifier<List<ChatMessageModel>> {
       id: tempId,
       senderId: user.id,
       receiverId: _partnerId,
-      content: content ?? image?.path ?? '',
+      content: (content != null && content.isNotEmpty) ? content : (image?.path ?? ''),
       isImage: image != null,
       createdAt: DateTime.now(),
       senderName: user.fullName,

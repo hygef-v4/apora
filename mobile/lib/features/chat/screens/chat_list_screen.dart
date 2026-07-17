@@ -64,7 +64,6 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
                     ),
                   ),
                   title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
                         child: Text(
@@ -72,29 +71,6 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
                           style: TextStyle(
                             fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
                             fontSize: 16,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        DateFormat('HH:mm').format(session.updatedAt),
-                        style: TextStyle(
-                          color: isUnread ? AppColors.primary : Colors.grey[500],
-                          fontSize: 12,
-                          fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                  subtitle: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          session.isLastMessageImage ? '[Hình ảnh]' : session.lastMessage,
-                          style: TextStyle(
-                            color: isUnread ? Colors.black87 : Colors.grey[600],
-                            fontWeight: isUnread ? FontWeight.w500 : FontWeight.normal,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
