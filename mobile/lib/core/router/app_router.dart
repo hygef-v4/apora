@@ -40,6 +40,9 @@ import '../../features/roommate/screens/roommate_list_screen.dart';
 import '../../features/roommate/screens/roommate_register_screen.dart';
 import '../../features/roommate/screens/manager_roommate_list_screen.dart';
 import '../../features/roommate/screens/manager_roommate_detail_screen.dart';
+import '../../features/contract/models/contract.dart';
+import '../../features/contract/screens/contract_screen.dart';
+import '../../features/contract/screens/request_extension_screen.dart';
 import '../../features/ticket/models/ticket.dart';
 import '../../features/ticket/screens/assign_task_screen.dart';
 import '../../features/ticket/screens/task_detail_screen.dart';
@@ -95,6 +98,12 @@ class AppRoutes {
   static String apartmentEditPath(int id) => '/manager/apartments/$id/edit';
   static String apartmentCheckinPath(int id) => '/manager/apartments/$id/checkin';
   static String apartmentCheckoutPath(int id) => '/manager/apartments/$id/checkout';
+
+  // Module 2: Hợp đồng & Gia hạn lưu trú (UC06-UC09)
+  static const String myContract = '/contract';
+  static const String requestExtension = '/contract/extend';
+  static const String extensionList = '/manager/extensions';
+  static String extensionDetailPath(int id) => '/manager/extensions/$id';
 
   // Module 4: Sự cố & Công việc (UC18-UC23)
   static const String tickets = '/tickets';
@@ -358,6 +367,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => ApartmentCheckoutScreen(
           apartmentId: int.parse(state.pathParameters['id']!),
         ),
+      ),
+      // Module 2: Hợp đồng & Gia hạn lưu trú (UC06-UC09)
+      GoRoute(
+        path: AppRoutes.myContract,
+        builder: (context, state) => const ContractScreen(),
+      ),
+      // UC07: form gia hạn - nhận MyContract (hợp đồng ACTIVE) qua extra
+      GoRoute(
+        path: AppRoutes.requestExtension,
+        builder: (context, state) =>
+            RequestExtensionScreen(myContract: state.extra as MyContract),
       ),
       // Module 4: Sự cố & Công việc (UC18-UC23)
       GoRoute(
