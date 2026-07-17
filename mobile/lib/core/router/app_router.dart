@@ -42,6 +42,8 @@ import '../../features/roommate/screens/manager_roommate_list_screen.dart';
 import '../../features/roommate/screens/manager_roommate_detail_screen.dart';
 import '../../features/contract/models/contract.dart';
 import '../../features/contract/screens/contract_screen.dart';
+import '../../features/contract/screens/extension_list_screen.dart';
+import '../../features/contract/screens/extension_review_screen.dart';
 import '../../features/contract/screens/request_extension_screen.dart';
 import '../../features/ticket/models/ticket.dart';
 import '../../features/ticket/screens/assign_task_screen.dart';
@@ -378,6 +380,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.requestExtension,
         builder: (context, state) =>
             RequestExtensionScreen(myContract: state.extra as MyContract),
+      ),
+      // UC08: danh sách yêu cầu gia hạn (Manager/Landlord)
+      GoRoute(
+        path: AppRoutes.extensionList,
+        builder: (context, state) => const ExtensionListScreen(),
+      ),
+      // UC09: màn duyệt/từ chối yêu cầu
+      GoRoute(
+        path: '/manager/extensions/:id',
+        builder: (context, state) => ExtensionReviewScreen(
+          extensionId: int.parse(state.pathParameters['id']!),
+        ),
       ),
       // Module 4: Sự cố & Công việc (UC18-UC23)
       GoRoute(

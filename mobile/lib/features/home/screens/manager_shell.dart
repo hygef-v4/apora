@@ -154,13 +154,17 @@ class _ManagementHubTab extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               AppCard(
-                child: _HubRow(
+                onTap: () => context.push(AppRoutes.extensionList),
+                child: const _HubRow(
                   icon: Icons.description,
                   iconBg: AppColors.warningBg,
                   iconColor: AppColors.warning,
                   title: 'Hợp đồng',
-                  subtitle: 'Thời hạn thuê, gia hạn lưu trú',
-                  trailing: StatusBadge.info('Module 2'),
+                  subtitle: 'Duyệt yêu cầu gia hạn lưu trú',
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
