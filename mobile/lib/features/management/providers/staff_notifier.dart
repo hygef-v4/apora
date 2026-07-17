@@ -77,14 +77,15 @@ class StaffDetailNotifier extends AsyncNotifier<StaffDetail?> {
   }
 
   /// UC39: cập nhật hồ sơ rồi tải lại chi tiết.
-  Future<void> updateStaff(
+  /// @returns true nếu backend báo avatar upload thất bại (AT3 - text đã lưu).
+  Future<bool> updateStaff(
     int id, {
     required String fullName,
     required String phone,
     required String role,
     Uint8List? avatarBytes,
   }) async {
-    await _api.updateStaff(
+    final avatarUploadFailed = await _api.updateStaff(
       id,
       fullName: fullName,
       phone: phone,
@@ -92,6 +93,7 @@ class StaffDetailNotifier extends AsyncNotifier<StaffDetail?> {
       avatarBytes: avatarBytes,
     );
     await fetch(id);
+    return avatarUploadFailed;
   }
 
   Future<void> resetPassword(int id, String newPassword) =>

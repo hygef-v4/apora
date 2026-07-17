@@ -59,6 +59,8 @@ class MockAuthNotifier extends Notifier<AuthState> implements AuthNotifier {
   Future<void> restoreSession() async {}
   @override
   Future<void> sessionExpired() async {}
+  @override
+  Future<void> updateUser(User user) async {}
 }
 
 void main() {

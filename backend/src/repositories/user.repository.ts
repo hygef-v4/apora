@@ -73,12 +73,16 @@ export async function updateProfileDetails(
 // device_tokens (BR-44)
 // ==========================================
 
-/** Lưu FCM token khi login. Token đã tồn tại -> kích hoạt lại (bỏ revoked). */
+/**
+ * Lưu FCM token khi login. Token đã tồn tại -> kích hoạt lại: reset cả
+ * revoked_at LẪN status (checkout căn hộ set status = 'REVOKED' - phải trả về
+ * ACTIVE, nếu không token vĩnh viễn không nhận noti dù đã login lại).
+ */
 export async function saveDeviceToken(userId: number, token: string): Promise<void> {
   await query(
     `INSERT INTO device_tokens (user_id, token)
      VALUES ($1, $2)
-     ON CONFLICT (user_id, token) DO UPDATE SET revoked_at = NULL`,
+     ON CONFLICT (user_id, token) DO UPDATE SET revoked_at = NULL, status = 'ACTIVE'`,
     [userId, token],
   );
 }
@@ -98,15 +102,20 @@ export async function revokeDeviceToken(userId: number, token: string): Promise<
 /**
  * Tạo OTP mới, đồng thời vô hiệu hóa mọi OTP cũ chưa dùng của số này
  * (flow Resend OTP trong SRS - mã cũ hết hiệu lực ngay khi cấp mã mới).
+ * [codeHash] là SHA-256 của mã OTP - KHÔNG lưu OTP plaintext vào DB.
+ * Tiện thể dọn lazy các row đã hết hạn > 1 ngày (bảng không phình vô hạn).
  */
-export async function createOtp(phone: string, code: string, expiredAt: Date): Promise<void> {
+export async function createOtp(phone: string, codeHash: string, expiredAt: Date): Promise<void> {
+  await query(
+    `DELETE FROM password_reset_otps WHERE expired_at < NOW() - INTERVAL '1 day'`,
+  );
   await query(
     'UPDATE password_reset_otps SET is_used = TRUE WHERE phone_number = $1 AND is_used = FALSE',
     [phone],
   );
   await query(
     'INSERT INTO password_reset_otps (phone_number, otp_code, expired_at) VALUES ($1, $2, $3)',
-    [phone, code, expiredAt],
+    [phone, codeHash, expiredAt],
   );
 }
 
@@ -147,6 +156,14 @@ export async function increaseOtpAttempt(id: number): Promise<number> {
   return result.rows[0].attempt_count;
 }
 
-export async function markOtpUsed(id: number): Promise<void> {
-  await query('UPDATE password_reset_otps SET is_used = TRUE WHERE id = $1', [id]);
+/**
+ * Đánh dấu OTP đã dùng - atomic: chỉ 1 request "tiêu" được OTP.
+ * @returns false nếu OTP đã bị request khác dùng trước (race) -> coi như không hợp lệ.
+ */
+export async function markOtpUsed(id: number): Promise<boolean> {
+  const result = await query(
+    'UPDATE password_reset_otps SET is_used = TRUE WHERE id = $1 AND is_used = FALSE RETURNING id',
+    [id],
+  );
+  return (result.rowCount ?? 0) > 0;
 }

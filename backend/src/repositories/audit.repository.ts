@@ -8,7 +8,7 @@
  * ⚠️ KHÔNG BAO GIỜ ghi mật khẩu (kể cả hash) vào old_value/new_value.
  */
 
-import { query } from '@/lib/db';
+import { Queryable, query } from '@/lib/db';
 
 export async function insertAuditLog(
   actorId: number,
@@ -17,8 +17,9 @@ export async function insertAuditLog(
   oldValue: Record<string, unknown> | null,
   newValue: Record<string, unknown> | null,
   reason?: string,
+  client?: Queryable,
 ): Promise<void> {
-  await query(
+  await (client ?? { query }).query(
     `INSERT INTO audit_logs (actor_id, target_user_id, action, old_value, new_value, reason)
      VALUES ($1, $2, $3, $4, $5, $6)`,
     [actorId, targetUserId, action, oldValue, newValue, reason ?? null],

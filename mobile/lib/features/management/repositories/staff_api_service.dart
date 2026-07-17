@@ -60,7 +60,9 @@ class StaffAPIService {
   }
 
   /// [avatarBytes] đã nén < 500KB (BR-10) trước khi truyền vào.
-  Future<StaffMember> updateStaff(
+  /// @returns cờ avatarUploadFailed (AT3: backend đã lưu field text nhưng
+  /// upload avatar lỗi, giữ ảnh cũ) để UI báo người dùng.
+  Future<bool> updateStaff(
     int id, {
     required String fullName,
     required String phone,
@@ -75,7 +77,8 @@ class StaffAPIService {
         'avatar': MultipartFile.fromBytes(avatarBytes, filename: 'avatar.jpg'),
     });
     final res = await _dio.put('$_base/$id', data: form);
-    return StaffMember.fromJson(res.data['data'] as Map<String, dynamic>);
+    final data = res.data['data'] as Map<String, dynamic>;
+    return data['avatarUploadFailed'] == true;
   }
 
   /// UC40 - backend trả 409 khi còn task đang mở (BR-50).

@@ -13,6 +13,7 @@
 
 import { hashPassword, validatePasswordComplexity, validatePhoneNumber } from '@/lib/auth';
 import { uploadImage } from '@/lib/cloudinary';
+import { withTransaction } from '@/lib/db';
 import { HttpError } from '@/lib/middleware';
 import * as auditRepo from '@/repositories/audit.repository';
 import * as staffRepo from '@/repositories/staff.repository';
@@ -29,6 +30,16 @@ import {
 const MSG_PHONE_EXISTS = 'Số điện thoại đã tồn tại. Vui lòng nhập số khác.';
 const MSG_STAFF_NOT_FOUND = 'Không tìm thấy tài khoản nhân viên.';
 const MSG_INVALID_ROLE = 'Vai trò không hợp lệ. Vui lòng chọn Bảo vệ, Lao công hoặc Kỹ thuật viên.';
+
+// Khớp VARCHAR(100) của cột users.full_name - validate sớm để trả 400 rõ ràng
+// thay vì lỗi 22001 của Postgres rơi vào 500 chung chung.
+const FULL_NAME_MAX = 100;
+
+function assertFullNameLength(fullName: string): void {
+  if (fullName.length > FULL_NAME_MAX) {
+    throw new HttpError(400, `Họ tên tối đa ${FULL_NAME_MAX} ký tự.`);
+  }
+}
 
 function toStaffListItem(row: staffRepo.StaffRow): StaffListItem {
   return {
@@ -117,6 +128,7 @@ export async function registerStaffAccount(
     throw new HttpError(400, 'Trường bắt buộc không được để trống.');
   }
   assertStaffRole(data.role);
+  assertFullNameLength(data.fullName.trim());
 
   const phoneError = validatePhoneNumber(data.phone.trim()); // BR-02
   if (phoneError) throw new HttpError(400, phoneError);
@@ -129,17 +141,28 @@ export async function registerStaffAccount(
   if (existed) throw new HttpError(409, MSG_PHONE_EXISTS);
 
   const hash = await hashPassword(data.password); // BR-03
-  const created = await staffRepo.saveStaff(
-    data.phone.trim(),
-    hash,
-    data.fullName.trim(),
-    data.role,
-  );
 
-  await auditRepo.insertAuditLog(actorId, created.id, 'STAFF_CREATE', null, {
-    fullName: created.full_name,
-    phone: created.phone_number,
-    role: data.role,
+  // Tạo user + audit log trong 1 transaction: BR-04 yêu cầu thao tác quản lý
+  // nhân sự phải có vết audit - ghi vết lỗi thì không được tạo tài khoản.
+  const role = data.role;
+  const created = await withTransaction(async (client) => {
+    const user = await staffRepo.saveStaff(
+      data.phone.trim(),
+      hash,
+      data.fullName.trim(),
+      role,
+      client,
+    );
+    await auditRepo.insertAuditLog(
+      actorId,
+      user.id,
+      'STAFF_CREATE',
+      null,
+      { fullName: user.full_name, phone: user.phone_number, role },
+      undefined,
+      client,
+    );
+    return user;
   });
 
   return {
@@ -167,6 +190,7 @@ export async function modifyStaffAccount(
     throw new HttpError(400, 'Trường bắt buộc không được để trống.');
   }
   assertStaffRole(data.role);
+  assertFullNameLength(data.fullName.trim());
 
   const phoneError = validatePhoneNumber(data.phone.trim()); // BR-02
   if (phoneError) throw new HttpError(400, phoneError);
@@ -180,12 +204,15 @@ export async function modifyStaffAccount(
     if (existed) throw new HttpError(409, MSG_PHONE_EXISTS);
   }
 
-  // AT3 (UC39): avatar upload lỗi -> vẫn lưu các field text, giữ avatar cũ
+  // AT3 (UC39): avatar upload lỗi -> vẫn lưu các field text, giữ avatar cũ,
+  // nhưng trả cờ avatarUploadFailed để UI báo cho người dùng biết.
   let avatarUrl: string | undefined;
+  let avatarUploadFailed = false;
   if (data.avatarBuffer) {
     try {
       avatarUrl = await uploadImage(data.avatarBuffer, 'avatars');
     } catch (error) {
+      avatarUploadFailed = true;
       console.error('[StaffService] Upload avatar thất bại, giữ avatar cũ:', error);
     }
   }
@@ -218,6 +245,7 @@ export async function modifyStaffAccount(
     avatarUrl: updated.avatar_url,
     roles: updated.roles,
     status: updated.status,
+    ...(avatarUploadFailed ? { avatarUploadFailed: true } : {}),
   };
 }
 
@@ -232,6 +260,11 @@ export async function resetStaffPasswordByManager(
 ): Promise<void> {
   const staff = await staffRepo.findStaffById(staffId);
   if (!staff) throw new HttpError(404, MSG_STAFF_NOT_FOUND);
+
+  // Nhất quán với UC40: tài khoản đã vô hiệu hóa thì không thao tác gì thêm
+  if (staff.status === 'INACTIVE') {
+    throw new HttpError(400, 'Tài khoản đã bị vô hiệu hóa, không thể đặt lại mật khẩu.');
+  }
 
   const complexityError = validatePasswordComplexity(newPassword); // BR-09
   if (complexityError) throw new HttpError(400, complexityError);
@@ -260,30 +293,37 @@ export async function disableStaffAccount(
     throw new HttpError(400, 'Tài khoản này đã bị vô hiệu hóa từ trước.');
   }
 
-  // BR-50: còn task đang mở -> chặn, yêu cầu phân công lại trước
-  const openCount = await staffRepo.countActiveAssignedTasks(staffId);
-  if (openCount > 0) {
-    throw new HttpError(
-      409,
-      `Nhân viên còn ${openCount} công việc chưa xử lý. Vui lòng phân công lại trước khi vô hiệu hóa.`,
-    );
-  }
-
   if (reason && reason.length > 250) {
     throw new HttpError(400, 'Lý do vô hiệu hóa tối đa 250 ký tự.');
   }
 
-  // BR-49/BR-59: soft-delete - chỉ đổi status, giữ toàn bộ lịch sử
-  await staffRepo.updateStaffStatus(staffId, 'INACTIVE'); // kèm bump token_version
-  await staffRepo.revokeAllDeviceTokens(staffId);
+  // Toàn bộ deactivate chạy trong 1 transaction: check BR-50, đổi status,
+  // revoke token và audit log (BR-04) phải cùng thành công hoặc cùng rollback -
+  // không được vô hiệu hóa tài khoản mà thiếu vết audit.
+  await withTransaction(async (client) => {
+    // BR-50: còn task đang mở -> chặn, yêu cầu phân công lại trước
+    // (check trong transaction để thu hẹp race với luồng phân công task)
+    const openCount = await staffRepo.countActiveAssignedTasks(staffId, client);
+    if (openCount > 0) {
+      throw new HttpError(
+        409,
+        `Nhân viên còn ${openCount} công việc chưa xử lý. Vui lòng phân công lại trước khi vô hiệu hóa.`,
+      );
+    }
 
-  // BR-04 (UC40): audit log bắt buộc
-  await auditRepo.insertAuditLog(
-    actorId,
-    staffId,
-    'STAFF_DEACTIVATE',
-    { status: 'ACTIVE' },
-    { status: 'INACTIVE' },
-    reason?.trim() || undefined,
-  );
+    // BR-49/BR-59: soft-delete - chỉ đổi status, giữ toàn bộ lịch sử
+    await staffRepo.updateStaffStatus(staffId, 'INACTIVE', client); // kèm bump token_version
+    await staffRepo.revokeAllDeviceTokens(staffId, client);
+
+    // BR-04 (UC40): audit log bắt buộc
+    await auditRepo.insertAuditLog(
+      actorId,
+      staffId,
+      'STAFF_DEACTIVATE',
+      { status: 'ACTIVE' },
+      { status: 'INACTIVE' },
+      reason?.trim() || undefined,
+      client,
+    );
+  });
 }

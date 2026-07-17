@@ -36,10 +36,12 @@ CREATE INDEX IF NOT EXISTS idx_device_tokens_user_active
   ON device_tokens (user_id) WHERE revoked_at IS NULL AND status = 'ACTIVE';
 
 -- 3. PASSWORD_RESET_OTPS (Password Recovery) - BR-08
+-- otp_code lưu SHA-256 hex của mã OTP (64 ký tự), KHÔNG lưu plaintext.
+-- Migration từ bản cũ: ALTER TABLE password_reset_otps ALTER COLUMN otp_code TYPE VARCHAR(64);
 CREATE TABLE IF NOT EXISTS password_reset_otps (
   id             SERIAL PRIMARY KEY,
   phone_number   VARCHAR(15) NOT NULL,
-  otp_code       VARCHAR(6)  NOT NULL,
+  otp_code       VARCHAR(64) NOT NULL,
   expired_at     TIMESTAMPTZ NOT NULL,
   is_used        BOOLEAN     NOT NULL DEFAULT FALSE,
   attempt_count  INTEGER     NOT NULL DEFAULT 0,
