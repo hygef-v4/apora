@@ -69,6 +69,21 @@ export async function terminateActiveContract(
 // Module 2: UC06-UC09 (Tenancy & Stay Extension)
 // ==========================================
 
+/**
+ * Lazy expire: hợp đồng ACTIVE đã qua ngày kết thúc -> EXPIRED.
+ * Gọi ở "cửa ngõ" mọi luồng đọc/ghi hợp đồng (UC06/07/09) thay cho cron job:
+ * trạng thái được sửa đúng ngay trước khoảnh khắc có người nhìn vào nó.
+ * So ngày theo múi giờ VN vì end_date là DATE nhập theo giờ VN.
+ */
+export async function expireOverdueContracts(): Promise<number> {
+  const result = await query(
+    `UPDATE contracts SET status = 'EXPIRED'
+     WHERE status = 'ACTIVE'
+       AND end_date < timezone('Asia/Ho_Chi_Minh', now())::date`,
+  );
+  return result.rowCount ?? 0;
+}
+
 /** Dòng contracts kèm thông tin căn hộ (join apartments) cho UC06/UC09. */
 export interface ContractWithApartmentRow {
   id: number;
