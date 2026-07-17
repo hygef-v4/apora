@@ -50,12 +50,17 @@ class _RequestExtensionScreenState
 
   Future<void> _pickDate() async {
     final endDate = _contract.endDate;
+    final now = DateTime.now();
+    // Hợp đồng ACTIVE nhưng end_date đã qua (chưa có job auto-expire):
+    // initialDate không được nhỏ hơn firstDate, lấy mốc muộn hơn
+    final defaultInitial = endDate.add(const Duration(days: 1));
+    final initial = defaultInitial.isBefore(now) ? now : defaultInitial;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? endDate.add(const Duration(days: 1)),
+      initialDate: _selectedDate ?? initial,
       // Cho chọn từ hôm nay để AT1 (chọn ngày <= end_date) thể hiện được lỗi
-      firstDate: DateTime.now(),
-      lastDate: endDate.add(const Duration(days: 365 * 3)),
+      firstDate: now,
+      lastDate: initial.add(const Duration(days: 365 * 3)),
     );
     if (picked == null) return;
     setState(() {
