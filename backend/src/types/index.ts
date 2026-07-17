@@ -28,6 +28,8 @@ export const STAFF_ROLES: StaffRole[] = ['SECURITY_GUARD', 'JANITOR', 'TECHNICIA
 
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
 export type ApartmentStatus = 'EMPTY' | 'OCCUPIED' | 'INACTIVE';
+export type ContractStatus = 'ACTIVE' | 'EXPIRED';
+export type StayExtensionStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type RoommateStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'INACTIVE';
 export type InvoiceStatus = 'UNPAID' | 'PAID';
 export type PaymentMethod = 'PAYOS' | 'CASH';
@@ -100,6 +102,33 @@ export interface Apartment {
   status: ApartmentStatus;
   area_size: number;
   base_rent: number;
+}
+
+/** Bảng CONTRACTS (theo SD Module 2 - Contract entity). */
+export interface Contract {
+  id: number;
+  apartment_id: number;
+  resident_id: number;
+  start_date: Date;
+  end_date: Date;
+  base_rent_snapshot: number;
+  status: ContractStatus;
+  created_at: Date;
+}
+
+/** Bảng STAY_EXTENSIONS (theo SD Module 2 - StayExtension entity). */
+export interface StayExtension {
+  id: number;
+  contract_id: number;
+  resident_id: number;
+  current_end_date: Date;
+  requested_end_date: Date;
+  reason: string | null;
+  status: StayExtensionStatus;
+  reviewed_by: number | null;
+  reviewed_at: Date | null;
+  reject_reason: string | null;
+  created_at: Date;
 }
 
 /** Bảng REPAIR_TICKETS (theo SD Module 4 - RepairTicket entity). */
@@ -312,6 +341,72 @@ export interface StaffWorkloadItem {
   fullName: string;
   roles: StaffRole[];
   openTaskCount: number;
+}
+
+// ==========================================
+// Module 2: Tenancy & Stay Extension DTOs (UC06-UC09)
+// ==========================================
+
+/**
+ * UC06 - Xem hợp đồng của chính mình (FID-09).
+ * contract = null khi căn hộ chưa có hợp đồng (AT2); remainingDays chỉ
+ * tính khi ACTIVE (BR-12/BR-13 - tính động, không lưu DB).
+ */
+export interface MyContractResponse {
+  apartment: {
+    id: number;
+    unitNumber: string;
+    floor: string;
+    status: ApartmentStatus;
+  } | null;
+  contract: {
+    id: number;
+    startDate: Date;
+    endDate: Date;
+    baseRent: number;
+    status: ContractStatus;
+    remainingDays: number | null;
+    /** Yêu cầu gia hạn PENDING đang chờ duyệt của hợp đồng này (nếu có). */
+    pendingExtensionId: number | null;
+  } | null;
+}
+
+/** 1 dòng trong danh sách yêu cầu gia hạn (UC08 - FID-11). */
+export interface StayExtensionListItem {
+  id: number;
+  residentName: string;
+  unitNumber: string;
+  floor: string;
+  currentEndDate: Date;
+  requestedEndDate: Date;
+  status: StayExtensionStatus;
+  createdAt: Date;
+  reviewedAt: Date | null;
+}
+
+/** Chi tiết yêu cầu gia hạn (UC09 - FID-12) - kèm cư dân + hợp đồng. */
+export interface StayExtensionDetail extends StayExtensionListItem {
+  contractId: number;
+  residentPhone: string;
+  contractStartDate: Date;
+  contractEndDate: Date;
+  contractStatus: ContractStatus;
+  baseRent: number;
+  reason: string | null;
+  rejectReason: string | null;
+  reviewedByName: string | null;
+}
+
+/** Body gửi yêu cầu gia hạn lưu trú (UC07). */
+export interface CreateStayExtensionRequest {
+  requestedEndDate: string; // YYYY-MM-DD
+  reason: string;
+}
+
+/** Body duyệt/từ chối yêu cầu gia hạn (UC09). */
+export interface ReviewStayExtensionRequest {
+  action: 'APPROVE' | 'REJECT';
+  rejectReason?: string;
 }
 
 /** Body tạo sự cố (UC19) - ảnh gửi qua multipart, xử lý riêng ở route. */
