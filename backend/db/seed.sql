@@ -24,8 +24,8 @@ WHERE NOT EXISTS (SELECT 1 FROM pricing_settings);
 -- Seed căn hộ mẫu
 INSERT INTO apartments (unit_number, floor, owner_id, status)
 VALUES 
-  ('101', '1', 1, 'OCCUPIED'),
-  ('102', '1', 1, 'EMPTY')
+  ('101', '1', (SELECT id FROM users WHERE phone_number = '0900000003'), 'OCCUPIED'),
+  ('102', '1', NULL, 'EMPTY')
 ON CONFLICT (unit_number) DO NOTHING;
 
 -- Seed hợp đồng thuê hoạt động mẫu cho cư dân

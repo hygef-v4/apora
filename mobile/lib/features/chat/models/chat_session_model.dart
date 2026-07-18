@@ -19,12 +19,14 @@ class ChatSessionModel {
 
   factory ChatSessionModel.fromJson(Map<String, dynamic> json) {
     return ChatSessionModel(
-      residentId: json['resident_id'],
-      residentName: json['resident_name'],
-      lastMessage: json['last_message'],
+      residentId: json['resident_id'] as int? ?? 0,
+      residentName: json['resident_name'] as String? ?? '',
+      lastMessage: json['last_message'] as String? ?? '',
       isLastMessageImage: json['is_last_message_image'] ?? false,
       unreadCount: json['unread_count'] ?? 0,
-      updatedAt: DateTime.parse(json['updated_at']),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
       unitNumber: json['unit_number'] ?? '',
     );
   }

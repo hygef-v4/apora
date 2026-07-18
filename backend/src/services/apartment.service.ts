@@ -257,22 +257,48 @@ export async function processCheckin(
 
     // 2. Verify unique phone number across the system (BR-02)
     const userRes = await client.query(
-      'SELECT id FROM users WHERE phone_number = $1 FOR UPDATE',
+      'SELECT id, status, full_name FROM users WHERE phone_number = $1 FOR UPDATE',
       [phone.trim()],
     );
-    if (userRes.rows.length > 0) {
-      throw new HttpError(409, 'Số điện thoại này đã được sử dụng cho tài khoản khác.');
-    }
 
-    // 3. Create RESIDENT user with default password (BR-01)
-    const defaultPasswordHash = await hashPassword('Apora@123');
-    const newUserRes = await client.query(
-      `INSERT INTO users (phone_number, password_hash, full_name, roles, status, must_change_password)
-       VALUES ($1, $2, $3, ARRAY['RESIDENT']::text[], 'ACTIVE', TRUE)
-       RETURNING id, phone_number, full_name`,
-      [phone.trim(), defaultPasswordHash, fullName.trim()],
-    );
-    const residentId = newUserRes.rows[0].id;
+    let residentId: number;
+
+    if (userRes.rows.length > 0) {
+      const existingUser = userRes.rows[0];
+      const nameMatches = existingUser.full_name.toLowerCase() === fullName.trim().toLowerCase();
+      if (!nameMatches) {
+        throw new HttpError(409, 'Số điện thoại này đã được đăng ký với họ tên khác. Vui lòng kiểm tra lại.');
+      }
+
+      if (existingUser.status === 'ACTIVE') {
+        // Tenant is renting another room, reuse the same active account
+        residentId = existingUser.id;
+      } else {
+        // If user exists but is INACTIVE (previously checked out), reactivate them without changing name
+        residentId = existingUser.id;
+        const defaultPasswordHash = await hashPassword('Apora@123');
+        await client.query(
+          `UPDATE users
+           SET status = 'ACTIVE',
+               password_hash = $2,
+               must_change_password = TRUE,
+               roles = ARRAY['RESIDENT']::text[],
+               token_version = token_version + 1
+           WHERE id = $1`,
+          [residentId, defaultPasswordHash],
+        );
+      }
+    } else {
+      // 3. Create RESIDENT user with default password (BR-01)
+      const defaultPasswordHash = await hashPassword('Apora@123');
+      const newUserRes = await client.query(
+        `INSERT INTO users (phone_number, password_hash, full_name, roles, status, must_change_password)
+         VALUES ($1, $2, $3, ARRAY['RESIDENT']::text[], 'ACTIVE', TRUE)
+         RETURNING id, phone_number, full_name`,
+        [phone.trim(), defaultPasswordHash, fullName.trim()],
+      );
+      residentId = newUserRes.rows[0].id;
+    }
 
     // 4. Create Contract with snapshot rent amount
     const contractRes = await client.query(
