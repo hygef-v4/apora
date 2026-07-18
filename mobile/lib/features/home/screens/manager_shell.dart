@@ -27,9 +27,9 @@ class _ManagerShellState extends State<ManagerShell> {
 
   static const _tabs = [
     AppBottomNavItem(icon: Icons.home, label: 'Trang chủ'),
+    AppBottomNavItem(icon: Icons.groups, label: 'Quản lý'),
     AppBottomNavItem(icon: Icons.bar_chart, label: 'Báo cáo'),
     AppBottomNavItem(icon: Icons.chat, label: 'Hỗ trợ'),
-    AppBottomNavItem(icon: Icons.groups, label: 'Quản lý'),
   ];
 
   @override
@@ -39,6 +39,7 @@ class _ManagerShellState extends State<ManagerShell> {
         index: _index,
         children: [
           const DashboardTab(),
+          const _ManagementHubTab(),
           const _ComingSoonTab(
             title: 'Báo cáo',
             child: ComingSoon(
@@ -48,7 +49,6 @@ class _ManagerShellState extends State<ManagerShell> {
             ),
           ),
           const ManagerChatListScreen(),
-          const _ManagementHubTab(),
         ],
       ),
       bottomNavigationBar: AppBottomNav(
@@ -86,16 +86,9 @@ class _ManagementHubTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
-        GradientHeader(
+        const GradientHeader(
           title: 'Quản lý',
           subtitle: 'Nhân sự & cư dân của tòa nhà',
-          actions: [
-            HeaderIconButton(
-              icon: Icons.logout,
-              tooltip: 'Đăng xuất',
-              onTap: () => ref.read(authNotifierProvider.notifier).logout(),
-            ),
-          ],
         ),
         Expanded(
           child: ListView(

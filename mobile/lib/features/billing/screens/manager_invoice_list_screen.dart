@@ -74,7 +74,7 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
       body: Column(
         children: [
           GradientHeader(
-            title: 'Hóa Đơn & Thu Tiền',
+            title: 'Hóa Đơn',
             subtitle: 'Quản lý công nợ toàn tòa nhà',
             showBack: true,
             actions: [

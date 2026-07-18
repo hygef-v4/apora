@@ -209,6 +209,13 @@ class DashboardTab extends ConsumerWidget {
               ),
             ],
           ),
+          actions: [
+            HeaderIconButton(
+              icon: Icons.logout,
+              tooltip: 'Đăng xuất',
+              onTap: () => ref.read(authNotifierProvider.notifier).logout(),
+            ),
+          ],
           bottom: const SizedBox(height: 12),
         ),
         Expanded(
