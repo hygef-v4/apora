@@ -8,10 +8,7 @@ import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/coming_soon.dart';
 import '../../../core/widgets/gradient_header.dart';
-import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
-import '../../communication/screens/notification_list_screen.dart';
-import '../../management/screens/apartment_list_screen.dart';
 import '../../chat/screens/chat_list_screen.dart';
 import 'dashboard_screen.dart';
 
@@ -30,7 +27,6 @@ class _ManagerShellState extends State<ManagerShell> {
 
   static const _tabs = [
     AppBottomNavItem(icon: Icons.home, label: 'Trang chủ'),
-    AppBottomNavItem(icon: Icons.apartment, label: 'Căn hộ'),
     AppBottomNavItem(icon: Icons.bar_chart, label: 'Báo cáo'),
     AppBottomNavItem(icon: Icons.chat, label: 'Hỗ trợ'),
     AppBottomNavItem(icon: Icons.groups, label: 'Quản lý'),
@@ -43,7 +39,6 @@ class _ManagerShellState extends State<ManagerShell> {
         index: _index,
         children: [
           const DashboardTab(),
-          const ApartmentListScreen(),
           const _ComingSoonTab(
             title: 'Báo cáo',
             child: ComingSoon(
@@ -104,8 +99,9 @@ class _ManagementHubTab extends ConsumerWidget {
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.fromLTRB(14, 1, 14, 1),
             children: [
+              // 1. tài khoản
               if (ref
                       .watch(authNotifierProvider)
                       .user
@@ -116,9 +112,9 @@ class _ManagementHubTab extends ConsumerWidget {
                   onTap: () => context.push(AppRoutes.managerList),
                   child: const _HubRow(
                     icon: Icons.admin_panel_settings,
-                    iconBg: AppColors.primary,
-                    iconColor: Colors.white,
-                    title: 'Tài khoản Quản lý viên',
+                    iconBg: Color(0xFFEEF2FF),
+                    iconColor: Color(0xFF4F46E5),
+                    title: 'Tài khoản',
                     subtitle: 'Danh sách Quản lý viên',
                     trailing: Icon(
                       Icons.chevron_right,
@@ -128,14 +124,15 @@ class _ManagementHubTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 10),
               ],
+              // 2. căn hộ
               AppCard(
-                onTap: () => context.push(AppRoutes.staffList),
+                onTap: () => context.push(AppRoutes.apartmentList),
                 child: const _HubRow(
-                  icon: Icons.engineering,
-                  iconBg: AppColors.infoBg,
-                  iconColor: AppColors.primary,
-                  title: 'Nhân viên vận hành',
-                  subtitle: 'Bảo vệ, lao công, kỹ thuật viên',
+                  icon: Icons.apartment,
+                  iconBg: Color(0xFFECFDF5),
+                  iconColor: Color(0xFF10B981),
+                  title: 'Căn hộ',
+                  subtitle: 'Quản lý căn hộ, check-in, check-out',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -143,23 +140,45 @@ class _ManagementHubTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 10),
+              // 3. thông báo
               AppCard(
-                child: _HubRow(
-                  icon: Icons.people,
-                  iconBg: AppColors.successBg,
-                  iconColor: AppColors.success,
-                  title: 'Cư dân',
-                  subtitle: 'Hồ sơ thuê, người ở ghép',
-                  trailing: StatusBadge.info('Module 2'),
+                onTap: () => context.push(AppRoutes.notifications),
+                child: const _HubRow(
+                  icon: Icons.notifications,
+                  iconBg: Color(0xFFFFF7ED),
+                  iconColor: Color(0xFFF97316),
+                  title: 'Thông báo',
+                  subtitle: 'Gửi và quản lý thông báo tòa nhà',
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
+              // 4. cư dân
+              AppCard(
+                onTap: () => context.push(AppRoutes.managerRoommates),
+                child: const _HubRow(
+                  icon: Icons.people,
+                  iconBg: Color(0xFFFDF2F8),
+                  iconColor: Color(0xFFEC4899),
+                  title: 'Cư dân',
+                  subtitle: 'Hồ sơ thuê, người ở ghép & duyệt thành viên',
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // 5. hợp đồng
               AppCard(
                 onTap: () => context.push(AppRoutes.extensionList),
                 child: const _HubRow(
                   icon: Icons.description,
-                  iconBg: AppColors.warningBg,
-                  iconColor: AppColors.warning,
+                  iconBg: Color(0xFFFEFCE8),
+                  iconColor: Color(0xFFCA8A04),
                   title: 'Hợp đồng',
                   subtitle: 'Duyệt yêu cầu gia hạn lưu trú',
                   trailing: Icon(
@@ -169,14 +188,15 @@ class _ManagementHubTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 10),
+              // 6. nhân viên vận hành
               AppCard(
-                onTap: () => context.push(AppRoutes.managerInvoiceList),
+                onTap: () => context.push(AppRoutes.staffList),
                 child: const _HubRow(
-                  icon: Icons.receipt_long,
-                  iconBg: AppColors.purpleBg,
-                  iconColor: AppColors.purple,
-                  title: 'Hóa đơn & Thu tiền',
-                  subtitle: 'Chỉ số điện nước, thanh toán',
+                  icon: Icons.engineering,
+                  iconBg: Color(0xFFF0FDF4),
+                  iconColor: Color(0xFF22C55E),
+                  title: 'Nhân viên vận hành',
+                  subtitle: 'Bảo vệ, lao công, kỹ thuật viên',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -184,13 +204,14 @@ class _ManagementHubTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 10),
+              // 7. bảo trì
               AppCard(
                 onTap: () => context.push(AppRoutes.tickets),
                 child: const _HubRow(
                   icon: Icons.build_circle,
-                  iconBg: AppColors.warningBg,
-                  iconColor: AppColors.warning,
-                  title: 'Sự cố & Sửa chữa',
+                  iconBg: Color(0xFFEFF6FF),
+                  iconColor: Color(0xFF3B82F6),
+                  title: 'Bảo trì',
                   subtitle: 'Theo dõi yêu cầu sửa chữa của cư dân',
                   trailing: Icon(
                     Icons.chevron_right,
@@ -199,44 +220,15 @@ class _ManagementHubTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 10),
+              // 8. hoá đơn
               AppCard(
-                onTap: () => context.push(AppRoutes.managerRoommates),
+                onTap: () => context.push(AppRoutes.managerInvoiceList),
                 child: const _HubRow(
-                  icon: Icons.how_to_reg,
-                  iconBg: AppColors.successBg,
-                  iconColor: AppColors.success,
-                  title: 'Duyệt thành viên',
-                  subtitle: 'Xem xét yêu cầu đăng ký tạm trú',
-                  trailing: Icon(
-                    Icons.chevron_right,
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              AppCard(
-                onTap: () => context.push(AppRoutes.pricingSettings),
-                child: const _HubRow(
-                  icon: Icons.settings,
-                  iconBg: AppColors.infoBg,
-                  iconColor: AppColors.info,
-                  title: 'Thiết lập đơn giá',
-                  subtitle: 'Đơn giá điện, nước, phí quản lý',
-                  trailing: Icon(
-                    Icons.chevron_right,
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              AppCard(
-                onTap: () => context.push(AppRoutes.notifications),
-                child: const _HubRow(
-                  icon: Icons.notifications,
-                  iconBg: AppColors.infoBg,
-                  iconColor: AppColors.primary,
-                  title: 'Thông báo',
-                  subtitle: 'Gửi và quản lý thông báo tòa nhà',
+                  icon: Icons.receipt_long,
+                  iconBg: AppColors.purpleBg,
+                  iconColor: AppColors.purple,
+                  title: 'Hóa đơn',
+                  subtitle: 'Chỉ số điện nước, thanh toán & thiết lập đơn giá',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,

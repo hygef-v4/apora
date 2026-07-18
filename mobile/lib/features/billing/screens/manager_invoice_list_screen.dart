@@ -79,6 +79,11 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
             showBack: true,
             actions: [
               HeaderIconButton(
+                icon: Icons.settings,
+                tooltip: 'Thiết lập đơn giá',
+                onTap: () => context.push(AppRoutes.pricingSettings),
+              ),
+              HeaderIconButton(
                 icon: Icons.refresh,
                 tooltip: 'Làm mới',
                 onTap: () => ref.read(billingProvider.notifier).fetchData(),
