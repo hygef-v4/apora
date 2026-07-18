@@ -126,10 +126,6 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
                   return const Center(child: Text('Không tải được thông tin căn hộ.'));
                 }
 
-                // Tính toán số lượng sự cố chưa xử lý để gán trạng thái Bảo trì
-                final unresolvedCount = detail.recentTickets
-                    .where((t) => t.status != 'RESOLVED' && t.status != 'CANCELLED')
-                    .length;
 
                 // Xác định badge trạng thái giống với danh sách căn hộ
                 late final StatusBadge statusBadge;
