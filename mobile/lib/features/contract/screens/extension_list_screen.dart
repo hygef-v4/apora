@@ -393,35 +393,6 @@ class _ExtensionListScreenState extends ConsumerState<ExtensionListScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
-                          onPressed: () async {
-                            final reviewed = await context.push<bool>(
-                              AppRoutes.extensionDetailPath(ext.id),
-                            );
-                            if (reviewed == true && mounted) {
-                              ref.read(extensionListProvider.notifier).fetch();
-                            }
-                          },
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFFE2E8F0)),
-                            backgroundColor: const Color(0xFFF8FAFC),
-                            minimumSize: const Size.fromHeight(36),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: const Text(
-                            'Xem HĐ',
-                            style: TextStyle(
-                              color: Color(0xFF64748B),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
                         child: ElevatedButton(
                           onPressed: () async {
                             final reviewed = await context.push<bool>(
@@ -451,38 +422,6 @@ class _ExtensionListScreenState extends ConsumerState<ExtensionListScreen> {
                       ),
                     ],
                   )
-                else
-                  OutlinedButton(
-                    onPressed: () async {
-                      final reviewed = await context.push<bool>(
-                        AppRoutes.extensionDetailPath(ext.id),
-                      );
-                      if (reviewed == true && mounted) {
-                        ref.read(extensionListProvider.notifier).fetch();
-                      }
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFE2E8F0)),
-                      backgroundColor: const Color(0xFFF8FAFC),
-                      minimumSize: const Size.fromHeight(36),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Xem HĐ',
-                          style: TextStyle(
-                            color: Color(0xFF64748B),
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
               ],
             ),
           ),
