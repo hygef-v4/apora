@@ -7,7 +7,6 @@ import 'dart:async';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/network/token_storage.dart';
-import '../../../core/services/phone_otp_service.dart';
 import '../../../core/services/push_notification_service.dart';
 import '../models/user.dart';
 import '../repositories/auth_api_service.dart';
@@ -145,22 +144,14 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  /// UC03 bước 1: backend kiểm tra tài khoản (404/403 nếu không hợp lệ),
-  /// sau đó Firebase Phone Auth gửi SMS OTP tới SĐT (BR-08).
-  Future<void> requestOtp(String phone) async {
-    await _api.checkResetAccount(phone);
-    await ref.read(phoneOtpServiceProvider).sendOtp(phone);
+  /// UC03 bước 1: Yêu cầu OTP. Trả về devOtp nếu backend chạy dev mode.
+  Future<String?> requestOtp(String phone) async {
+    return _api.requestOtp(phone);
   }
 
-  /// UC03 bước 2: xác thực OTP với Firebase lấy ID token, gửi backend đổi
-  /// mật khẩu, xong thì dọn phiên Firebase tạm. Sau đó user đăng nhập lại.
-  Future<void> resetPassword(String phone, String smsCode, String newPassword) async {
-    final otpService = ref.read(phoneOtpServiceProvider);
-    final idToken = await otpService.confirmAndGetIdToken(smsCode);
-    await _api.resetPassword(phone, idToken, newPassword);
-    // Chỉ dọn khi thành công - backend từ chối (vd mật khẩu trùng) thì giữ
-    // phiên Firebase để người dùng sửa và gửi lại, không phải xin OTP mới.
-    await otpService.clearSession();
+  /// UC03 bước 2: Xác thực OTP + đặt mật khẩu mới, sau đó user đăng nhập lại.
+  Future<void> resetPassword(String phone, String otp, String newPassword) async {
+    await _api.resetPassword(phone, otp, newPassword);
   }
 
   /// Đổi mật khẩu khi đã đăng nhập (flow BR-01). Backend trả token mới.

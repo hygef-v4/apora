@@ -1,5 +1,4 @@
 import { initializeApp, getApps, cert, applicationDefault } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
 import { getMessaging, MulticastMessage } from 'firebase-admin/messaging';
 import path from 'path';
 import fs from 'fs';
@@ -26,19 +25,6 @@ if (!getApps().length) {
   } catch (error) {
     console.error('[Firebase] Lỗi khởi tạo Firebase Admin SDK:', error);
   }
-}
-
-/**
- * UC03: Xác thực Firebase ID token của phiên Phone Auth (SMS OTP) từ mobile.
- * Mobile tự nhận OTP qua Firebase; backend chỉ tin ID token do Firebase ký.
- *
- * @returns SĐT dạng E.164 (+84xxxxxxxxx) gắn trong token, null nếu token
- *   không phải phiên Phone Auth.
- * @throws lỗi firebase-admin nếu token sai/giả/hết hạn - service map sang HttpError.
- */
-export async function verifyPhoneIdToken(idToken: string): Promise<string | null> {
-  const decoded = await getAuth().verifyIdToken(idToken);
-  return decoded.phone_number ?? null;
 }
 
 /**

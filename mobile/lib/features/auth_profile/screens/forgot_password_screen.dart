@@ -4,16 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
-import '../../../core/services/phone_otp_service.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../providers/auth_notifier.dart';
 
-/// UC03: Quên mật khẩu (FID-03) - 2 bước, OTP qua Firebase Phone Auth (BR-08):
-/// Bước 1: nhập SĐT -> backend check tài khoản -> Firebase gửi SMS OTP.
-/// Bước 2: nhập OTP + mật khẩu mới -> Firebase xác thực -> backend đổi mật khẩu.
-/// Có nút "Gửi lại OTP" (Firebase tự vô hiệu mã cũ khi cấp mã mới).
+/// UC03: Quên mật khẩu (FID-03) - 2 bước:
+/// Bước 1: nhập SĐT -> gửi OTP. Bước 2: nhập OTP + mật khẩu mới.
+/// Có nút "Gửi lại OTP" (mã cũ bị vô hiệu, đếm lại 5 phút - BR-08).
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -47,11 +45,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  /// Lỗi OTP từ Firebase đã có message tiếng Việt sẵn; còn lại map lỗi Dio.
-  String _errorText(Object e) =>
-      e is OtpException ? e.message : mapDioError(e);
-
-  /// Bước 1 + Resend: backend check tài khoản rồi Firebase gửi SMS OTP.
+  /// Bước 1 + Resend: yêu cầu gửi OTP.
   Future<void> _sendOtp() async {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) {
@@ -60,17 +54,21 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     }
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(authNotifierProvider.notifier).requestOtp(phone);
+      final devOtp =
+          await ref.read(authNotifierProvider.notifier).requestOtp(phone);
       setState(() => _otpSent = true);
-      _showMessage(AppStrings.msgOtpSent);
+      // Backend dev mode trả kèm OTP để demo không cần SMS thật
+      _showMessage(devOtp != null
+          ? '${AppStrings.msgOtpSent} (Dev OTP: $devOtp)'
+          : AppStrings.msgOtpSent);
     } catch (e) {
-      _showMessage(_errorText(e));
+      _showMessage(mapDioError(e));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  /// Bước 2: Firebase xác thực OTP -> backend đổi mật khẩu.
+  /// Bước 2: xác thực OTP + đặt mật khẩu mới.
   Future<void> _resetPassword() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
@@ -83,7 +81,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       _showMessage('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.');
       if (mounted) context.pop();
     } catch (e) {
-      _showMessage(_errorText(e));
+      _showMessage(mapDioError(e));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

@@ -36,9 +36,8 @@ CREATE INDEX IF NOT EXISTS idx_device_tokens_user_active
   ON device_tokens (user_id) WHERE revoked_at IS NULL AND status = 'ACTIVE';
 
 -- 3. PASSWORD_RESET_OTPS (Password Recovery) - BR-08
--- ⚠️ KHÔNG CÒN DÙNG: OTP quên mật khẩu chuyển sang Firebase Phone Auth
--- (mobile nhận SMS trực tiếp từ Firebase, backend verify Firebase ID token).
--- Bảng giữ lại theo thiết kế DB 15 bảng trong Software Design.
+-- otp_code lưu SHA-256 hex của mã OTP (64 ký tự), KHÔNG lưu plaintext.
+-- Migration từ bản cũ: ALTER TABLE password_reset_otps ALTER COLUMN otp_code TYPE VARCHAR(64);
 CREATE TABLE IF NOT EXISTS password_reset_otps (
   id             SERIAL PRIMARY KEY,
   phone_number   VARCHAR(15) NOT NULL,

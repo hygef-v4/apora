@@ -56,17 +56,6 @@ export function validatePhoneNumber(phone: string): string | null {
 }
 
 /**
- * Chuẩn hóa SĐT về dạng nội địa VN (0xxxxxxxxx) để đối chiếu với DB.
- * Firebase Phone Auth trả SĐT dạng E.164 (+84xxxxxxxxx).
- */
-export function normalizeVnPhone(phone: string): string {
-  const trimmed = phone.trim();
-  if (trimmed.startsWith('+84')) return `0${trimmed.slice(3)}`;
-  if (trimmed.startsWith('84') && trimmed.length === 11) return `0${trimmed.slice(2)}`;
-  return trimmed;
-}
-
-/**
  * BR-09: Mật khẩu tối thiểu 8 ký tự, ít nhất 1 chữ hoa và 1 chữ số.
  * @returns null nếu hợp lệ, ngược lại trả message lỗi tiếng Việt.
  */

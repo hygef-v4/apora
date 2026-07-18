@@ -47,22 +47,17 @@ class AuthAPIService {
     });
   }
 
-  /// UC03 bước 1: kiểm tra SĐT có tài khoản hợp lệ (404/403 nếu không)
-  /// TRƯỚC khi app nhờ Firebase gửi SMS - tránh tốn SMS vô ích.
-  Future<void> checkResetAccount(String phone) async {
-    await _dio.post(ApiConstants.forgotPassword, data: {'phone': phone});
+  /// Trả về devOtp nếu backend chạy môi trường dev (demo không cần SMS thật).
+  Future<String?> requestOtp(String phone) async {
+    final res = await _dio.post(ApiConstants.forgotPassword, data: {'phone': phone});
+    final data = res.data['data'];
+    return data is Map ? data['devOtp'] as String? : null;
   }
 
-  /// UC03 bước 2: gửi Firebase ID token (đã xác thực OTP với Firebase)
-  /// để backend verify và đặt mật khẩu mới.
-  Future<void> resetPassword(
-    String phone,
-    String firebaseIdToken,
-    String newPassword,
-  ) async {
+  Future<void> resetPassword(String phone, String otp, String newPassword) async {
     await _dio.post(ApiConstants.resetPassword, data: {
       'phone': phone,
-      'firebaseIdToken': firebaseIdToken,
+      'otp': otp,
       'newPassword': newPassword,
     });
   }

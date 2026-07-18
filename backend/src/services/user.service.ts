@@ -1,7 +1,7 @@
 /**
  * UserService - Business Logic cho Module 1: Auth & Profile (UC01-UC05)
  *
- * Điều phối UserRepository + Cloudinary + Firebase Auth (SMS OTP).
+ * Điều phối UserRepository + Cloudinary + SMS (mock).
  * Mọi message lỗi là tiếng Việt, ném HttpError để route map sang response.
  *
  * Business Rules chính:
@@ -10,17 +10,17 @@
  * - BR-03/BR-06: bcrypt hash
  * - BR-04/BR-05: tài khoản INACTIVE không được login / nhận OTP
  * - BR-07: reset mật khẩu -> vô hiệu hóa mọi JWT (token_version)
- * - BR-08: OTP qua Firebase Phone Auth (Firebase tự quản hết hạn/giới hạn nhập sai);
- *   backend chỉ verify Firebase ID token, không tự sinh/lưu OTP
+ * - BR-08: OTP hết hạn 5 phút, tối đa 3 lần nhập sai
  * - BR-09: mật khẩu >= 8 ký tự, >= 1 hoa, >= 1 số
  * - BR-12: log audit khi đổi số điện thoại
  * - BR-44: lưu FCM token khi login, revoke khi logout
  */
 
+import { createHash, randomInt } from 'crypto';
+
 import {
   comparePassword,
   hashPassword,
-  normalizeVnPhone,
   signToken,
   validatePasswordComplexity,
   validatePhoneNumber,
@@ -29,8 +29,10 @@ import { uploadImage } from '@/lib/cloudinary';
 import { HttpError } from '@/lib/middleware';
 import * as auditRepo from '@/repositories/audit.repository';
 import * as userRepo from '@/repositories/user.repository';
-import { verifyPhoneIdToken } from '@/services/firebase.service';
 import { LoginResponseData, PublicUser, User } from '@/types';
+
+const OTP_TTL_MS = 5 * 60 * 1000; // BR-08: 5 phút
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000; // chống spam SMS: tối thiểu 60s giữa 2 lần gửi
 
 // Chống brute-force đăng nhập: khóa tạm SĐT sau 5 lần sai trong 15 phút
 const LOGIN_MAX_FAILURES = 5;
@@ -42,9 +44,14 @@ const FULL_NAME_MAX = 100;
 // MSG theo SRS
 const MSG_LOGIN_FAILED = 'Số điện thoại hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.';
 const MSG_INACTIVE = 'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ Ban quản lý.';
-const MSG_OTP_INVALID = 'Phiên xác thực OTP không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.';
+const MSG_OTP_INVALID = 'Mã OTP không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu mã mới.';
 const MSG_PHONE_EXISTS = 'Số điện thoại đã tồn tại. Vui lòng nhập số khác.';
 const MSG_SAME_PASSWORD = 'Mật khẩu mới không được trùng mật khẩu hiện tại.';
+
+/** SHA-256 hex - dùng để lưu/đối chiếu OTP, không bao giờ lưu OTP plaintext. */
+function hashOtp(code: string): string {
+  return createHash('sha256').update(code).digest('hex');
+}
 
 /**
  * Bộ đếm đăng nhập sai theo SĐT (in-memory).
@@ -95,6 +102,14 @@ function toPublicUser(user: User): PublicUser {
     avatarUrl: user.avatar_url,
     roles: user.roles,
   };
+}
+
+/**
+ * Gửi SMS - hiện tại MOCK (log console).
+ * Khi tích hợp SMS provider thật chỉ cần thay thân hàm này, không đổi API.
+ */
+function sendSms(phone: string, content: string): void {
+  console.log(`[MOCK SMS] Gửi tới ${phone}: ${content}`);
 }
 
 // ==========================================
@@ -151,40 +166,49 @@ export async function invalidateSession(userId: number, fcmToken?: string): Prom
 }
 
 // ==========================================
-// UC03: Forgot Password (OTP qua Firebase Phone Auth)
+// UC03: Forgot Password (OTP)
 // ==========================================
 
-/**
- * UC03 bước 1: kiểm tra tài khoản trước khi mobile nhờ Firebase gửi SMS OTP
- * (tránh tốn SMS cho SĐT không có tài khoản / tài khoản đã vô hiệu hóa).
- * Việc sinh mã, gửi SMS, đếm nhập sai, hết hạn do Firebase đảm nhiệm (BR-08).
- */
-export async function ensureAccountForPasswordReset(phone: string): Promise<void> {
+export async function generateOTP(phone: string): Promise<{ devOtp?: string }> {
   if (!phone?.trim()) throw new HttpError(400, 'Vui lòng nhập Số điện thoại.');
 
   const user = await userRepo.findByPhone(phone.trim());
   if (!user) {
     // Trade-off có chủ đích: message này cho phép dò SĐT đã đăng ký (user
     // enumeration), nhưng SRS UC03 yêu cầu báo rõ để cư dân gõ nhầm số biết
-    // đường sửa. Firebase tự rate-limit SMS theo số/thiết bị.
+    // đường sửa. Rủi ro được giảm nhẹ bằng cooldown 60s/SĐT ở dưới.
     throw new HttpError(404, 'Số điện thoại không tồn tại trong hệ thống.');
   }
   if (user.status !== 'ACTIVE') {
     throw new HttpError(403, MSG_INACTIVE); // BR-05
   }
+
+  // Cooldown chống spam: tối thiểu 60s giữa 2 lần yêu cầu OTP cho cùng SĐT
+  const lastCreatedAt = await userRepo.findLatestOtpCreatedAt(user.phone_number);
+  if (lastCreatedAt && Date.now() - lastCreatedAt.getTime() < OTP_RESEND_COOLDOWN_MS) {
+    const waitSeconds = Math.ceil(
+      (OTP_RESEND_COOLDOWN_MS - (Date.now() - lastCreatedAt.getTime())) / 1000,
+    );
+    throw new HttpError(429, `Vui lòng đợi ${waitSeconds} giây trước khi yêu cầu mã mới.`);
+  }
+
+  // randomInt của crypto (CSPRNG) - Math.random() đoán được, không dùng cho OTP
+  const code = String(randomInt(100000, 1000000)); // 6 chữ số
+  const expiredAt = new Date(Date.now() + OTP_TTL_MS);
+  await userRepo.createOtp(user.phone_number, hashOtp(code), expiredAt);
+
+  sendSms(user.phone_number, `Ma OTP khoi phuc mat khau APORA cua ban la ${code}. Het han sau 5 phut.`);
+
+  // Chỉ trả OTP kèm response ở môi trường dev để demo (production không bao giờ trả)
+  return process.env.NODE_ENV !== 'production' ? { devOtp: code } : {};
 }
 
-/**
- * UC03 bước 2: mobile đã xác thực OTP với Firebase và gửi lên Firebase ID token.
- * Backend verify chữ ký token + đối chiếu SĐT trong token với tài khoản cần
- * reset (không tin SĐT client tự khai), rồi mới đổi mật khẩu.
- */
-export async function resetPasswordWithFirebase(
+export async function verifyOTPAndReset(
   phone: string,
-  firebaseIdToken: string,
+  otp: string,
   newPassword: string,
 ): Promise<void> {
-  if (!phone?.trim() || !firebaseIdToken?.trim()) {
+  if (!phone?.trim() || !otp?.trim()) {
     throw new HttpError(400, MSG_OTP_INVALID);
   }
 
@@ -192,28 +216,31 @@ export async function resetPasswordWithFirebase(
   if (complexityError) throw new HttpError(400, complexityError);
 
   // BR-05: re-check tại thời điểm reset - tài khoản có thể bị vô hiệu hóa
-  // trong khoảng từ lúc xin OTP tới lúc xác nhận.
+  // trong khoảng 5 phút từ lúc xin OTP tới lúc xác nhận.
   const user = await userRepo.findByPhone(phone.trim());
   if (!user) throw new HttpError(400, MSG_OTP_INVALID);
   if (user.status !== 'ACTIVE') throw new HttpError(403, MSG_INACTIVE);
 
-  // Verify token với Firebase Admin - token giả/hết hạn thì ném lỗi
-  let tokenPhone: string | null;
-  try {
-    tokenPhone = await verifyPhoneIdToken(firebaseIdToken.trim());
-  } catch {
+  const record = await userRepo.findActiveOtp(phone.trim());
+  if (!record) {
     throw new HttpError(400, MSG_OTP_INVALID);
   }
-
-  // SĐT trong token (E.164 +84...) phải khớp đúng tài khoản cần reset -
-  // chặn dùng OTP của số A để chiếm tài khoản số B.
-  if (!tokenPhone || normalizeVnPhone(tokenPhone) !== user.phone_number) {
+  // DB chỉ lưu SHA-256 của OTP -> đối chiếu bằng hash
+  if (record.otp_code !== hashOtp(otp.trim())) {
+    await userRepo.increaseOtpAttempt(record.id); // quá 3 lần -> OTP tự vô hiệu
     throw new HttpError(400, MSG_OTP_INVALID);
   }
 
   // Mật khẩu mới không được trùng mật khẩu hiện tại
   if (await comparePassword(newPassword, user.password_hash)) {
     throw new HttpError(400, MSG_SAME_PASSWORD);
+  }
+
+  // "Tiêu" OTP TRƯỚC khi đổi mật khẩu - atomic: 2 request đồng thời cùng mã
+  // thì chỉ 1 request thắng, request kia nhận lỗi OTP không hợp lệ.
+  const consumed = await userRepo.markOtpUsed(record.id);
+  if (!consumed) {
+    throw new HttpError(400, MSG_OTP_INVALID);
   }
 
   const hash = await hashPassword(newPassword); // BR-06
