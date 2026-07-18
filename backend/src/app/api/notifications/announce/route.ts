@@ -17,7 +17,7 @@ import { publishAnnouncement } from '@/services/notification.service';
 export async function POST(req: NextRequest) {
   try {
     // 1. Kiểm tra quyền
-    await requireAuth(req, ['LANDLORD', 'MANAGER']);
+    const session = await requireAuth(req, ['LANDLORD', 'MANAGER']);
 
     // 2. Parse FormData
     const formData = await req.formData();
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Gọi Service thực thi logic
-    await publishAnnouncement(title.trim(), body.trim(), bannerUrl);
+    await publishAnnouncement(session.id, title.trim(), body.trim(), bannerUrl);
 
     return jsonSuccess('Đăng thông báo thành công.');
   } catch (error) {

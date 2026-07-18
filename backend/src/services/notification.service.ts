@@ -6,36 +6,51 @@ import { sendPushNotification } from './firebase.service';
  * Sẽ gửi cho tất cả users.
  */
 export async function publishAnnouncement(
+  senderId: number,
   title: string,
   body: string,
   bannerUrl?: string
 ): Promise<void> {
-  // 1. Lấy danh sách tất cả người dùng để nhận thông báo
-  const userIds = await NotificationRepo.getAllUserIdsToNotify();
+  // 1. Lấy danh sách tất cả user để lưu vào DB (để ai cũng xem được trên app)
+  const allUserIds = await NotificationRepo.getAllUserIdsToNotify();
   
-  if (userIds.length === 0) {
-    return;
+  // 2. Lưu thông báo vào database cho TẤT CẢ mọi người
+  if (allUserIds.length > 0) {
+    await NotificationRepo.createNotificationsBulk(
+      allUserIds,
+      title,
+      body,
+      'NEWS',
+      null // Không có reference cụ thể cho thông báo chung
+    );
+
+    // Đánh dấu là đã đọc luôn cho người gửi để không bị nhảy số đếm thông báo
+    await NotificationRepo.markSenderAnnouncementsAsRead(senderId);
   }
 
-  // 2. Lưu thông báo vào database cho từng user
-  await NotificationRepo.createNotificationsBulk(
-    userIds,
-    title,
-    body,
-    'NEWS',
-    null // Không có reference cụ thể cho thông báo chung
-  );
+  // 3. Lấy device tokens của NHỮNG NGƯỜI LÀ CƯ DÂN để gửi Push (không gửi cho staff/admin/owner)
+  const residentIds = await NotificationRepo.getResidentUserIdsToNotify();
+  
+  if (residentIds.length > 0) {
+    let tokens = await NotificationRepo.getActiveDeviceTokens(residentIds);
 
-  // 3. Lấy device tokens của users
-  const tokens = await NotificationRepo.getActiveDeviceTokens(userIds);
+    // BẮT BUỘC: Lấy các device tokens của chính người gửi, và loại bỏ chúng khỏi danh sách tokens.
+    // Điều này ngăn chặn lỗi "admin vẫn nhận được push notification" nếu token của admin vô tình bị trùng/lưu cho 1 tài khoản cư dân (do login trên cùng 1 máy).
+    const senderTokens = await NotificationRepo.getActiveDeviceTokens([senderId]);
+    if (senderTokens.length > 0) {
+      tokens = tokens.filter(t => !senderTokens.includes(t));
+    }
 
-  // 4. Gửi push notification bất đồng bộ
-  sendPushNotification(tokens, title, body, {
-    type: 'NEWS',
-    bannerUrl: bannerUrl || '',
-  }).catch((err) => {
-    console.error('Lỗi khi gửi Push Notification:', err);
-  });
+    // 4. Gửi push notification bất đồng bộ
+    if (tokens.length > 0) {
+      sendPushNotification(tokens, title, body, {
+        type: 'NEWS',
+        bannerUrl: bannerUrl || '',
+      }).catch((err) => {
+        console.error('Lỗi khi gửi Push Notification:', err);
+      });
+    }
+  }
 }
 
 /**

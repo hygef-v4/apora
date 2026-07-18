@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "(adb reverse tcp:3000 tcp:3000 || echo \"Skipping\") && next dev",
+    "dev": "(adb reverse tcp:3000 tcp:3000 || echo \"Skipping...\") && next dev",
     "db:dev": "node db/dev-db.mjs",
     "db:reset": "node -e \"const fs = require('fs'); fs.rmSync('db/pgdata', { recursive: true, force: true });\" && npm run db:dev",
     "build": "next build",

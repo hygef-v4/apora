@@ -149,7 +149,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     final isManager = roles.contains('MANAGER') || roles.contains('LANDLORD');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
           const GradientHeader(title: 'Chi Tiết Sự Cố', showBack: true),
@@ -491,7 +491,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                   height: 46,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.navy,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),

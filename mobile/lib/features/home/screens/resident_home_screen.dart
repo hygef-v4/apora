@@ -32,7 +32,7 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
     AppBottomNavItem(icon: Icons.home, label: 'Trang chủ'),
     AppBottomNavItem(icon: Icons.receipt_long, label: 'Hóa đơn'),
     AppBottomNavItem(icon: Icons.build, label: 'Yêu cầu'),
-    AppBottomNavItem(icon: Icons.chat_bubble, label: 'Tin nhắn'),
+    AppBottomNavItem(icon: Icons.chat_bubble, label: 'Hỗ trợ'),
     AppBottomNavItem(icon: Icons.person, label: 'Cá nhân'),
   ];
 
@@ -147,8 +147,12 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
           // Tab Yêu cầu -> danh sách sự cố của cư dân (UC18/UC19, nhúng nên không back)
           const TicketListScreen(),
           
-          // Tab Tin nhắn (Live Chat - UC28)
-          const ChatScreen(title: 'Chat với Ban Quản Lý'),
+          // Tab Hỗ trợ (Live Chat - UC28)
+          const ChatScreen(
+            title: 'Hỗ trợ',
+            subtitle: 'Trò chuyện và nhận hỗ trợ từ BQL',
+            showBack: false,
+          ),
           
           // Tab Cá nhân
           Column(

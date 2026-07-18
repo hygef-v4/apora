@@ -12,6 +12,7 @@ import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../../communication/screens/notification_list_screen.dart';
 import '../../management/screens/apartment_list_screen.dart';
+import '../../chat/screens/chat_list_screen.dart';
 import 'dashboard_screen.dart';
 
 /// Khung điều hướng của Quản lý/Chủ tòa nhà — bottom nav 5 tab theo thiết kế
@@ -30,9 +31,9 @@ class _ManagerShellState extends State<ManagerShell> {
   static const _tabs = [
     AppBottomNavItem(icon: Icons.home, label: 'Trang chủ'),
     AppBottomNavItem(icon: Icons.apartment, label: 'Căn hộ'),
-    AppBottomNavItem(icon: Icons.groups, label: 'Quản lý'),
-    AppBottomNavItem(icon: Icons.notifications, label: 'Thông báo'),
     AppBottomNavItem(icon: Icons.bar_chart, label: 'Báo cáo'),
+    AppBottomNavItem(icon: Icons.chat, label: 'Hỗ trợ'),
+    AppBottomNavItem(icon: Icons.groups, label: 'Quản lý'),
   ];
 
   @override
@@ -43,8 +44,6 @@ class _ManagerShellState extends State<ManagerShell> {
         children: [
           const DashboardTab(),
           const ApartmentListScreen(),
-          const _ManagementHubTab(),
-          const NotificationListScreen(),
           const _ComingSoonTab(
             title: 'Báo cáo',
             child: ComingSoon(
@@ -53,6 +52,8 @@ class _ManagerShellState extends State<ManagerShell> {
               moduleNote: 'sẽ có ở Module 7 (Dashboard)',
             ),
           ),
+          const ManagerChatListScreen(),
+          const _ManagementHubTab(),
         ],
       ),
       bottomNavigationBar: AppBottomNav(
@@ -229,13 +230,13 @@ class _ManagementHubTab extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               AppCard(
-                onTap: () => context.push(AppRoutes.chatList),
+                onTap: () => context.push(AppRoutes.notifications),
                 child: const _HubRow(
-                  icon: Icons.chat,
+                  icon: Icons.notifications,
                   iconBg: AppColors.infoBg,
                   iconColor: AppColors.primary,
-                  title: 'Hỗ trợ cư dân (Live Chat)',
-                  subtitle: 'Trao đổi và giải đáp thắc mắc',
+                  title: 'Thông báo',
+                  subtitle: 'Gửi và quản lý thông báo tòa nhà',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,

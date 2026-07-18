@@ -7,15 +7,20 @@ import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/chat_message_model.dart';
 import '../providers/chat_provider.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/widgets/gradient_header.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final int? partnerId; // null means chatting with general management
   final String title;
+  final String? subtitle;
+  final bool showBack;
 
   const ChatScreen({
     super.key,
     this.partnerId,
     required this.title,
+    this.subtitle,
+    this.showBack = true,
   });
 
   @override
@@ -162,13 +167,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final currentUser = ref.watch(authNotifierProvider).user;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-      ),
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
+          GradientHeader(
+            title: widget.title,
+            subtitle: widget.subtitle,
+            showBack: widget.showBack,
+          ),
           Expanded(
             child: messagesAsync.when(
               data: (messages) {
@@ -222,6 +228,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ],
             ),
             child: SafeArea(
+              top: false,
               child: Row(
                 children: [
                   IconButton(
