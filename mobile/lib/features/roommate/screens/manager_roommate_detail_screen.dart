@@ -169,7 +169,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
                       const Divider(height: 20, color: AppColors.divider),
                       _buildInfoRow('Họ và tên', roommate.fullName),
                       _buildInfoRow('Số điện thoại', roommate.phoneNumber ?? 'Không có'),
-                      _buildInfoRow('Số CCCD / Định danh', roommate.cccdNumber),
+                      _buildInfoRow('Số CCCD / Định danh', roommate.maskedCccdNumber),
                       _buildInfoRow('Căn hộ lưu trú', 'Căn ${roommate.unitNumber ?? "N/A"}'),
                     ],
                   ),

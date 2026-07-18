@@ -8,7 +8,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class PushNotificationService {
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging get _fcm => FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -87,7 +87,7 @@ class PushNotificationService {
 
   Future<String?> getToken() async {
     try {
-      return await _fcm.getToken();
+      return await FirebaseMessaging.instance.getToken();
     } catch (e) {
       log('Lỗi khi lấy FCM token: $e');
       return null;

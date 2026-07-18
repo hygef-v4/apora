@@ -72,7 +72,7 @@ void main() {
   group('AuthNotifier - UC01 Login', () {
     test('đăng nhập thành công: state authenticated, đúng roles, token được lưu',
         () async {
-      when(() => mockApi.signIn('0900000003', 'Apora@123')).thenAnswer(
+      when(() => mockApi.signIn('0900000003', 'Apora@123', fcmToken: any(named: 'fcmToken'))).thenAnswer(
         (_) async => const AuthResponse(
           token: 'jwt-token-abc',
           mustChangePassword: true,
@@ -92,7 +92,7 @@ void main() {
     });
 
     test('đăng nhập sai: state unauthenticated + errorMessage MSG02', () async {
-      when(() => mockApi.signIn(any(), any())).thenThrow(
+      when(() => mockApi.signIn(any(), any(), fcmToken: any(named: 'fcmToken'))).thenThrow(
         DioException(
           requestOptions: RequestOptions(path: '/auth/login'),
           type: DioExceptionType.badResponse,
