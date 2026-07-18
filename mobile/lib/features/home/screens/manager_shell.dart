@@ -28,7 +28,6 @@ class _ManagerShellState extends State<ManagerShell> {
 
   static const _tabs = [
     AppBottomNavItem(icon: Icons.home, label: 'Trang chủ'),
-    AppBottomNavItem(icon: Icons.apartment, label: 'Căn hộ'),
     AppBottomNavItem(icon: Icons.groups, label: 'Quản lý'),
     AppBottomNavItem(icon: Icons.notifications, label: 'Thông báo'),
     AppBottomNavItem(icon: Icons.bar_chart, label: 'Báo cáo'),
