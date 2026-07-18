@@ -336,21 +336,6 @@ class DashboardTab extends ConsumerWidget {
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
-                                GestureDetector(
-                                  onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Xem chi tiết các hoạt động ở các mục Quản lý tương ứng.')),
-                                    );
-                                  },
-                                  child: const Text(
-                                    'Xem tất cả',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ),
                               ],
                             ),
                             const SizedBox(height: 14),
@@ -359,7 +344,7 @@ class DashboardTab extends ConsumerWidget {
                                 child: Padding(
                                   padding: EdgeInsets.symmetric(vertical: 20.0),
                                   child: Text(
-                                  'Chưa có hoạt động — bảng tin & thông báo sẽ có ở Module 5.',
+                                  'Chưa có hoạt động',
                                   textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 12,
