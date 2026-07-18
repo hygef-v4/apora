@@ -118,6 +118,43 @@ export async function findLatestContractByResident(
   return result.rows[0] ?? null;
 }
 
+/** Dòng hợp đồng kèm căn hộ + cư dân + yêu cầu gia hạn PENDING (danh sách Manager). */
+export interface ContractListRow {
+  id: number;
+  start_date: Date;
+  end_date: Date;
+  base_rent_snapshot: string;
+  status: ContractStatus;
+  unit_number: string;
+  floor: string;
+  resident_name: string;
+  pending_extension_id: number | null;
+}
+
+/**
+ * Danh sách TẤT CẢ hợp đồng cho Manager/Landlord (màn Hợp đồng).
+ * Ưu tiên ACTIVE lên trên, trong nhóm xếp theo ngày kết thúc gần nhất.
+ * LATERAL lấy yêu cầu gia hạn PENDING mới nhất của mỗi hợp đồng (nếu có) để
+ * hiển thị nút "Duyệt gia hạn" ngay trên thẻ (tích hợp UC08/UC09).
+ */
+export async function findAllContracts(): Promise<ContractListRow[]> {
+  const result = await query(
+    `SELECT c.id, c.start_date, c.end_date, c.base_rent_snapshot, c.status,
+            a.unit_number, a.floor, u.full_name AS resident_name,
+            pe.id AS pending_extension_id
+     FROM contracts c
+     JOIN apartments a ON a.id = c.apartment_id
+     JOIN users u ON u.id = c.resident_id
+     LEFT JOIN LATERAL (
+       SELECT se.id FROM stay_extensions se
+       WHERE se.contract_id = c.id AND se.status = 'PENDING'
+       ORDER BY se.created_at DESC LIMIT 1
+     ) pe ON TRUE
+     ORDER BY (c.status = 'ACTIVE') DESC, c.end_date ASC`,
+  );
+  return result.rows;
+}
+
 /** Dòng apartments tối giản cho UC06 AT2 (cư dân có phòng nhưng chưa có hợp đồng). */
 export interface ResidentApartmentRow {
   id: number;

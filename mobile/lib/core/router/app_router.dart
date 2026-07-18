@@ -41,6 +41,7 @@ import '../../features/roommate/screens/roommate_register_screen.dart';
 import '../../features/roommate/screens/manager_roommate_list_screen.dart';
 import '../../features/roommate/screens/manager_roommate_detail_screen.dart';
 import '../../features/contract/models/contract.dart';
+import '../../features/contract/screens/contract_list_screen.dart';
 import '../../features/contract/screens/contract_screen.dart';
 import '../../features/contract/screens/extension_list_screen.dart';
 import '../../features/contract/screens/extension_review_screen.dart';
@@ -111,6 +112,7 @@ class AppRoutes {
   // Module 2: Hợp đồng & Gia hạn lưu trú (UC06-UC09)
   static const String myContract = '/contract';
   static const String requestExtension = '/contract/extend';
+  static const String contractList = '/manager/contracts';
   static const String extensionList = '/manager/extensions';
   static String extensionDetailPath(int id) => '/manager/extensions/$id';
 
@@ -411,6 +413,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.requestExtension,
         builder: (context, state) =>
             RequestExtensionScreen(myContract: state.extra as MyContract),
+      ),
+      // Danh sách tất cả hợp đồng (Manager/Landlord) - màn Hợp đồng
+      GoRoute(
+        path: AppRoutes.contractList,
+        builder: (context, state) => const ContractListScreen(),
       ),
       // UC08: danh sách yêu cầu gia hạn (Manager/Landlord)
       GoRoute(

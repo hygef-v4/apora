@@ -375,6 +375,22 @@ export interface MyContractResponse {
   } | null;
 }
 
+/** 1 dòng trong danh sách TẤT CẢ hợp đồng cho Manager/Landlord (màn Hợp đồng). */
+export interface ContractListItem {
+  id: number;
+  unitNumber: string;
+  floor: string;
+  residentName: string;
+  startDate: Date;
+  endDate: Date;
+  baseRent: number;
+  status: ContractStatus;
+  /** BR-13: số ngày còn lại tính động; null khi hợp đồng EXPIRED (BR-12). */
+  remainingDays: number | null;
+  /** Yêu cầu gia hạn PENDING đang chờ duyệt (nếu có) -> nút "Duyệt gia hạn". */
+  pendingExtensionId: number | null;
+}
+
 /** 1 dòng trong danh sách yêu cầu gia hạn (UC08 - FID-11). */
 export interface StayExtensionListItem {
   id: number;

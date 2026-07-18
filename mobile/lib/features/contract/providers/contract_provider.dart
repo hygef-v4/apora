@@ -45,6 +45,30 @@ final myContractProvider = AsyncNotifierProvider<MyContractNotifier, MyContract?
   MyContractNotifier.new,
 );
 
+/// Danh sách TẤT CẢ hợp đồng cho Manager/Landlord (màn Hợp đồng).
+/// Fetch toàn bộ rồi lọc phía client theo nhóm Hiệu lực/Sắp HH/Hết hạn.
+class AllContractsNotifier extends AsyncNotifier<List<ContractListItem>> {
+  @override
+  Future<List<ContractListItem>> build() async => const [];
+
+  Future<void> fetch() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final dio = ref.read(dioProvider);
+      final res = await dio.get(ApiConstants.contracts);
+      final raw = res.data['data'] as List;
+      return raw
+          .map((json) => ContractListItem.fromJson(json as Map<String, dynamic>))
+          .toList();
+    });
+  }
+}
+
+final allContractsProvider =
+    AsyncNotifierProvider<AllContractsNotifier, List<ContractListItem>>(
+  AllContractsNotifier.new,
+);
+
 /// UC08: danh sách yêu cầu gia hạn cho Manager/Landlord.
 /// Fetch toàn bộ rồi lọc phía client để tab đếm số PENDING (FID-11 field 1)
 /// và chuyển tab tức thì không cần gọi lại API.

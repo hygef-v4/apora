@@ -24,6 +24,7 @@ class ApiConstants {
   static const String changePassword = '/users/change-password';
 
   // Module 2 - Hợp đồng & Gia hạn lưu trú (UC06-UC09)
+  static const String contracts = '/contracts'; // GET danh sách tất cả hợp đồng (Manager)
   static const String myContract = '/contracts/my'; // GET hợp đồng của tôi (UC06)
   static const String stayExtensions = '/stay-extensions'; // GET list (UC08), POST gửi yêu cầu (UC07)
   static String stayExtensionDetail(int id) => '/stay-extensions/$id'; // GET chi tiết (UC09)

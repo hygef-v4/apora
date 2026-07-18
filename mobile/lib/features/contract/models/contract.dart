@@ -90,6 +90,61 @@ class MyContract {
   }
 }
 
+/// 1 dòng trong danh sách TẤT CẢ hợp đồng cho Manager (màn Hợp đồng).
+/// Khớp DTO ContractListItem của backend.
+class ContractListItem {
+  final int id;
+  final String unitNumber;
+  final String floor;
+  final String residentName;
+  final DateTime startDate;
+  final DateTime endDate;
+  final num baseRent;
+  final String status; // ACTIVE | EXPIRED
+  /// BR-13: số ngày còn lại; null khi hợp đồng EXPIRED.
+  final int? remainingDays;
+  /// Yêu cầu gia hạn PENDING đang chờ duyệt (nếu có) -> nút "Duyệt gia hạn".
+  final int? pendingExtensionId;
+
+  ContractListItem({
+    required this.id,
+    required this.unitNumber,
+    required this.floor,
+    required this.residentName,
+    required this.startDate,
+    required this.endDate,
+    required this.baseRent,
+    required this.status,
+    this.remainingDays,
+    this.pendingExtensionId,
+  });
+
+  /// Ngưỡng "sắp hết hạn": hợp đồng ACTIVE còn <= 30 ngày.
+  static const int expiringSoonDays = 30;
+
+  /// Nhóm hiển thị cho tab: ACTIVE (Hiệu lực) / EXPIRING (Sắp HH) / EXPIRED (Hết hạn).
+  String get bucket {
+    if (status != 'ACTIVE') return 'EXPIRED';
+    if ((remainingDays ?? 0) <= expiringSoonDays) return 'EXPIRING';
+    return 'ACTIVE';
+  }
+
+  factory ContractListItem.fromJson(Map<String, dynamic> json) {
+    return ContractListItem(
+      id: json['id'] as int,
+      unitNumber: json['unitNumber'] as String,
+      floor: json['floor'] as String,
+      residentName: json['residentName'] as String,
+      startDate: DateTime.parse(json['startDate'] as String).toLocal(),
+      endDate: DateTime.parse(json['endDate'] as String).toLocal(),
+      baseRent: json['baseRent'] as num,
+      status: json['status'] as String,
+      remainingDays: json['remainingDays'] as int?,
+      pendingExtensionId: json['pendingExtensionId'] as int?,
+    );
+  }
+}
+
 /// 1 dòng yêu cầu gia hạn trong danh sách (UC08 - FID-11).
 class StayExtension {
   final int id;

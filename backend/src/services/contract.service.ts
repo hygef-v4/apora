@@ -21,6 +21,7 @@ import * as extensionRepo from '@/repositories/stay-extension.repository';
 import * as notificationRepo from '@/repositories/notification.repository';
 import { sendPushNotification } from '@/services/firebase.service';
 import {
+  ContractListItem,
   MyContractResponse,
   StayExtensionDetail,
   StayExtensionListItem,
@@ -136,6 +137,35 @@ export async function getMyContract(userId: number): Promise<MyContractResponse>
       pendingExtensionId: pending?.id ?? null,
     },
   };
+}
+
+// ==========================================
+// Danh sách tất cả hợp đồng cho Manager (màn Hợp đồng)
+// ==========================================
+
+/**
+ * Danh sách TOÀN BỘ hợp đồng cho MANAGER/LANDLORD.
+ * Lazy expire trước để trạng thái ACTIVE/EXPIRED chính xác (BR-12);
+ * remainingDays tính động (BR-13), hợp đồng EXPIRED trả null.
+ */
+export async function getAllContracts(): Promise<ContractListItem[]> {
+  await contractRepo.expireOverdueContracts();
+  const rows = await contractRepo.findAllContracts();
+  return rows.map((row) => {
+    const isActive = row.status === 'ACTIVE';
+    return {
+      id: row.id,
+      unitNumber: row.unit_number,
+      floor: row.floor,
+      residentName: row.resident_name,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      baseRent: Number(row.base_rent_snapshot),
+      status: row.status,
+      remainingDays: isActive ? calcRemainingDays(row.end_date) : null,
+      pendingExtensionId: row.pending_extension_id,
+    };
+  });
 }
 
 // ==========================================

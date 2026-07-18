@@ -167,13 +167,13 @@ class _ManagementHubTab extends ConsumerWidget {
               const SizedBox(height: 10),
               // 5. hợp đồng
               AppCard(
-                onTap: () => context.push(AppRoutes.extensionList),
+                onTap: () => context.push(AppRoutes.contractList),
                 child: const _HubRow(
                   icon: Icons.description,
                   iconBg: Color(0xFFFEFCE8),
                   iconColor: Color(0xFFCA8A04),
                   title: 'Hợp đồng',
-                  subtitle: 'Duyệt yêu cầu gia hạn lưu trú',
+                  subtitle: 'Danh sách hợp đồng & duyệt gia hạn',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
