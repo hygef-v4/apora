@@ -82,16 +82,10 @@ export interface DeviceToken {
   revoked_at: Date | null;
 }
 
-/** BR-08: OTP hết hạn 5 phút; attempt_count tối đa 3 lần sai. */
-export interface PasswordResetOtp {
-  id: number;
-  phone_number: string;
-  otp_code: string;
-  expired_at: Date;
-  is_used: boolean;
-  attempt_count: number;
-  created_at: Date;
-}
+// LƯU Ý: entity PasswordResetOtp đã bị gỡ (OTP quên mật khẩu chuyển sang
+// Firebase Phone Auth - backend chỉ verify Firebase ID token, không đọc/ghi
+// bảng password_reset_otps). Bảng vẫn còn trong schema.sql theo thiết kế DB
+// 15 bảng, nhưng không có code nào truy cập nên không cần entity.
 
 /** Bảng APARTMENTS (theo SRS "Apartment"). */
 export interface Apartment {

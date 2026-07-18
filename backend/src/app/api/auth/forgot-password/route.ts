@@ -1,7 +1,9 @@
 /**
- * POST /api/auth/forgot-password - UC03 (bước 1): Yêu cầu gửi OTP
+ * POST /api/auth/forgot-password - UC03 (bước 1): Kiểm tra tài khoản trước khi
+ * mobile nhờ Firebase Phone Auth gửi SMS OTP.
  * Body: { phone }
- * OTP hết hạn sau 5 phút (BR-08). Gọi lại endpoint = Resend (mã cũ bị vô hiệu).
+ * Backend KHÔNG sinh OTP - Firebase đảm nhiệm gửi mã/hết hạn/đếm nhập sai (BR-08).
+ * 404 nếu SĐT không có tài khoản, 403 nếu tài khoản INACTIVE (BR-05).
  */
 
 import { NextRequest } from 'next/server';
@@ -11,8 +13,8 @@ import * as userService from '@/services/user.service';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const data = await userService.generateOTP(body.phone);
-    return jsonSuccess('Mã OTP đã được gửi tới số điện thoại của bạn.', data);
+    await userService.ensureAccountForPasswordReset(body.phone);
+    return jsonSuccess('Tài khoản hợp lệ. Đang gửi mã OTP tới số điện thoại của bạn.');
   } catch (error) {
     return jsonError(error);
   }
