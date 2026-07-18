@@ -303,7 +303,7 @@ class DashboardTab extends ConsumerWidget {
                                 ),
                                 QuickActionButton(
                                   icon: Icons.people,
-                                  label: 'Cư dân',
+                                  label: 'Duyệt thành viên',
                                   color: AppColors.success,
                                   backgroundColor: AppColors.successBg,
                                   onTap: () => context.push(AppRoutes.managerRoommates),

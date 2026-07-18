@@ -149,15 +149,15 @@ class _ManagementHubTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              // 4. cư dân
+              // 4. duyệt thành viên
               AppCard(
                 onTap: () => context.push(AppRoutes.managerRoommates),
                 child: const _HubRow(
                   icon: Icons.people,
                   iconBg: Color(0xFFFDF2F8),
                   iconColor: Color(0xFFEC4899),
-                  title: 'Cư dân',
-                  subtitle: 'Hồ sơ thuê, người ở ghép & duyệt thành viên',
+                  title: 'Duyệt thành viên',
+                  subtitle: 'Phê duyệt yêu cầu tạm trú & người ở ghép',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
