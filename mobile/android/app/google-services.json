@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "639435995014",
+    "project_id": "apora-364a2",
+    "storage_bucket": "apora-364a2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:639435995014:android:2f111edb8a8b4152dbde07",
+        "android_client_info": {
+          "package_name": "com.example.apartment_management"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "639435995014-psplsl6bhiotprpck9g83t94nluj80qe.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.apartment_management",
+            "certificate_hash": "3388931f654391a55c9c4cdd46604aa162af0d93"
+          }
+        },
+        {
+          "client_id": "639435995014-dullhoehd33svenkpi763e82h3rbl5r7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyALZn399rAXQrxPTFEMO6yEbcXHpki3EYQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "639435995014-dullhoehd33svenkpi763e82h3rbl5r7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "639435995014-g20sik79brevecdn4f6kqs0vvlls50mc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.apartmentManagement"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
