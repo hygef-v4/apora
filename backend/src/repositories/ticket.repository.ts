@@ -287,3 +287,25 @@ export async function createTicket(
   );
   return result.rows[0];
 }
+
+/**
+ * Counts unresolved incident tickets (PENDING, ASSIGNED, PROCESSING) for a specific month (BR-05, BR-07, BR-09).
+ * If monthYear is omitted, it counts all active unresolved tickets.
+ *
+ * @param monthYear Optional month filter in format 'MM/YYYY'
+ * @returns The unresolved tickets count
+ */
+export async function countActiveUnresolvedTickets(monthYear?: string): Promise<number> {
+  let sql = `
+    SELECT COUNT(*)::int AS count 
+    FROM repair_tickets 
+    WHERE status IN ('PENDING', 'ASSIGNED', 'PROCESSING')
+  `;
+  const params: any[] = [];
+  if (monthYear) {
+    sql += ` AND TO_CHAR(created_at, 'MM/YYYY') = $1`;
+    params.push(monthYear);
+  }
+  const result = await query(sql, params);
+  return result.rows[0].count;
+}
