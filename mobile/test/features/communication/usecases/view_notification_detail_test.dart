@@ -3,10 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import '../../../../lib/features/communication/models/notification_model.dart';
-import '../../../../lib/features/communication/screens/notification_detail_screen.dart';
-import '../../../../lib/features/communication/repositories/communication_repository.dart';
-import '../../../../lib/features/communication/providers/notification_detail_provider.dart';
+import 'package:apartment_management/features/communication/models/notification_model.dart';
+import 'package:apartment_management/features/communication/screens/notification_detail_screen.dart';
+import 'package:apartment_management/features/communication/repositories/communication_repository.dart';
+import 'package:apartment_management/features/communication/providers/notification_detail_provider.dart';
 
 // Mocks
 class MockCommunicationRepository extends Mock implements CommunicationRepository {}

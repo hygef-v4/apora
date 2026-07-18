@@ -10,8 +10,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class PushNotificationService {
   // KHÔNG giữ FirebaseMessaging.instance làm field: getter này ném lỗi khi
   // Firebase chưa init (unit test / máy thiếu google-services) và field
-  // initializer nằm NGOÀI try/catch -> crash thay vì degrade êm.
-  FirebaseMessaging get _fcm => FirebaseMessaging.instance;
+  // initializer nằm NGOÀI try/catch -> crash thay vì degrade êm. Vì vậy mỗi
+  // nơi cần dùng sẽ gọi FirebaseMessaging.instance cục bộ trong try/catch.
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 

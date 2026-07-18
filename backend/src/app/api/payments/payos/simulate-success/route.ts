@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return jsonError({ status: 400, message: 'Thiếu mã hóa đơn invoiceId.' });
     }
 
-    const payment = await billingService.simulateSuccessPayment(Number(invoiceId));
+    const payment = await billingService.simulateSuccessPayment(Number(invoiceId), auth.id);
     return jsonSuccess('Giả lập thanh toán hóa đơn thành công.', payment);
   } catch (error) {
     return jsonError(error);

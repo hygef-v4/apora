@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class NotificationModel {
   final int id;
   final String title;
@@ -51,8 +53,8 @@ class NotificationModel {
             : DateTime.now(),
       );
     } catch (e) {
-      print('Error parsing NotificationModel: $e');
-      print('JSON data: $json');
+      debugPrint('Error parsing NotificationModel: $e');
+      debugPrint('JSON data: $json');
       rethrow;
     }
   }

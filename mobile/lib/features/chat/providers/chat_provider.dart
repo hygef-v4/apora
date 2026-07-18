@@ -122,7 +122,7 @@ class ChatMessagesNotifier extends AsyncNotifier<List<ChatMessageModel>> {
       final currentState = state.value ?? [];
       final updatedList = currentState.map((m) => m.id == tempId ? realMsg : m).toList();
       state = AsyncData(updatedList);
-    } catch (e, st) {
+    } catch (e) {
       // Revert if failed
       state = AsyncData(previousState);
       throw Exception('Gửi tin nhắn thất bại: $e');

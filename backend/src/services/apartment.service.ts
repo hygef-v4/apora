@@ -342,7 +342,10 @@ export async function processCheckin(
       [
         residentId,
         'Nhận phòng thành công',
-        `Chào mừng bạn đến với căn hộ ${apartment.unit_number}! Mật khẩu đăng nhập mặc định của bạn là: Apora@123`,
+        // Không nhúng mật khẩu mặc định vào nội dung lưu DB (tránh lộ khi rò rỉ
+        // bảng notifications). Ban quản lý cấp mật khẩu mặc định trực tiếp; cư dân
+        // buộc phải đổi ở lần đăng nhập đầu (BR-01/must_change_password).
+        `Chào mừng bạn đến với căn hộ ${apartment.unit_number}! Vui lòng đăng nhập bằng mật khẩu mặc định do Ban quản lý cung cấp và đổi mật khẩu ngay ở lần đăng nhập đầu tiên.`,
         apartmentId,
       ],
     );
@@ -387,21 +390,34 @@ export async function processCheckout(
       [apartmentId],
     );
 
-    // 3. Soft-delete resident: status to INACTIVE, bump token_version (BR-49, BR-07)
-    await client.query(
-      `UPDATE users
-       SET status = 'INACTIVE', token_version = token_version + 1
-       WHERE id = $1`,
+    // 3. Chỉ vô hiệu hóa tài khoản khi cư dân KHÔNG còn hợp đồng ACTIVE nào khác.
+    // Một cư dân có thể thuê nhiều phòng dùng chung 1 tài khoản (xem processCheckin);
+    // trả 1 phòng không được đá văng phiên đăng nhập / khóa tài khoản ở phòng còn lại.
+    const remainingRes = await client.query(
+      `SELECT 1 FROM contracts
+       WHERE resident_id = $1 AND status = 'ACTIVE'
+       LIMIT 1`,
       [residentId],
     );
+    const stillRenting = remainingRes.rows.length > 0;
 
-    // 4. Revoke active device FCM tokens
-    await client.query(
-      `UPDATE device_tokens
-       SET status = 'REVOKED', revoked_at = NOW()
-       WHERE user_id = $1 AND status = 'ACTIVE'`,
-      [residentId],
-    );
+    if (!stillRenting) {
+      // 3a. Soft-delete resident: status to INACTIVE, bump token_version (BR-49, BR-07)
+      await client.query(
+        `UPDATE users
+         SET status = 'INACTIVE', token_version = token_version + 1
+         WHERE id = $1`,
+        [residentId],
+      );
+
+      // 3b. Revoke active device FCM tokens
+      await client.query(
+        `UPDATE device_tokens
+         SET status = 'REVOKED', revoked_at = NOW()
+         WHERE user_id = $1 AND status = 'ACTIVE'`,
+        [residentId],
+      );
+    }
 
     // 5. Query and collect roommate images for Cloudinary deletion (BR-20)
     const roommatesRes = await client.query(

@@ -4,7 +4,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:dio/dio.dart';
 import 'package:apartment_management/features/auth_profile/repositories/auth_api_service.dart';
-import 'package:apartment_management/core/services/push_notification_service.dart';
 import 'package:apartment_management/core/constants/api_constants.dart';
 
 // --- Mocks ---

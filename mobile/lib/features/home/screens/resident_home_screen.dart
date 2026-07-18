@@ -6,7 +6,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/coming_soon.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
@@ -280,30 +279,6 @@ class _SectionPreview extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ResidentComingSoon extends StatelessWidget {
-  const _ResidentComingSoon({
-    required this.title,
-    required this.icon,
-    required this.note,
-  });
-
-  final String title;
-  final IconData icon;
-  final String note;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        GradientHeader(title: title),
-        Expanded(
-          child: ComingSoon(icon: icon, title: title, moduleNote: note),
         ),
       ],
     );

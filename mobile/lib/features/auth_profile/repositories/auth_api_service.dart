@@ -36,14 +36,14 @@ class AuthAPIService {
     final res = await _dio.post(ApiConstants.login, data: {
       'phone': phone,
       'password': password,
-      if (fcmToken != null) 'fcmToken': fcmToken,
+      'fcmToken': ?fcmToken,
     });
     return AuthResponse.fromJson(res.data['data'] as Map<String, dynamic>);
   }
 
   Future<void> signOut({String? fcmToken}) async {
     await _dio.post(ApiConstants.logout, data: {
-      if (fcmToken != null) 'fcmToken': fcmToken,
+      'fcmToken': ?fcmToken,
     });
   }
 

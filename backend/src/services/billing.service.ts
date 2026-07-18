@@ -2,6 +2,7 @@ import { PayOS } from '@payos/node';
 import * as billingRepo from '@/repositories/billing.repository';
 import * as pricingRepo from '@/repositories/pricing.repository';
 import { HttpError } from '@/lib/middleware';
+import { withTransaction } from '@/lib/db';
 import { Invoice, Payment } from '@/types';
 
 // Khởi tạo SDK PayOS với các biến môi trường
@@ -10,6 +11,22 @@ const payos = new PayOS({
   apiKey: process.env.PAYOS_API_KEY || 'dummy_api_key',
   checksumKey: process.env.PAYOS_CHECKSUM_KEY || 'dummy_checksum_key',
 });
+
+/** Có đang chạy môi trường production không (khóa mọi chế độ giả lập thanh toán). */
+function isProduction(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
+/**
+ * BR-32/BR-33: chế độ giả lập thanh toán (mock/simulate) chỉ được phép NGOÀI
+ * production. Trên production bắt buộc dùng webhook PayOS thật có chữ ký, không
+ * bao giờ cho set PAID bằng đường tắt.
+ */
+function assertSandboxAllowed(): void {
+  if (isProduction()) {
+    throw new HttpError(403, 'Chức năng giả lập thanh toán không khả dụng trên môi trường thật.');
+  }
+}
 
 /**
   * UC13: Nhập chỉ số điện nước & tự động sinh hóa đơn hàng tháng cho căn hộ.
@@ -146,7 +163,9 @@ export async function initializePayment(invoiceId: number, userId: number): Prom
     }
   }
 
-  // Chế độ GIẢ LẬP (MOCK SANDBOX) - Chạy khi chưa điền API Keys
+  // Chế độ GIẢ LẬP (MOCK SANDBOX) - Chạy khi chưa điền API Keys.
+  // BR-33: không cho phép chạy trên production (tránh "thanh toán" mà không qua PayOS thật).
+  assertSandboxAllowed();
   const mockOrderId = `MOCK_ORDER_${orderCode}`;
   await billingRepo.savePaymentTransaction({
     invoice_id: invoiceId,
@@ -189,7 +208,11 @@ export async function processPaymentCallback(body: any): Promise<void> {
       throw new HttpError(400, 'Xác thực chữ ký Webhook từ PayOS thất bại.');
     }
   } else {
-    // Chế độ Mock
+    // Chế độ Mock (không có chữ ký) - BR-32: tuyệt đối không chấp nhận trên
+    // production để tránh bị giả mạo webhook đánh dấu hóa đơn đã thanh toán.
+    if (isProduction()) {
+      throw new HttpError(400, 'Webhook thanh toán không hợp lệ.');
+    }
     orderCode = body.orderCode || '';
     success = body.success === true || body.desc === 'success';
     transactionCode = body.reference || `FT_${Date.now()}`;
@@ -206,10 +229,12 @@ export async function processPaymentCallback(body: any): Promise<void> {
   }
 
   if (success) {
-    // 1. Cập nhật trạng thái Payment sang SUCCESS
-    await billingRepo.updatePaymentStatus(orderCode, 'SUCCESS', paidAt, transactionCode);
-    // 2. Cập nhật trạng thái Invoice sang PAID
-    await billingRepo.updateInvoiceStatus(payment.invoice_id, 'PAID');
+    // Cập nhật Payment -> SUCCESS và Invoice -> PAID trong CÙNG 1 transaction
+    // để không rơi vào trạng thái lệch (payment SUCCESS nhưng invoice vẫn UNPAID).
+    await withTransaction(async (client) => {
+      await billingRepo.updatePaymentStatus(orderCode, 'SUCCESS', paidAt, transactionCode, client);
+      await billingRepo.updateInvoiceStatus(payment.invoice_id, 'PAID', client);
+    });
     console.log(`[Webhook] Hóa đơn ID ${payment.invoice_id} đã thanh toán thành công thông qua webhook.`);
   } else {
     // Ghi nhận thanh toán thất bại/bị hủy
@@ -219,11 +244,25 @@ export async function processPaymentCallback(body: any): Promise<void> {
 
 /**
  * API dành riêng cho Sandbox để giả lập thanh toán thành công (dành cho app mobile test).
+ *
+ * - BR-33: chỉ hoạt động ngoài production (assertSandboxAllowed).
+ * - BR-23/31/53: cư dân chỉ được giả lập thanh toán hóa đơn của CHÍNH MÌNH,
+ *   đối chiếu invoice.resident_id với userId từ JWT (chống trả tiền hóa đơn người khác).
+ *
+ * @param invoiceId ID hóa đơn cần giả lập thanh toán
+ * @param userId    ID người dùng gọi API (lấy từ JWT) - để kiểm tra sở hữu
  */
-export async function simulateSuccessPayment(invoiceId: number): Promise<Payment> {
+export async function simulateSuccessPayment(invoiceId: number, userId: number): Promise<Payment> {
+  assertSandboxAllowed();
+
   const invoice = await billingRepo.findInvoiceById(invoiceId);
   if (!invoice) {
     throw new HttpError(404, 'Không tìm thấy hóa đơn cần giả lập.');
+  }
+
+  // Cô lập dữ liệu: chỉ chủ hóa đơn mới được thanh toán (kể cả ở chế độ giả lập)
+  if (invoice.resident_id !== userId) {
+    throw new HttpError(403, 'Bạn không có quyền thanh toán cho hóa đơn này.');
   }
 
   if (invoice.status === 'PAID') {
@@ -233,34 +272,37 @@ export async function simulateSuccessPayment(invoiceId: number): Promise<Payment
   // Tìm giao dịch PENDING gần nhất của hóa đơn này để cập nhật
   const pendingPayment = await billingRepo.findLatestPendingPaymentByInvoiceId(invoiceId);
 
-  let payment: Payment;
-  if (pendingPayment) {
-    // 1. Cập nhật giao dịch PENDING có sẵn sang SUCCESS
-    payment = await billingRepo.updatePaymentStatus(
-      pendingPayment.payos_order_id,
-      'SUCCESS',
-      new Date(),
-      `FT_SUCCESS_${invoiceId}`,
-    );
-  } else {
-    // 1. Nếu không có giao dịch PENDING nào, tạo mới giao dịch SUCCESS (để tương thích)
-    const orderCode = `MOCK_ORDER_${invoiceId}${Date.now() % 1000}`;
-    payment = await billingRepo.savePaymentTransaction({
-      invoice_id: invoiceId,
-      resident_id: invoice.resident_id,
-      payos_order_id: orderCode,
-      transaction_code: `FT_SUCCESS_${invoiceId}`,
-      amount: Number(invoice.total_amount),
-      payment_method: 'VietQR / PayOS',
-      status: 'SUCCESS',
-      paid_at: new Date(),
-    });
-  }
+  // Cập nhật/tạo Payment SUCCESS và chuyển Invoice -> PAID trong cùng 1 transaction
+  return withTransaction(async (client) => {
+    let payment: Payment;
+    if (pendingPayment) {
+      payment = await billingRepo.updatePaymentStatus(
+        pendingPayment.payos_order_id,
+        'SUCCESS',
+        new Date(),
+        `FT_SUCCESS_${invoiceId}`,
+        client,
+      );
+    } else {
+      const orderCode = `MOCK_ORDER_${invoiceId}${Date.now() % 1000}`;
+      payment = await billingRepo.savePaymentTransaction(
+        {
+          invoice_id: invoiceId,
+          resident_id: invoice.resident_id,
+          payos_order_id: orderCode,
+          transaction_code: `FT_SUCCESS_${invoiceId}`,
+          amount: Number(invoice.total_amount),
+          payment_method: 'VietQR / PayOS',
+          status: 'SUCCESS',
+          paid_at: new Date(),
+        },
+        client,
+      );
+    }
 
-  // 2. Chuyển hóa đơn sang PAID
-  await billingRepo.updateInvoiceStatus(invoiceId, 'PAID');
-
-  return payment;
+    await billingRepo.updateInvoiceStatus(invoiceId, 'PAID', client);
+    return payment;
+  });
 }
 
 /**

@@ -1,7 +1,6 @@
 import 'package:apartment_management/core/network/dio_client.dart';
 import 'package:apartment_management/features/auth_profile/models/user.dart';
 import 'package:apartment_management/features/auth_profile/providers/auth_notifier.dart';
-import 'package:apartment_management/features/contract/providers/contract_provider.dart';
 import 'package:apartment_management/features/contract/screens/extension_list_screen.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -53,7 +52,14 @@ void main() {
       );
     }
 
-    testWidgets('1. UI & Widget Tests: Render danh sách yêu cầu gia hạn và filter chip (BR-16)', (tester) async {
+    testWidgets('1. UI & Widget Tests: Render danh sách hợp đồng và filter chip (BR-16)', (tester) async {
+      // Dùng ngày tương đối theo hiện tại để trạng thái ảo (Hiệu lực/Sắp HH) ổn định:
+      // - P.502: còn 200 ngày -> "Hiệu lực" (ACTIVE)
+      // - P.301: còn 15 ngày  -> "Sắp HH" (EXPIRING)
+      final now = DateTime.now();
+      final activeEnd = now.add(const Duration(days: 200));
+      final expiringEnd = now.add(const Duration(days: 15));
+
       final mockData = {
         'data': [
           {
@@ -62,11 +68,11 @@ void main() {
             'unitNumber': 'P.502',
             'floor': 'Tầng 5',
             'residentName': 'Nguyen Van A',
-            'currentEndDate': '2026-12-31T00:00:00.000Z',
-            'requestedEndDate': '2027-06-30T00:00:00.000Z',
+            'currentEndDate': activeEnd.toIso8601String(),
+            'requestedEndDate': activeEnd.add(const Duration(days: 180)).toIso8601String(),
             'reason': 'Gia hạn hợp đồng công việc',
             'status': 'PENDING',
-            'createdAt': '2026-06-01T10:00:00.000Z',
+            'createdAt': now.toIso8601String(),
           },
           {
             'id': 2,
@@ -74,11 +80,11 @@ void main() {
             'unitNumber': 'P.301',
             'floor': 'Tầng 3',
             'residentName': 'Tran Van B',
-            'currentEndDate': '2026-10-31T00:00:00.000Z',
-            'requestedEndDate': '2027-04-30T00:00:00.000Z',
+            'currentEndDate': expiringEnd.toIso8601String(),
+            'requestedEndDate': expiringEnd.add(const Duration(days: 180)).toIso8601String(),
             'reason': 'Gia hạn dài hạn',
             'status': 'APPROVED',
-            'createdAt': '2026-05-01T10:00:00.000Z',
+            'createdAt': now.toIso8601String(),
           }
         ]
       };
@@ -95,13 +101,13 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Screen Header
-      expect(find.text('Yêu Cầu Gia Hạn'), findsOneWidget);
+      expect(find.text('Hợp đồng'), findsOneWidget);
       expect(find.text('Nguyen Van A'), findsOneWidget);
       expect(find.text('Tran Van B'), findsOneWidget);
 
-      // Filter by PENDING chip
-      final pendingFilterChip = find.textContaining('Chờ duyệt (1)');
-      await tester.tap(pendingFilterChip);
+      // Lọc "Hiệu lực (1)" -> chỉ còn hợp đồng còn hiệu lực dài hạn (P.502)
+      final activeFilterChip = find.textContaining('Hiệu lực (1)');
+      await tester.tap(activeFilterChip);
       await tester.pumpAndSettle();
 
       expect(find.text('Nguyen Van A'), findsOneWidget);
@@ -120,7 +126,7 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio));
       await tester.pumpAndSettle();
 
-      expect(find.text('Chưa có yêu cầu gia hạn nào.'), findsOneWidget);
+      expect(find.text('Chưa có hợp đồng nào.'), findsOneWidget);
     });
 
     testWidgets('3. Error Handling: Tải danh sách thất bại hiển thị nút Thử lại', (tester) async {

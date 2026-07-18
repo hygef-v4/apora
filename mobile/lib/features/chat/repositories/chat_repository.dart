@@ -40,7 +40,7 @@ class ChatRepository {
   Future<List<ChatMessageModel>> getMessages(int? partnerId, {int limit = 50, int offset = 0}) async {
     try {
       final response = await _dio.get('/chat/messages', queryParameters: {
-        if (partnerId != null) 'partner_id': partnerId,
+        'partner_id': ?partnerId,
         'limit': limit,
         'offset': offset,
       });
@@ -97,7 +97,7 @@ class ChatRepository {
   Future<void> markAsRead(int? partnerId) async {
     try {
       await _dio.patch('/chat/read', data: {
-        if (partnerId != null) 'partner_id': partnerId,
+        'partner_id': ?partnerId,
       });
     } catch (e) {
       // Ignore errors for mark as read if backend not ready

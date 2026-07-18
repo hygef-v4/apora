@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 import '../models/chat_message_model.dart';
@@ -44,7 +45,7 @@ class PusherService {
       // We will let the provider handle specific subscriptions based on role
       _isInitialized = true;
     } catch (e) {
-      print("Pusher initialization error: $e");
+      debugPrint("Pusher initialization error: $e");
     }
   }
 
@@ -52,7 +53,7 @@ class PusherService {
     try {
       await pusher.subscribe(channelName: 'presence-management');
     } catch (e) {
-      print("Error subscribing to management channel: $e");
+      debugPrint("Error subscribing to management channel: $e");
     }
   }
 

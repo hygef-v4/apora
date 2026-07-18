@@ -215,7 +215,7 @@ class _ApartmentFormScreenState extends ConsumerState<ApartmentFormScreen> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: AppColors.infoBg,
-                        border: Border.all(color: AppColors.info.withOpacity(0.3)),
+                        border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
@@ -256,7 +256,7 @@ class _ApartmentFormScreenState extends ConsumerState<ApartmentFormScreen> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: AppColors.successBg,
-                        border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(

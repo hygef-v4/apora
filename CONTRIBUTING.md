@@ -1,5 +1,11 @@
 # Hướng dẫn Đóng góp (Contributing Guidelines)
 
+> ⚠️ **File này đã cũ và chỉ giữ để tham khảo lịch sử.** Nguồn chân lý khi
+> triển khai là `docs/` (SRS + Software Design), `backend/src/types/index.ts`
+> và `CLAUDE.md`. Phần "Phân công Công việc / WBS" bên dưới **không còn phản ánh
+> đúng phạm vi 9 module hiện tại** (đã map lại theo UC01–UC45). Khi có khác biệt,
+> ưu tiên tài liệu thiết kế.
+
 Cảm ơn bạn đã quan tâm đóng góp cho dự án **APORA - Apartment Management**. Vui lòng tuân theo các quy tắc dưới đây để đảm bảo code quality và consistency.
 
 ## 🏗 Kiến trúc Dự án (Monorepo)

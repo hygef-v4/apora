@@ -1,4 +1,3 @@
-import 'package:apartment_management/core/network/dio_client.dart';
 import 'package:apartment_management/features/auth_profile/models/user.dart';
 import 'package:apartment_management/features/auth_profile/providers/auth_notifier.dart';
 import 'package:apartment_management/features/communication/models/notification_model.dart';

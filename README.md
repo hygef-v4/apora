@@ -1,6 +1,11 @@
 # APORA - Apartment Management Super App
 
-Dự án ứng dụng quản lý chung cư/căn hộ hỗ trợ tương tác số hóa giữa Ban quản lý, Cư dân và Nhân viên kỹ thuật.
+> ⚠️ **Nguồn chân lý khi triển khai code:** tài liệu thiết kế trong `docs/`
+> (SRS + Software Design), `backend/src/types/index.ts` và `CLAUDE.md`.
+> README/CONTRIBUTING chỉ mang tính giới thiệu tổng quan — khi có khác biệt,
+> **ưu tiên tài liệu thiết kế**, không bám theo README/CONTRIBUTING.
+
+Dự án ứng dụng quản lý chung cư/căn hộ hỗ trợ tương tác số hóa giữa **Chủ tòa nhà (LANDLORD)**, **Ban quản lý (MANAGER)**, **Cư dân (RESIDENT)** và **Nhân viên vận hành (STAFF: Bảo vệ / Lao công / Kỹ thuật)**.
 
 ## 🚀 Tính năng nổi bật
 

@@ -1,5 +1,8 @@
-import { query } from '@/lib/db';
+import { query, Queryable } from '@/lib/db';
 import { Invoice, Payment } from '@/types';
+
+/** Executor mặc định: dùng pool toàn cục; truyền client khi cần chạy trong transaction. */
+const defaultDb: Queryable = { query };
 
 /** Find the active contract for an apartment. */
 export async function findActiveContractByApartmentId(apartmentId: number): Promise<any | null> {
@@ -84,8 +87,12 @@ export async function findInvoiceById(id: number): Promise<(Invoice & { resident
 }
 
 /** Update the payment status of an invoice. */
-export async function updateInvoiceStatus(id: number, status: 'UNPAID' | 'PAID'): Promise<Invoice> {
-  const res = await query(
+export async function updateInvoiceStatus(
+  id: number,
+  status: 'UNPAID' | 'PAID',
+  db: Queryable = defaultDb,
+): Promise<Invoice> {
+  const res = await db.query(
     `UPDATE invoices SET status = $1 WHERE id = $2 RETURNING *`,
     [status, id],
   );
@@ -93,8 +100,11 @@ export async function updateInvoiceStatus(id: number, status: 'UNPAID' | 'PAID')
 }
 
 /** Save a new payment transaction log. */
-export async function savePaymentTransaction(payment: Omit<Payment, 'id' | 'created_at'>): Promise<Payment> {
-  const res = await query(
+export async function savePaymentTransaction(
+  payment: Omit<Payment, 'id' | 'created_at'>,
+  db: Queryable = defaultDb,
+): Promise<Payment> {
+  const res = await db.query(
     `INSERT INTO payments (
       invoice_id, resident_id, payos_order_id, transaction_code,
       amount, payment_method, status, paid_at
@@ -141,8 +151,9 @@ export async function updatePaymentStatus(
   status: 'SUCCESS' | 'FAILED' | 'CANCELLED',
   paidAt: Date | null,
   transactionCode: string | null,
+  db: Queryable = defaultDb,
 ): Promise<Payment> {
-  const res = await query(
+  const res = await db.query(
     `UPDATE payments
      SET status = $2, paid_at = $3, transaction_code = $4
      WHERE payos_order_id = $1

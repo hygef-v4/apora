@@ -1,7 +1,6 @@
 import 'package:apartment_management/core/network/dio_client.dart';
 import 'package:apartment_management/features/auth_profile/models/user.dart';
 import 'package:apartment_management/features/auth_profile/providers/auth_notifier.dart';
-import 'package:apartment_management/features/ticket/providers/ticket_provider.dart';
 import 'package:apartment_management/features/ticket/screens/ticket_list_screen.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -95,12 +94,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Header and List Items
-      expect(find.text('Sự Cố & Sửa Chữa'), findsOneWidget);
+      expect(find.text('Bảo trì'), findsOneWidget);
       expect(find.textContaining('Rò rỉ nước'), findsOneWidget);
       expect(find.textContaining('Hỏng ổ cắm'), findsOneWidget);
 
-      // Verify FAB for RESIDENT
-      expect(find.byType(FloatingActionButton), findsOneWidget);
+      // UC19: nút "Báo sự cố" chỉ hiển thị cho RESIDENT
+      expect(find.byTooltip('Báo sự cố'), findsOneWidget);
     });
 
     testWidgets('2. UI & Widget Tests: Ẩn FAB Tạo Báo Cáo đối với Quản lý / MANAGER', (tester) async {
@@ -117,8 +116,8 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio, role: 'MANAGER'));
       await tester.pumpAndSettle();
 
-      // Verify FAB is NOT visible for MANAGER
-      expect(find.byType(FloatingActionButton), findsNothing);
+      // UC19: MANAGER không được thấy nút "Báo sự cố"
+      expect(find.byTooltip('Báo sự cố'), findsNothing);
     });
 
     testWidgets('3. Alternative Flow (AT1): Màn hình hiển thị khi danh sách sự cố trống', (tester) async {
@@ -133,7 +132,7 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio, role: 'RESIDENT'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Chưa có sự cố nào.'), findsOneWidget);
+      expect(find.text('Không có sự cố nào.'), findsOneWidget);
     });
 
     testWidgets('4. Error Handling: Tải danh sách thất bại hiển thị nút Thử lại', (tester) async {

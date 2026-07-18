@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
+import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/ticket.dart';
 import '../providers/ticket_provider.dart';
 
@@ -115,6 +116,9 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     final state = ref.watch(ticketProvider);
     final notifier = ref.read(ticketProvider.notifier);
 
+    // UC19: chỉ cư dân (RESIDENT) mới được tạo báo sự cố; Manager/Landlord chỉ xem & phân công.
+    final isResident = ref.watch(authNotifierProvider).user?.isResident ?? false;
+
     // Tính toán số lượng cho từng tab bộ lọc
     final total = state.tickets.length;
     final pendingCount = state.tickets.where((t) => t.status == 'PENDING').length;
@@ -138,14 +142,15 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                   if (!_searchOpen) _searchController.clear();
                 }),
               ),
-              HeaderIconButton(
-                icon: Icons.add,
-                tooltip: 'Báo sự cố',
-                onTap: () async {
-                  await context.push(AppRoutes.ticketCreate);
-                  if (mounted) ref.read(ticketProvider.notifier).fetchTickets();
-                },
-              ),
+              if (isResident)
+                HeaderIconButton(
+                  icon: Icons.add,
+                  tooltip: 'Báo sự cố',
+                  onTap: () async {
+                    await context.push(AppRoutes.ticketCreate);
+                    if (mounted) ref.read(ticketProvider.notifier).fetchTickets();
+                  },
+                ),
             ],
           ),
           if (_searchOpen)

@@ -1,7 +1,6 @@
 import 'package:apartment_management/core/network/dio_client.dart';
 import 'package:apartment_management/features/auth_profile/models/user.dart';
 import 'package:apartment_management/features/auth_profile/providers/auth_notifier.dart';
-import 'package:apartment_management/features/billing/providers/billing_provider.dart';
 import 'package:apartment_management/features/billing/screens/manager_generate_bill_screen.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';

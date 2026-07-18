@@ -43,12 +43,6 @@ void main() {
 
   group('UC16: Pay Bill via VietQR / PayOS - 100% Coverage & Business Rules', () {
     late MockDio mockDio;
-    const residentUser = User(
-      id: 3,
-      phoneNumber: '0900000003',
-      fullName: 'Nguyễn Văn Cư Dân',
-      roles: ['RESIDENT'],
-    );
 
     final testInvoice = Invoice(
       id: 10,

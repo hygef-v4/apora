@@ -76,13 +76,11 @@ void main() {
   group('UC28: Use Live Chat - 100% Coverage & Business Rules', () {
     late MockDio mockDio;
     late MockChatRepository mockRepo;
-    late MockImagePicker mockImagePicker;
     late User mockUser;
 
     setUp(() {
       mockDio = MockDio();
       mockRepo = MockChatRepository();
-      mockImagePicker = MockImagePicker();
       mockUser = User(
         id: 1,
         phoneNumber: '0123456789',

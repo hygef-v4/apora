@@ -41,13 +41,9 @@ class MockAuthNotifier extends Notifier<AuthState> implements AuthNotifier {
   Future<void> login(String phone, String password) async {}
   @override
   Future<void> logout() async {}
-  @override
   void checkAuthStatus() {}
-  @override
   void clearError() {}
-  @override
   Future<void> updatePassword(String oldPass, String newPass) async {}
-  @override
   Future<void> registerResidentToken(String deviceToken) async {}
   @override
   Future<void> changePassword(String oldPassword, String newPassword) async {}
