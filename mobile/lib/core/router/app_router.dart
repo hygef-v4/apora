@@ -167,8 +167,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         return location == AppRoutes.changePassword ? null : AppRoutes.changePassword;
       }
 
-      // Đã đăng nhập mà đứng ở màn auth -> đưa về home theo role
-      if (isAuthRoute || location == AppRoutes.changePassword) {
+      // Đã đăng nhập mà đứng ở màn auth -> đưa về home theo role.
+      // KHÔNG chặn '/change-password' ở đây: cư dân có thể chủ động vào màn này
+      // từ Profile (context.push). Sau khi đổi xong, chính màn đó tự điều hướng
+      // (pop về Profile nếu tự nguyện, go home nếu là luồng ép đổi BR-01).
+      if (isAuthRoute) {
         return homePathForRoles(auth.roles);
       }
 
