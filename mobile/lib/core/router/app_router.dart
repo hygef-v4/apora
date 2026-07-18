@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -22,6 +22,13 @@ import '../../features/management/screens/staff_detail_screen.dart';
 import '../../features/management/screens/staff_edit_screen.dart';
 import '../../features/management/screens/staff_form_screen.dart';
 import '../../features/management/screens/staff_list_screen.dart';
+import '../../features/management/screens/apartment_list_screen.dart';
+import '../../features/management/screens/apartment_detail_screen.dart';
+import '../../features/management/screens/apartment_form_screen.dart';
+import '../../features/management/screens/apartment_checkin_screen.dart';
+import '../../features/management/screens/apartment_checkout_screen.dart';
+import '../../features/management/models/apartment.dart';
+import '../../features/management/providers/apartment_notifier.dart';
 import '../../features/billing/models/invoice.dart';
 import '../../features/billing/models/payment.dart';
 import '../../features/billing/screens/payment_webview.dart';
@@ -33,8 +40,19 @@ import '../../features/roommate/screens/roommate_list_screen.dart';
 import '../../features/roommate/screens/roommate_register_screen.dart';
 import '../../features/roommate/screens/manager_roommate_list_screen.dart';
 import '../../features/roommate/screens/manager_roommate_detail_screen.dart';
+import '../../features/contract/models/contract.dart';
+import '../../features/contract/screens/contract_screen.dart';
+import '../../features/contract/screens/extension_list_screen.dart';
+import '../../features/contract/screens/extension_review_screen.dart';
+import '../../features/contract/screens/request_extension_screen.dart';
+import '../../features/ticket/models/ticket.dart';
+import '../../features/ticket/screens/assign_task_screen.dart';
+import '../../features/ticket/screens/task_detail_screen.dart';
 import '../../features/ticket/screens/ticket_list_screen.dart';
 import '../../features/ticket/screens/ticket_create_screen.dart';
+import '../../features/chat/screens/chat_list_screen.dart';
+import '../../features/chat/screens/chat_screen.dart';
+import '../../features/ticket/screens/ticket_detail_screen.dart';
 
 /// Đường dẫn route tập trung.
 class AppRoutes {
@@ -72,14 +90,36 @@ class AppRoutes {
   static const String notifications = '/notifications';
   static const String notificationDetail = '/notifications/detail';
 
+  // Module Chat
+  static const String chatList = '/manager/chat';
+  static const String chatResident = '/resident/chat';
+  static String chatDetailPath(int id) => '/manager/chat/$id';
+
   // Module 2: Thành viên phòng (UC10-UC12)
   static const String roommates = '/resident/roommates';
   static const String roommateRegister = '/resident/roommates/register';
   static const String managerRoommates = '/manager/roommates';
 
+  // Module 6: Quản lý Căn hộ (UC29-UC32)
+  static const String apartmentList = '/manager/apartments';
+  static const String apartmentCreate = '/manager/apartments/create';
+  static String apartmentDetailPath(int id) => '/manager/apartments/$id';
+  static String apartmentEditPath(int id) => '/manager/apartments/$id/edit';
+  static String apartmentCheckinPath(int id) => '/manager/apartments/$id/checkin';
+  static String apartmentCheckoutPath(int id) => '/manager/apartments/$id/checkout';
+
+  // Module 2: Hợp đồng & Gia hạn lưu trú (UC06-UC09)
+  static const String myContract = '/contract';
+  static const String requestExtension = '/contract/extend';
+  static const String extensionList = '/manager/extensions';
+  static String extensionDetailPath(int id) => '/manager/extensions/$id';
+
   // Module 4: Sự cố & Công việc (UC18-UC23)
   static const String tickets = '/tickets';
   static const String ticketCreate = '/tickets/create';
+  static String ticketDetailPath(int id) => '/tickets/$id';
+  static String ticketAssignPath(int id) => '/tickets/$id/assign';
+  static String taskDetailPath(int id) => '/tasks/$id';
 }
 
 /// Xác định màn hình chính theo role (UC01 bước 4):
@@ -146,6 +186,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/',
+        redirect: (context, state) {
+          final auth = authListenable.value;
+          return auth.isAuthenticated ? homePathForRoles(auth.roles) : AppRoutes.login;
+        },
+      ),
       GoRoute(path: AppRoutes.login, builder: (_, _) => const LoginScreen()),
       GoRoute(
         path: AppRoutes.forgotPassword,
@@ -265,6 +312,23 @@ final routerProvider = Provider<GoRouter>((ref) {
           return NotificationDetailScreen(notification: notif);
         },
       ),
+      // Module Chat
+      GoRoute(
+        path: AppRoutes.chatList,
+        builder: (context, state) => const ManagerChatListScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.chatResident,
+        builder: (context, state) => const ChatScreen(title: 'Chat với Ban Quản Lý'),
+      ),
+      GoRoute(
+        path: '/manager/chat/:id',
+        builder: (context, state) {
+          final residentId = int.parse(state.pathParameters['id']!);
+          final title = state.extra as String? ?? 'Chat với Cư Dân';
+          return ChatScreen(partnerId: residentId, title: title);
+        },
+      ),
       GoRoute(
         path: AppRoutes.roommates,
         builder: (context, state) => const RoommateListScreen(),
@@ -283,6 +347,83 @@ final routerProvider = Provider<GoRouter>((ref) {
           roommateId: int.parse(state.pathParameters['id']!),
         ),
       ),
+      // Module 6: Căn hộ (UC29-UC32)
+      GoRoute(
+        path: AppRoutes.apartmentList,
+        builder: (context, state) => const ApartmentListScreen(showBack: true),
+      ),
+      GoRoute(
+        path: AppRoutes.apartmentCreate,
+        builder: (context, state) => const ApartmentFormScreen(),
+      ),
+      GoRoute(
+        path: '/manager/apartments/:id',
+        builder: (context, state) => ApartmentDetailScreen(
+          apartmentId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/manager/apartments/:id/edit',
+        builder: (context, state) {
+          final apartment = state.extra as Apartment?;
+          if (apartment != null) {
+            return ApartmentFormScreen(apartment: apartment);
+          }
+          final detail = ref.read(apartmentDetailProvider).value;
+          if (detail != null) {
+            final apt = Apartment(
+              id: detail.id,
+              unitNumber: detail.unitNumber,
+              floor: detail.floor,
+              status: detail.status,
+              areaSize: detail.areaSize,
+              baseRent: detail.baseRent,
+              ownerId: detail.ownerId,
+              ownerName: detail.ownerName,
+              ownerPhone: detail.ownerPhone,
+              unpaidInvoiceCount: 0,
+              unresolvedTicketCount: 0,
+            );
+            return ApartmentFormScreen(apartment: apt);
+          }
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        },
+      ),
+      GoRoute(
+        path: '/manager/apartments/:id/checkin',
+        builder: (context, state) => ApartmentCheckinScreen(
+          apartmentId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/manager/apartments/:id/checkout',
+        builder: (context, state) => ApartmentCheckoutScreen(
+          apartmentId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      // Module 2: Hợp đồng & Gia hạn lưu trú (UC06-UC09)
+      GoRoute(
+        path: AppRoutes.myContract,
+        builder: (context, state) => const ContractScreen(),
+      ),
+      // UC07: form gia hạn - nhận MyContract (hợp đồng ACTIVE) qua extra
+      GoRoute(
+        path: AppRoutes.requestExtension,
+        builder: (context, state) =>
+            RequestExtensionScreen(myContract: state.extra as MyContract),
+      ),
+      // UC08: danh sách yêu cầu gia hạn (Manager/Landlord)
+      GoRoute(
+        path: AppRoutes.extensionList,
+        builder: (context, state) => const ExtensionListScreen(),
+      ),
+      // UC09: màn duyệt/từ chối yêu cầu
+      GoRoute(
+        path: '/manager/extensions/:id',
+        builder: (context, state) => ExtensionReviewScreen(
+          extensionId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
       // Module 4: Sự cố & Công việc (UC18-UC23)
       GoRoute(
         path: AppRoutes.ticketCreate,
@@ -291,6 +432,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.tickets,
         builder: (context, state) => const TicketListScreen(showBack: true),
+      ),
+      // Đăng ký sau '/tickets/create' để ':id' không nuốt mất 'create'
+      GoRoute(
+        path: '/tickets/:id',
+        builder: (context, state) => TicketDetailScreen(
+          ticketId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      // UC21: màn phân công - nhận TicketDetail (PENDING) qua extra
+      GoRoute(
+        path: '/tickets/:id/assign',
+        builder: (context, state) =>
+            AssignTaskScreen(ticket: state.extra as TicketDetail),
+      ),
+      // UC23: chi tiết công việc + cập nhật tiến độ (staff)
+      GoRoute(
+        path: '/tasks/:id',
+        builder: (context, state) => TaskDetailScreen(
+          taskId: int.parse(state.pathParameters['id']!),
+        ),
       ),
     ],
   );

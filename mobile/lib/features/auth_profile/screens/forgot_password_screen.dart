@@ -4,13 +4,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/services/phone_otp_service.dart';
+import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../providers/auth_notifier.dart';
 
-/// UC03: Quên mật khẩu (FID-03) - 2 bước:
-/// Bước 1: nhập SĐT -> gửi OTP. Bước 2: nhập OTP + mật khẩu mới.
-/// Có nút "Gửi lại OTP" (mã cũ bị vô hiệu, đếm lại 5 phút - BR-08).
+/// UC03: Quên mật khẩu (FID-03) - 2 bước, OTP qua Firebase Phone Auth (BR-08):
+/// Bước 1: nhập SĐT -> backend check tài khoản -> Firebase gửi SMS OTP.
+/// Bước 2: nhập OTP + mật khẩu mới -> Firebase xác thực -> backend đổi mật khẩu.
+/// Có nút "Gửi lại OTP" (Firebase tự vô hiệu mã cũ khi cấp mã mới).
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -44,7 +47,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  /// Bước 1 + Resend: yêu cầu gửi OTP.
+  /// Lỗi OTP từ Firebase đã có message tiếng Việt sẵn; còn lại map lỗi Dio.
+  String _errorText(Object e) =>
+      e is OtpException ? e.message : mapDioError(e);
+
+  /// Bước 1 + Resend: backend check tài khoản rồi Firebase gửi SMS OTP.
   Future<void> _sendOtp() async {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) {
@@ -53,21 +60,17 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     }
     setState(() => _isSubmitting = true);
     try {
-      final devOtp =
-          await ref.read(authNotifierProvider.notifier).requestOtp(phone);
+      await ref.read(authNotifierProvider.notifier).requestOtp(phone);
       setState(() => _otpSent = true);
-      // Backend dev mode trả kèm OTP để demo không cần SMS thật
-      _showMessage(devOtp != null
-          ? '${AppStrings.msgOtpSent} (Dev OTP: $devOtp)'
-          : AppStrings.msgOtpSent);
+      _showMessage(AppStrings.msgOtpSent);
     } catch (e) {
-      _showMessage(mapDioError(e));
+      _showMessage(_errorText(e));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  /// Bước 2: xác thực OTP + đặt mật khẩu mới.
+  /// Bước 2: Firebase xác thực OTP -> backend đổi mật khẩu.
   Future<void> _resetPassword() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
@@ -80,7 +83,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       _showMessage('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.');
       if (mounted) context.pop();
     } catch (e) {
-      _showMessage(mapDioError(e));
+      _showMessage(_errorText(e));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -150,10 +153,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                                 'Tối thiểu 8 ký tự, gồm 1 chữ hoa và 1 chữ số.',
                             prefixIcon: Icon(Icons.lock, size: 20),
                           ),
-                          validator: (value) =>
-                              (value == null || value.isEmpty)
-                                  ? AppStrings.msgFieldRequired
-                                  : null,
+                          // BR-09: validate ngay trên client, không chờ server
+                          validator: Validators.passwordComplexity,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
@@ -176,6 +177,16 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                         TextButton(
                           onPressed: _isSubmitting ? null : _sendOtp,
                           child: const Text('Gửi lại OTP'),
+                        ),
+                        // Gõ nhầm SĐT -> quay lại bước 1 sửa, không phải thoát màn
+                        TextButton(
+                          onPressed: _isSubmitting
+                              ? null
+                              : () => setState(() {
+                                    _otpSent = false;
+                                    _otpController.clear();
+                                  }),
+                          child: const Text('Đổi số điện thoại'),
                         ),
                       ],
                     ],

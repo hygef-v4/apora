@@ -10,6 +10,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../providers/notification_list_provider.dart';
 import '../models/notification_model.dart';
+import '../../../core/network/dio_client.dart';
 
 class NotificationListScreen extends ConsumerStatefulWidget {
   const NotificationListScreen({super.key});
@@ -44,7 +45,6 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
     final notificationsAsyncValue = ref.watch(notificationListProvider);
     final user = ref.watch(authNotifierProvider).user;
     final isManagerOrLandlord = user?.isManagement == true;
-    final isLoadingMore = ref.watch(notificationListProvider.notifier).isLoadingMore;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -106,18 +106,21 @@ class _NotificationListScreenState extends ConsumerState<NotificationListScreen>
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Lỗi: $error', style: const TextStyle(color: AppColors.error)),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        ref.invalidate(notificationListProvider);
-                      },
-                      child: const Text('Thử lại'),
-                    ),
-                  ],
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(mapDioError(error), textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                        onPressed: () {
+                          ref.invalidate(notificationListProvider);
+                        },
+                        child: const Text('Thử lại'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

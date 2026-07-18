@@ -46,7 +46,9 @@ export async function deleteImagesBatch(urls: string[]): Promise<void> {
     .filter((id): id is string => id !== null);
 
   if (publicIds.length > 0) {
-    await cloudinary.api.delete_resources(publicIds);
+    // invalidate: xóa cả bản cache trên CDN - thiếu cờ này URL cũ vẫn xem được
+    // tới khi cache hết hạn, vi phạm mục đích riêng tư của BR-20/BR-38.
+    await cloudinary.api.delete_resources(publicIds, { invalidate: true });
   }
 }
 

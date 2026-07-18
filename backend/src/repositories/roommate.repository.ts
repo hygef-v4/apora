@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { PoolClient } from 'pg';
 
 export interface RoommateData {
   apartment_id: number;
@@ -96,3 +97,45 @@ export async function findActiveContractByResidentId(residentId: number): Promis
   );
   return res.rows[0] || null;
 }
+
+/**
+ * Anonymize and delete sensitive data of all roommates in an apartment during checkout (BR-20).
+ * Clears CCCD front/back urls and masks cccd_number to MASK_<id> to preserve uniqueness.
+ *
+ * @param apartmentId Apartment ID
+ * @param client Optional PoolClient for transactional queries
+ * @returns Array of roommate rows that were anonymized (to collect Cloudinary URLs)
+ */
+export async function anonymizeRoommatesByApartmentId(
+  apartmentId: number,
+  client?: PoolClient,
+): Promise<any[]> {
+  // First, find all roommates of the apartment to get their CCCD images for Cloudinary deletion
+  const selectSql = `
+    SELECT id, cccd_front_url, cccd_back_url 
+    FROM roommates 
+    WHERE apartment_id = $1
+  `;
+  const selectResult = client 
+    ? await client.query(selectSql, [apartmentId])
+    : await query(selectSql, [apartmentId]);
+
+  if (selectResult.rows.length === 0) return [];
+
+  // Update records: mask CCCD number and nullify CCCD photos
+  const updateSql = `
+    UPDATE roommates
+    SET cccd_front_url = NULL,
+        cccd_back_url = NULL,
+        cccd_number = 'MASK_' || id
+    WHERE apartment_id = $1
+  `;
+  if (client) {
+    await client.query(updateSql, [apartmentId]);
+  } else {
+    await query(updateSql, [apartmentId]);
+  }
+
+  return selectResult.rows;
+}
+

@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../providers/auth_notifier.dart';
@@ -37,6 +38,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    // Vào màn từ Profile (không bị ép) -> đổi xong quay về màn trước;
+    // flow BR-01 (ép đổi mật khẩu mặc định) -> về home theo role.
+    final wasForced = ref.read(authNotifierProvider).mustChangePassword;
     setState(() => _isSubmitting = true);
     try {
       await ref.read(authNotifierProvider.notifier).changePassword(
@@ -47,9 +51,12 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đổi mật khẩu thành công.')),
       );
-      // mustChangePassword đã tắt -> router tự đưa về home theo role
-      final roles = ref.read(authNotifierProvider).roles;
-      context.go(homePathForRoles(roles));
+      if (!wasForced && context.canPop()) {
+        context.pop();
+      } else {
+        final roles = ref.read(authNotifierProvider).roles;
+        context.go(homePathForRoles(roles));
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -148,10 +155,16 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                                   'Tối thiểu 8 ký tự, gồm 1 chữ hoa và 1 chữ số.',
                               prefixIcon: Icon(Icons.lock, size: 20),
                             ),
-                            validator: (value) =>
-                                (value == null || value.isEmpty)
-                                    ? AppStrings.msgFieldRequired
-                                    : null,
+                            // BR-09 validate client + chặn sớm trùng mật khẩu cũ
+                            validator: (value) {
+                              final complexityError =
+                                  Validators.passwordComplexity(value);
+                              if (complexityError != null) return complexityError;
+                              if (value == _oldPasswordController.text) {
+                                return AppStrings.msgSamePassword;
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 16),
                           TextFormField(

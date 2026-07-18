@@ -26,8 +26,14 @@ class AppStrings {
   static const String msgOtpInvalid =
       'Mã OTP không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu mã mới.';
   static const String msgPasswordMismatch = 'Mật khẩu xác nhận không khớp.';
+  static const String msgSamePassword =
+      'Mật khẩu mới không được trùng mật khẩu hiện tại.';
   static const String msgChangePasswordFirstLogin =
       'Bạn đang dùng mật khẩu mặc định. Vui lòng đổi mật khẩu để tiếp tục.';
+
+  // UC05/UC39 - AT3: text đã lưu nhưng avatar upload thất bại
+  static const String msgAvatarUploadFailed =
+      'Đã lưu thông tin, nhưng ảnh đại diện chưa tải lên được. Vui lòng thử lại sau.';
 
   // Module 8: Quản lý nhân viên (UC36-UC40)
   static const String msgStaffEmpty = 'Chưa có nhân viên nào.';

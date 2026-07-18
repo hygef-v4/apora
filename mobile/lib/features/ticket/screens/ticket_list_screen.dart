@@ -10,8 +10,10 @@ import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/ticket.dart';
 import '../providers/ticket_provider.dart';
 
-/// UC18 - Danh sách sự cố. Dùng chung cho Resident (sự cố của mình) và
-/// Manager (toàn bộ) - backend tự phân luồng theo vai trò.
+/// UC18 - Danh sách sự cố (theo màn FID-18). Dùng chung cho Resident
+/// (sự cố của mình) và Manager (toàn bộ) - backend tự phân luồng theo vai trò.
+/// Tải toàn bộ 1 lần rồi lọc phía client: tab đếm được số "Chờ xử lý"
+/// (field 2) và ô tìm kiếm lọc realtime (AT3) không cần gọi lại API.
 class TicketListScreen extends ConsumerStatefulWidget {
   /// true khi mở bằng push (Manager) -> hiện nút back; false khi nhúng làm tab
   /// trong Home cư dân -> không có nút back.
@@ -34,31 +36,44 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     (value: 'CANCELLED', label: 'Đã hủy'),
   ];
 
+  String? _filter;
+  bool _searchOpen = false;
+  final _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(ticketProvider.notifier).fetchTickets());
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Badge màu theo FID-18 field 4: PENDING cam, ASSIGNED xanh dương,
+  /// PROCESSING vàng, RESOLVED xanh lá, CANCELLED đỏ.
   StatusBadge _statusBadge(String status) {
     final label = kTicketStatusLabels[status] ?? status;
     switch (status) {
       case 'RESOLVED':
         return StatusBadge.success(label);
-      case 'PROCESSING':
       case 'ASSIGNED':
+        return StatusBadge.info(label);
+      case 'PROCESSING':
         return StatusBadge.warning(label);
       case 'CANCELLED':
-        return const StatusBadge(
-          text: 'Đã hủy',
+        return StatusBadge(
+          text: label,
           color: AppColors.error,
           backgroundColor: AppColors.errorBg,
         );
-      default: // PENDING
-        return StatusBadge(
-          text: label,
-          color: AppColors.textSecondary,
-          backgroundColor: AppColors.divider,
+      default: // PENDING - cam
+        return const StatusBadge(
+          text: 'Chờ xử lý',
+          color: Color(0xFFEA580C),
+          backgroundColor: Color(0xFFFFEDD5),
         );
     }
   }
@@ -69,11 +84,29 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     return '${two(l.day)}/${two(l.month)}/${l.year} ${two(l.hour)}:${two(l.minute)}';
   }
 
+  /// AT3: lọc realtime theo mã sự cố, tên người báo hoặc số phòng.
+  List<Ticket> _applyFilters(List<Ticket> all) {
+    var list = _filter == null
+        ? all
+        : all.where((t) => t.status == _filter).toList();
+    final q = _searchController.text.trim().toLowerCase();
+    if (q.isEmpty) return list;
+    return list.where((t) {
+      final id = 'tk-${t.id}';
+      return id.contains(q) ||
+          '${t.id}' == q ||
+          t.reporterName.toLowerCase().contains(q) ||
+          t.unitNumber.toLowerCase().contains(q);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(ticketProvider);
     final notifier = ref.read(ticketProvider.notifier);
     final isResident = ref.watch(authNotifierProvider).roles.contains('RESIDENT');
+    final pendingCount =
+        state.tickets.where((t) => t.status == 'PENDING').length;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
@@ -81,8 +114,8 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
           ? FloatingActionButton.extended(
               onPressed: () async {
                 await context.push(AppRoutes.ticketCreate);
-                // Quay lại từ màn tạo -> làm mới theo bộ lọc hiện tại
-                if (context.mounted) notifier.fetchTickets(status: state.statusFilter);
+                // Quay lại từ màn tạo -> làm mới danh sách
+                if (context.mounted) notifier.fetchTickets();
               },
               backgroundColor: AppColors.navy,
               icon: const Icon(Icons.add, color: Colors.white),
@@ -97,14 +130,51 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
             subtitle: 'Theo dõi các yêu cầu sửa chữa',
             showBack: widget.showBack,
             actions: [
+              // FID-18 field 1: mở/đóng thanh tìm kiếm (AT3)
+              HeaderIconButton(
+                icon: _searchOpen ? Icons.search_off : Icons.search,
+                tooltip: 'Tìm kiếm',
+                onTap: () => setState(() {
+                  _searchOpen = !_searchOpen;
+                  if (!_searchOpen) _searchController.clear();
+                }),
+              ),
               HeaderIconButton(
                 icon: Icons.refresh,
                 tooltip: 'Làm mới',
-                onTap: () => notifier.fetchTickets(status: state.statusFilter),
+                onTap: () => notifier.fetchTickets(),
               ),
             ],
           ),
-          // Thanh lọc trạng thái
+          if (_searchOpen)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Tìm theo mã (TK-1), tên người báo, số phòng...',
+                  hintStyle: const TextStyle(fontSize: 13),
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: _searchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () =>
+                              setState(_searchController.clear),
+                        ),
+                  isDense: true,
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+          // Thanh lọc trạng thái - tab "Chờ xử lý" kèm số lượng (field 2)
           SizedBox(
             height: 48,
             child: ListView.separated(
@@ -114,11 +184,14 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
               separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (_, i) {
                 final f = _filters[i];
-                final selected = state.statusFilter == f.value;
+                final selected = _filter == f.value;
+                final label = f.value == 'PENDING' && pendingCount > 0
+                    ? '${f.label} ($pendingCount)'
+                    : f.label;
                 return ChoiceChip(
-                  label: Text(f.label),
+                  label: Text(label),
                   selected: selected,
-                  onSelected: (_) => notifier.fetchTickets(status: f.value),
+                  onSelected: (_) => setState(() => _filter = f.value),
                   selectedColor: AppColors.primary,
                   labelStyle: TextStyle(
                     fontSize: 12,
@@ -145,53 +218,79 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
       return _emptyOrError(
         icon: Icons.error_outline,
         message: state.errorMessage!,
-        onRetry: () => notifier.fetchTickets(status: state.statusFilter),
+        onRetry: () => notifier.fetchTickets(),
       );
     }
-    if (state.tickets.isEmpty) {
+    final visible = _applyFilters(state.tickets);
+    if (visible.isEmpty) {
+      // AT1/AT2: trạng thái rỗng chung / theo bộ lọc-tìm kiếm đang chọn
+      final searching = _searchController.text.trim().isNotEmpty;
       return _emptyOrError(
         icon: Icons.inbox_outlined,
-        message: 'Chưa có sự cố nào.',
+        message: searching
+            ? 'Không tìm thấy sự cố nào khớp từ khóa.'
+            : _filter == null
+                ? 'Chưa có sự cố nào.'
+                : 'Không có sự cố "${kTicketStatusLabels[_filter]}" nào.',
       );
     }
     return RefreshIndicator(
       color: AppColors.primary,
-      onRefresh: () => notifier.fetchTickets(status: state.statusFilter),
+      onRefresh: () => notifier.fetchTickets(),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: state.tickets.length,
-        itemBuilder: (_, i) => _ticketCard(state.tickets[i]),
+        itemCount: visible.length,
+        itemBuilder: (_, i) => _ticketCard(visible[i]),
       ),
     );
   }
 
   Widget _ticketCard(Ticket t) {
+    // FID-18 field 9: tên nhân viên chỉ hiện khi ASSIGNED / PROCESSING
+    final showAssignee = t.assigneeName != null &&
+        (t.status == 'ASSIGNED' || t.status == 'PROCESSING');
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppCard(
+        // UC20 (TRG-01): bấm thẻ mở chi tiết; quay lại làm mới danh sách
+        // (Manager có thể vừa đổi trạng thái trong màn chi tiết).
+        onTap: () async {
+          await context.push(AppRoutes.ticketDetailPath(t.id));
+          if (!mounted) return;
+          ref.read(ticketProvider.notifier).fetchTickets();
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
+                // FID-18 field 3: mã sự cố "#TK-XXX"
                 Expanded(
-                  child: Row(
-                    children: [
-                      const Icon(Icons.build_circle_outlined,
-                          size: 18, color: AppColors.primary),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          t.category,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 14),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    '#TK-${t.id}',
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textTertiary),
                   ),
                 ),
                 _statusBadge(t.status),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.build_circle_outlined,
+                    size: 18, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    t.category,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -202,14 +301,53 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
+            // FID-18 field 8: người báo sự cố
             Row(
               children: [
+                const Icon(Icons.person_outline,
+                    size: 13, color: AppColors.textTertiary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(t.reporterName,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.textSecondary)),
+                ),
                 const Icon(Icons.location_on_outlined,
                     size: 13, color: AppColors.textTertiary),
                 const SizedBox(width: 4),
                 Text('Phòng ${t.unitNumber}',
                     style: const TextStyle(
                         fontSize: 11, color: AppColors.textSecondary)),
+              ],
+            ),
+            if (showAssignee) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.engineering_outlined,
+                      size: 13, color: AppColors.textTertiary),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text('Giao cho: ${t.assigneeName}',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary)),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                if (t.beforeImages.isNotEmpty) ...[
+                  const Icon(Icons.image_outlined,
+                      size: 13, color: AppColors.textTertiary),
+                  const SizedBox(width: 4),
+                  Text('${t.beforeImages.length} ảnh',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.textSecondary)),
+                ],
                 const Spacer(),
                 const Icon(Icons.schedule,
                     size: 13, color: AppColors.textTertiary),
@@ -219,19 +357,6 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                         fontSize: 11, color: AppColors.textSecondary)),
               ],
             ),
-            if (t.beforeImages.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(Icons.image_outlined,
-                      size: 13, color: AppColors.textTertiary),
-                  const SizedBox(width: 4),
-                  Text('${t.beforeImages.length} ảnh',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
-                ],
-              ),
-            ],
           ],
         ),
       ),

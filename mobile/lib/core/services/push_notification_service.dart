@@ -8,13 +8,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class PushNotificationService {
-  FirebaseMessaging get _fcm => FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
     try {
-      NotificationSettings settings = await _fcm.requestPermission(
+      final fcm = FirebaseMessaging.instance;
+      NotificationSettings settings = await fcm.requestPermission(
         alert: true,
         badge: true,
         sound: true,

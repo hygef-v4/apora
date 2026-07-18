@@ -12,6 +12,7 @@ import '../../../core/widgets/initials_avatar.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../../billing/screens/invoice_list_screen.dart';
 import '../../ticket/screens/ticket_list_screen.dart';
+import '../../chat/screens/chat_screen.dart';
 
 
 /// Khung trang chủ Cư dân — theo màn 10 trong thiết kế.
@@ -93,8 +94,20 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.all(14),
-                  children: const [
+                  children: [
+                    // UC06: hợp đồng & thời hạn lưu trú của cư dân
                     AppCard(
+                      onTap: () => context.push(AppRoutes.myContract),
+                      child: const _SectionPreview(
+                        icon: Icons.description,
+                        iconBg: AppColors.warningBg,
+                        iconColor: AppColors.warning,
+                        title: 'Hợp đồng của tôi',
+                        note: 'Thời hạn lưu trú & yêu cầu gia hạn',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const AppCard(
                       child: _SectionPreview(
                         icon: Icons.receipt_long,
                         iconBg: AppColors.infoBg,
@@ -103,8 +116,8 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
                         note: 'Xem & thanh toán VietQR — sẽ có ở Module 3',
                       ),
                     ),
-                    SizedBox(height: 10),
-                    AppCard(
+                    const SizedBox(height: 10),
+                    const AppCard(
                       child: _SectionPreview(
                         icon: Icons.build,
                         iconBg: AppColors.warningBg,
@@ -113,8 +126,8 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
                         note: 'Báo sự cố kèm ảnh — mở ở tab "Yêu cầu"',
                       ),
                     ),
-                    SizedBox(height: 10),
-                    AppCard(
+                    const SizedBox(height: 10),
+                    const AppCard(
                       child: _SectionPreview(
                         icon: Icons.campaign,
                         iconBg: AppColors.successBg,
@@ -133,11 +146,10 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
 
           // Tab Yêu cầu -> danh sách sự cố của cư dân (UC18/UC19, nhúng nên không back)
           const TicketListScreen(),
-          const _ResidentComingSoon(
-            title: 'Tin nhắn',
-            icon: Icons.chat_bubble,
-            note: 'sẽ có ở Module 5 (Live Chat)',
-          ),
+          
+          // Tab Tin nhắn (Live Chat - UC28)
+          const ChatScreen(title: 'Chat với Ban Quản Lý'),
+          
           // Tab Cá nhân
           Column(
             children: [

@@ -36,10 +36,13 @@ CREATE INDEX IF NOT EXISTS idx_device_tokens_user_active
   ON device_tokens (user_id) WHERE revoked_at IS NULL AND status = 'ACTIVE';
 
 -- 3. PASSWORD_RESET_OTPS (Password Recovery) - BR-08
+-- ⚠️ KHÔNG CÒN DÙNG: OTP quên mật khẩu chuyển sang Firebase Phone Auth
+-- (mobile nhận SMS trực tiếp từ Firebase, backend verify Firebase ID token).
+-- Bảng giữ lại theo thiết kế DB 15 bảng trong Software Design.
 CREATE TABLE IF NOT EXISTS password_reset_otps (
   id             SERIAL PRIMARY KEY,
   phone_number   VARCHAR(15) NOT NULL,
-  otp_code       VARCHAR(6)  NOT NULL,
+  otp_code       VARCHAR(64) NOT NULL,
   expired_at     TIMESTAMPTZ NOT NULL,
   is_used        BOOLEAN     NOT NULL DEFAULT FALSE,
   attempt_count  INTEGER     NOT NULL DEFAULT 0,
@@ -55,8 +58,11 @@ CREATE TABLE IF NOT EXISTS apartments (
   unit_number  VARCHAR(20)  NOT NULL UNIQUE,
   floor        VARCHAR(10)  NOT NULL,
   owner_id     INTEGER REFERENCES users(id),
-  status       VARCHAR(10)  NOT NULL DEFAULT 'EMPTY' CHECK (status IN ('EMPTY', 'OCCUPIED', 'INACTIVE'))
+  status       VARCHAR(10)  NOT NULL DEFAULT 'EMPTY' CHECK (status IN ('EMPTY', 'OCCUPIED', 'INACTIVE')),
+  area_size    DOUBLE PRECISION NOT NULL DEFAULT 0.0 CHECK (area_size >= 0),
+  base_rent    NUMERIC(12, 2) NOT NULL DEFAULT 0.00 CHECK (base_rent >= 0)
 );
+
 
 -- 5. CONTRACTS (Tenancy Management)
 CREATE TABLE IF NOT EXISTS contracts (
@@ -169,7 +175,9 @@ CREATE TABLE IF NOT EXISTS messages (
   room_id     INTEGER NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
   sender_id   INTEGER NOT NULL REFERENCES users(id),
   text        TEXT NOT NULL,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  is_image BOOLEAN DEFAULT FALSE,
+  is_read BOOLEAN DEFAULT FALSE
 );
 
 -- 13. STAY_EXTENSIONS (Tenancy Management) - BR-17

@@ -115,14 +115,17 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
 
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(staffDetailProvider.notifier).updateStaff(
-            widget.staffId,
-            fullName: _fullNameController.text.trim(),
-            phone: _phoneController.text.trim(),
-            role: _selectedRole!,
-            avatarBytes: _avatarBytes,
-          );
-      _showMessage('Cập nhật hồ sơ nhân viên thành công.');
+      final avatarUploadFailed =
+          await ref.read(staffDetailProvider.notifier).updateStaff(
+                widget.staffId,
+                fullName: _fullNameController.text.trim(),
+                phone: _phoneController.text.trim(),
+                role: _selectedRole!,
+                avatarBytes: _avatarBytes,
+              );
+      _showMessage(avatarUploadFailed
+          ? AppStrings.msgAvatarUploadFailed
+          : 'Cập nhật hồ sơ nhân viên thành công.');
       // Danh sách cũng cần số liệu mới
       await ref.read(staffDirectoryProvider.notifier).refresh();
       if (mounted) context.pop();

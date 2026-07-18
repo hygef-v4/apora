@@ -7,11 +7,18 @@
  * @see docs/PRM393_SoftwareDesign_Group5.docx - Module 8 (StaffRepository)
  */
 
-import { query } from '@/lib/db';
+import { Queryable, query } from '@/lib/db';
 import { StaffRole, StaffStats, Task, User, UserStatus } from '@/types';
 
 /** Điều kiện SQL nhận diện tài khoản staff (BR-02 UC36: loại RESIDENT/MANAGER/LANDLORD). */
 const STAFF_ROLES_SQL = `ARRAY['SECURITY_GUARD','JANITOR','TECHNICIAN']::text[]`;
+
+/**
+ * Điều kiện SQL "task đang mở" theo BR-50: chỉ ASSIGNED/IN_PROGRESS.
+ * Không dùng `<> 'COMPLETED'` kẻo tính nhầm cả task CANCELLED
+ * (và để query khớp partial index idx_tasks_assigned_open).
+ */
+const OPEN_TASK_SQL = `status IN ('ASSIGNED', 'IN_PROGRESS')`;
 
 export interface StaffRow extends User {
   open_task_count: number;
@@ -52,7 +59,7 @@ export async function findStaffByRole(
      LEFT JOIN LATERAL (
        SELECT COUNT(*) AS open_count
        FROM tasks
-       WHERE tasks.assigned_to = u.id AND tasks.status <> 'COMPLETED'
+       WHERE tasks.assigned_to = u.id AND tasks.${OPEN_TASK_SQL}
      ) t ON TRUE
      WHERE ${conditions.join(' AND ')}
      ORDER BY u.full_name ASC`,
@@ -73,7 +80,7 @@ export async function getStaffStats(): Promise<StaffStats> {
      LEFT JOIN LATERAL (
        SELECT COUNT(*) AS open_count
        FROM tasks
-       WHERE tasks.assigned_to = u.id AND tasks.status <> 'COMPLETED'
+       WHERE tasks.assigned_to = u.id AND tasks.${OPEN_TASK_SQL}
      ) t ON TRUE
      WHERE u.roles && ${STAFF_ROLES_SQL}`,
   );
@@ -103,19 +110,22 @@ export async function findOpenTasksByStaffId(
     `SELECT t.*, rt.category AS ticket_category
      FROM tasks t
      LEFT JOIN repair_tickets rt ON rt.id = t.ticket_id
-     WHERE t.assigned_to = $1 AND t.status <> 'COMPLETED'
+     WHERE t.assigned_to = $1 AND t.${OPEN_TASK_SQL}
      ORDER BY t.assigned_at DESC`,
     [staffId],
   );
   return result.rows;
 }
 
-/** BR-50: đếm task chưa hoàn thành - chặn deactivate khi > 0. */
-export async function countActiveAssignedTasks(staffId: number): Promise<number> {
-  const result = await query(
+/** BR-50: đếm task đang mở (ASSIGNED/IN_PROGRESS) - chặn deactivate khi > 0. */
+export async function countActiveAssignedTasks(
+  staffId: number,
+  client?: Queryable,
+): Promise<number> {
+  const result = await (client ?? { query }).query(
     `SELECT COUNT(*)::int AS count
      FROM tasks
-     WHERE assigned_to = $1 AND status <> 'COMPLETED'`,
+     WHERE assigned_to = $1 AND ${OPEN_TASK_SQL}`,
     [staffId],
   );
   return result.rows[0].count;
@@ -127,8 +137,9 @@ export async function saveStaff(
   passwordHash: string,
   fullName: string,
   role: StaffRole,
+  client?: Queryable,
 ): Promise<User> {
-  const result = await query(
+  const result = await (client ?? { query }).query(
     `INSERT INTO users (phone_number, password_hash, full_name, roles, status, must_change_password)
      VALUES ($1, $2, $3, ARRAY[$4]::text[], 'ACTIVE', TRUE)
      RETURNING *`,
@@ -160,8 +171,12 @@ export async function updateStaffDetails(
  * UC40: vô hiệu hóa tài khoản. Bump token_version để mọi JWT đang hoạt động
  * mất hiệu lực ngay (đá khỏi mọi thiết bị - UC40 bước 4).
  */
-export async function updateStaffStatus(id: number, status: UserStatus): Promise<void> {
-  await query(
+export async function updateStaffStatus(
+  id: number,
+  status: UserStatus,
+  client?: Queryable,
+): Promise<void> {
+  await (client ?? { query }).query(
     `UPDATE users SET status = $2, token_version = token_version + 1 WHERE id = $1`,
     [id, status],
   );
@@ -178,8 +193,11 @@ export async function resetStaffPassword(id: number, hash: string): Promise<void
 }
 
 /** Revoke toàn bộ FCM token khi deactivate (tinh thần BR-44 - ngừng gửi noti). */
-export async function revokeAllDeviceTokens(userId: number): Promise<void> {
-  await query(
+export async function revokeAllDeviceTokens(
+  userId: number,
+  client?: Queryable,
+): Promise<void> {
+  await (client ?? { query }).query(
     `UPDATE device_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`,
     [userId],
   );
