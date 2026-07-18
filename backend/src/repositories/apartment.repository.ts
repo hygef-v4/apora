@@ -24,13 +24,20 @@ export async function findApartmentsWithStats(
 ): Promise<ApartmentListItem[]> {
   let sql = `
     SELECT 
-      a.*,
+      a.id,
+      a.unit_number,
+      a.floor,
+      a.status,
+      a.area_size,
+      a.base_rent,
+      COALESCE(c.resident_id, a.owner_id) as owner_id,
       u.full_name as owner_name,
       u.phone_number as owner_phone,
       COALESCE(inv_stats.unpaid_count, 0)::int as unpaid_invoice_count,
       COALESCE(tkt_stats.unresolved_count, 0)::int as unresolved_ticket_count
     FROM apartments a
-    LEFT JOIN users u ON a.owner_id = u.id
+    LEFT JOIN contracts c ON c.apartment_id = a.id AND c.status = 'ACTIVE'
+    LEFT JOIN users u ON u.id = COALESCE(c.resident_id, a.owner_id)
     LEFT JOIN LATERAL (
       SELECT COUNT(*)::int as unpaid_count
       FROM invoices
@@ -68,7 +75,7 @@ export async function findApartmentsWithStats(
   sql += ` ORDER BY a.unit_number ASC`;
 
   const result = await query(sql, params);
-  
+
   return result.rows.map(row => ({
     id: row.id,
     unit_number: row.unit_number,
@@ -114,11 +121,18 @@ export async function findById(id: number): Promise<Apartment | null> {
 export async function findByIdWithOwner(id: number): Promise<any | null> {
   const sql = `
     SELECT 
-      a.*,
+      a.id,
+      a.unit_number,
+      a.floor,
+      a.status,
+      a.area_size,
+      a.base_rent,
+      COALESCE(c.resident_id, a.owner_id) as owner_id,
       u.full_name as owner_name,
       u.phone_number as owner_phone
     FROM apartments a
-    LEFT JOIN users u ON a.owner_id = u.id
+    LEFT JOIN contracts c ON c.apartment_id = a.id AND c.status = 'ACTIVE'
+    LEFT JOIN users u ON u.id = COALESCE(c.resident_id, a.owner_id)
     WHERE a.id = $1
   `;
   const result = await query(sql, [id]);

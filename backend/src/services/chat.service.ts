@@ -13,7 +13,11 @@ export async function getChatSessions(userId: number, isManager: boolean, limit:
         cr.last_message,
         cr.updated_at,
         (SELECT COUNT(*) FROM messages m WHERE m.room_id = cr.id AND m.is_read = FALSE AND m.sender_id != $1) as unread_count,
-        (SELECT is_image FROM messages m WHERE m.room_id = cr.id ORDER BY m.created_at DESC LIMIT 1) as is_last_message_image
+        (SELECT is_image FROM messages m WHERE m.room_id = cr.id ORDER BY m.created_at DESC LIMIT 1) as is_last_message_image,
+        COALESCE(
+          (SELECT a.unit_number FROM contracts c JOIN apartments a ON c.apartment_id = a.id WHERE c.resident_id = u.id AND c.status = 'ACTIVE' LIMIT 1),
+          (SELECT a.unit_number FROM roommates r JOIN apartments a ON r.apartment_id = a.id WHERE r.phone_number = u.phone_number AND r.status = 'APPROVED' LIMIT 1)
+        ) as unit_number
       FROM users u
       LEFT JOIN chat_rooms cr ON cr.resident_id = u.id
       WHERE u.status = 'ACTIVE' AND 'RESIDENT' = ANY(u.roles)
@@ -30,7 +34,8 @@ export async function getChatSessions(userId: number, isManager: boolean, limit:
       last_message: r.last_message || '',
       updated_at: r.updated_at || new Date().toISOString(),
       unread_count: parseInt(r.unread_count || '0', 10),
-      is_last_message_image: r.is_last_message_image || false
+      is_last_message_image: r.is_last_message_image || false,
+      unit_number: r.unit_number || ''
     }));
   } else {
     const sql = `

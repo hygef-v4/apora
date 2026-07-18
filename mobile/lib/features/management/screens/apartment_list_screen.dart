@@ -58,7 +58,7 @@ class _ApartmentListScreenState extends ConsumerState<ApartmentListScreen> {
     final total = list.length;
     final occupied = list.where((a) => a.status == 'OCCUPIED').length;
     final empty = list.where((a) => a.status == 'EMPTY').length;
-    final repair = list.where((a) => a.unresolvedTicketCount > 0).length;
+    final repair = list.where((a) => a.status == 'INACTIVE').length;
 
     // Áp dụng bộ lọc client-side cho mượt mà
     final filteredList = list.where((apt) {
@@ -67,7 +67,7 @@ class _ApartmentListScreenState extends ConsumerState<ApartmentListScreen> {
       } else if (_selectedFilter == 'EMPTY') {
         return apt.status == 'EMPTY';
       } else if (_selectedFilter == 'REPAIR') {
-        return apt.unresolvedTicketCount > 0;
+        return apt.status == 'INACTIVE';
       }
       return true;
     }).toList();
@@ -231,7 +231,7 @@ class _ApartmentCard extends StatelessWidget {
 
     // Xác định badge trạng thái khớp thiết kế
     late final StatusBadge statusBadge;
-    if (apartment.unresolvedTicketCount > 0) {
+    if (apartment.status == 'INACTIVE') {
       statusBadge = StatusBadge.warning('Bảo trì');
     } else if (apartment.status == 'OCCUPIED') {
       statusBadge = StatusBadge.success('Đang thuê');
@@ -287,7 +287,7 @@ class _ApartmentCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
+                 Text(
                   apartment.status == 'EMPTY'
                       ? '— Căn trống'
                       : (apartment.ownerName ?? 'Chưa có chủ hộ'),

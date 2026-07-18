@@ -238,7 +238,7 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        '${detail.ownerPhone ?? 'Không có số'} · ${_getMockEmail(detail.ownerName ?? '')}',
+                                        detail.ownerPhone!,
                                         style: const TextStyle(
                                           fontSize: 11,
                                           color: AppColors.textSecondary,
@@ -248,11 +248,16 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                InkWell(
-                                  onTap: () {
-                                    // Chat trực tiếp với cư dân
-                                    context.push('/chat/${detail.ownerId}');
-                                  },
+                                 InkWell(
+                                   onTap: () {
+                                     // Chat trực tiếp với cư dân
+                                     if (detail.ownerId != null) {
+                                       context.push(
+                                         AppRoutes.chatDetailPath(detail.ownerId!),
+                                         extra: detail.ownerName,
+                                       );
+                                     }
+                                   },
                                   borderRadius: BorderRadius.circular(10),
                                   child: Container(
                                     width: 36,
@@ -487,84 +492,83 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                    ],
-
-                    // 5. Recent Bills Section (tiêu đề đưa vào trong card)
-                    if (!isSecurity && detail.recentBills != null) ...[
-                      AppCard(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Hóa đơn gần đây',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary),
-                            ),
-                            const SizedBox(height: 10),
-                            if (detail.recentBills!.isEmpty)
-                              const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  child: Text(
-                                    'Không tìm thấy hóa đơn nào.',
-                                    style: TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontStyle: FontStyle.italic,
+                      // 5. Recent Bills Section (tiêu đề đưa vào trong card)
+                      if (!isSecurity && detail.recentBills != null) ...[
+                        AppCard(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Hóa đơn gần đây',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textSecondary),
+                              ),
+                              const SizedBox(height: 10),
+                              if (detail.recentBills!.isEmpty)
+                                const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    child: Text(
+                                      'Không tìm thấy hóa đơn nào.',
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontStyle: FontStyle.italic,
+                                      ),
                                     ),
                                   ),
+                                )
+                              else
+                                ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: detail.recentBills!.length,
+                                  separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.divider),
+                                  itemBuilder: (context, idx) {
+                                    final bill = detail.recentBills![idx];
+                                    final isPaid = bill.status == 'PAID';
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 4),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Kỳ hóa đơn: ${bill.monthYear}',
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.textPrimary,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                _formatCurrency(bill.totalAmount),
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppColors.primary,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          isPaid
+                                              ? StatusBadge.success('Đã thanh toán')
+                                              : StatusBadge.warning('Chưa trả'),
+                                        ],
+                                      ),
+                                    );
+                                  },
                                 ),
-                              )
-                            else
-                              ListView.separated(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: detail.recentBills!.length,
-                                separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.divider),
-                                itemBuilder: (context, idx) {
-                                  final bill = detail.recentBills![idx];
-                                  final isPaid = bill.status == 'PAID';
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Kỳ hóa đơn: ${bill.monthYear}',
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.textPrimary,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              _formatCurrency(bill.totalAmount),
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: AppColors.primary,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        isPaid
-                                            ? StatusBadge.success('Đã thanh toán')
-                                            : StatusBadge.warning('Chưa trả'),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 12),
+                      ],
                     ],
 
                     // 6. Recent Tickets Section (tiêu đề đưa vào trong card)
