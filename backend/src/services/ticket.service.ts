@@ -275,6 +275,15 @@ export async function updateTicketStatus(
       `Không thể chuyển từ "${TICKET_STATUS_LABELS[current.status]}" sang "${TICKET_STATUS_LABELS[status]}".`,
     );
   }
+  // ASSIGNED chỉ được đặt qua luồng phân công (UC21/assignTicket) để LUÔN có
+  // task + người xử lý đi kèm. Chặn set thủ công qua UC20 để không tạo ra
+  // ticket "Đã phân công" mà không ai được giao (bất biến ASSIGNED <=> có task).
+  if (statusChanged && status === 'ASSIGNED') {
+    throw new HttpError(
+      400,
+      'Để chuyển sang "Đã phân công", vui lòng dùng chức năng phân công cho nhân viên.',
+    );
+  }
   // AT4: không đổi trạng thái và cũng không nhập ghi chú -> không có gì để lưu
   if (!statusChanged && !notes) {
     throw new HttpError(400, 'Không có thay đổi để lưu.');
