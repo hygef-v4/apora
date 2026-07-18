@@ -133,7 +133,7 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
 
                 // Xác định badge trạng thái giống với danh sách căn hộ
                 late final StatusBadge statusBadge;
-                if (unresolvedCount > 0) {
+                if (detail.status == 'INACTIVE') {
                   statusBadge = StatusBadge.warning('Bảo trì');
                 } else if (detail.status == 'OCCUPIED') {
                   statusBadge = StatusBadge.success('Đang thuê');
