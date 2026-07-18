@@ -91,6 +91,15 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
                         ),
                     ],
                   ),
+                  subtitle: Text(
+                    session.isLastMessageImage ? '[Hình ảnh]' : session.lastMessage,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
+                      color: isUnread ? Colors.black87 : Colors.grey[600],
+                    ),
+                  ),
                   onTap: () {
                     // Navigate to individual chat screen
                     context.push(AppRoutes.chatDetailPath(session.residentId), extra: session.residentName);
