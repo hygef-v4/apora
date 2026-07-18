@@ -74,7 +74,7 @@ void main() {
     });
 
     testWidgets('nhập đủ thông tin -> gọi API đăng nhập', (tester) async {
-      when(() => mockApi.signIn('0900000003', 'Apora@123')).thenAnswer(
+      when(() => mockApi.signIn('0900000003', 'Apora@123', fcmToken: any(named: 'fcmToken'))).thenAnswer(
         (_) async => const AuthResponse(
           token: 'jwt-token-abc',
           mustChangePassword: false,
@@ -100,7 +100,7 @@ void main() {
       await tester.tap(find.text('Đăng nhập'));
       await tester.pumpAndSettle();
 
-      verify(() => mockApi.signIn('0900000003', 'Apora@123')).called(1);
+      verify(() => mockApi.signIn('0900000003', 'Apora@123', fcmToken: any(named: 'fcmToken'))).called(1);
     });
   });
 }

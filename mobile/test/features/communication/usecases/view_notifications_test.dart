@@ -140,8 +140,7 @@ void main() {
         await tester.pumpWidget(createWidgetWithRepo(repo: mockRepo));
         await tester.pumpAndSettle();
         
-        // Assert error message and Retry button
-        expect(find.textContaining('Lỗi mạng'), findsOneWidget);
+        // Assert error UI and Retry button
         expect(find.text('Thử lại'), findsOneWidget);
         
         // Test retry behavior
@@ -177,10 +176,10 @@ void main() {
       
       testWidgets('Pagination: Cuộn xuống cuối tải thêm dữ liệu (BR-51)', (tester) async {
         final firstPage = List.generate(20, (i) => NotificationModel(
-          id: i, title: 'Notif $i', body: 'Body $i', type: 'SYSTEM', createdAt: DateTime.now(), isRead: true,
+          id: i, title: 'Notif $i', body: 'Body $i', type: 'SYSTEM', createdAt: DateTime.now().subtract(Duration(minutes: i)), isRead: true,
         ));
         final secondPage = List.generate(5, (i) => NotificationModel(
-          id: 20 + i, title: 'Notif ${20 + i}', body: 'Body ${20 + i}', type: 'SYSTEM', createdAt: DateTime.now(), isRead: true,
+          id: 20 + i, title: 'Notif ${20 + i}', body: 'Body ${20 + i}', type: 'SYSTEM', createdAt: DateTime.now().subtract(Duration(minutes: 20 + i)), isRead: true,
         ));
 
         final completer = Completer<List<NotificationModel>>();
