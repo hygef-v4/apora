@@ -83,11 +83,6 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
                 tooltip: 'Thiết lập đơn giá',
                 onTap: () => context.push(AppRoutes.pricingSettings),
               ),
-              HeaderIconButton(
-                icon: Icons.refresh,
-                tooltip: 'Làm mới',
-                onTap: () => ref.read(billingProvider.notifier).fetchData(),
-              ),
             ],
           ),
           // Tab bar phân loại

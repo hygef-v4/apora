@@ -124,7 +124,15 @@ void main() {
         when(() => mockRepo.getNotifications(limit: any(named: 'limit'), offset: any(named: 'offset')))
             .thenAnswer((_) async {
           if (shouldThrow) { 
-            throw Exception('Lỗi mạng');
+            throw DioException(
+              requestOptions: RequestOptions(path: '/notifications'),
+              response: Response(
+                requestOptions: RequestOptions(path: '/notifications'),
+                statusCode: 500,
+                data: {'message': 'Lỗi mạng'},
+              ),
+              type: DioExceptionType.badResponse,
+            );
           }
           return [];
         });
@@ -279,9 +287,9 @@ void main() {
         await tester.pumpWidget(createWidgetWithRepo(repo: mockRepo));
         await tester.pumpAndSettle();
 
-        expect(find.byIcon(Icons.receipt_long), findsOneWidget);
-        expect(find.byIcon(Icons.handyman), findsOneWidget);
-        expect(find.byIcon(Icons.campaign), findsOneWidget);
+        expect(find.byIcon(Icons.credit_card_outlined), findsOneWidget);
+        expect(find.byIcon(Icons.build_outlined), findsOneWidget);
+        expect(find.byIcon(Icons.analytics_outlined), findsOneWidget);
       });
     });
 
