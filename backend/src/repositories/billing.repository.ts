@@ -229,3 +229,31 @@ export async function findAllInvoices(): Promise<any[]> {
   );
   return res.rows;
 }
+
+/**
+ * Aggregates financial dashboard statistics for a specific month (BR-03, BR-04, BR-07, BR-09).
+ *
+ * @param monthYear Month filter in format 'MM/YYYY'
+ * @returns Object containing total_revenue, collected_revenue, and unpaid_bills_count
+ */
+export async function getRevenueStats(monthYear: string): Promise<{
+  total_revenue: number;
+  collected_revenue: number;
+  unpaid_bills_count: number;
+}> {
+  const sql = `
+    SELECT 
+      COALESCE(SUM(total_amount), 0.00)::numeric AS total_revenue,
+      COALESCE(SUM(total_amount) FILTER (WHERE status = 'PAID'), 0.00)::numeric AS collected_revenue,
+      COUNT(*) FILTER (WHERE status = 'UNPAID')::int AS unpaid_bills_count
+    FROM invoices
+    WHERE month_year = $1
+  `;
+  const result = await query(sql, [monthYear]);
+  const row = result.rows[0];
+  return {
+    total_revenue: parseFloat(row.total_revenue),
+    collected_revenue: parseFloat(row.collected_revenue),
+    unpaid_bills_count: row.unpaid_bills_count,
+  };
+}

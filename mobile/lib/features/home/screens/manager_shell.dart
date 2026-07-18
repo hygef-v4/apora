@@ -6,13 +6,12 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/coming_soon.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
-import '../../communication/screens/notification_list_screen.dart';
 import '../../management/screens/apartment_list_screen.dart';
 import '../../chat/screens/chat_list_screen.dart';
+import '../../management/screens/dashboard_report_screen.dart';
 import 'dashboard_screen.dart';
 
 /// Khung điều hướng của Quản lý/Chủ tòa nhà — bottom nav 5 tab theo thiết kế
@@ -44,14 +43,7 @@ class _ManagerShellState extends State<ManagerShell> {
         children: [
           const DashboardTab(),
           const ApartmentListScreen(),
-          const _ComingSoonTab(
-            title: 'Báo cáo',
-            child: ComingSoon(
-              icon: Icons.bar_chart,
-              title: 'Báo cáo & Thống kê',
-              moduleNote: 'sẽ có ở Module 7 (Dashboard)',
-            ),
-          ),
+          const DashboardReportScreen(),
           const ManagerChatListScreen(),
           const _ManagementHubTab(),
         ],
@@ -61,24 +53,6 @@ class _ManagerShellState extends State<ManagerShell> {
         currentIndex: _index,
         onTap: (i) => setState(() => _index = i),
       ),
-    );
-  }
-}
-
-/// Tab bọc màn "Sắp ra mắt" với header gradient đồng bộ.
-class _ComingSoonTab extends StatelessWidget {
-  const _ComingSoonTab({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        GradientHeader(title: title),
-        Expanded(child: child),
-      ],
     );
   }
 }
