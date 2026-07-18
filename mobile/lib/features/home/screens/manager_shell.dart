@@ -8,7 +8,6 @@ import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
-import '../../management/screens/apartment_list_screen.dart';
 import '../../chat/screens/chat_list_screen.dart';
 import '../../management/screens/dashboard_report_screen.dart';
 import 'dashboard_screen.dart';
@@ -40,7 +39,7 @@ class _ManagerShellState extends State<ManagerShell> {
         index: _index,
         children: [
           const DashboardTab(),
-          const ApartmentListScreen(),
+          const _ManagementHubTab(),
           const DashboardReportScreen(),
           const ManagerChatListScreen(),
         ],

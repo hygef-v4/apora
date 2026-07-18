@@ -27,15 +27,17 @@ class Roommate {
 
   factory Roommate.fromJson(Map<String, dynamic> json) {
     return Roommate(
-      id: json['id'] as int,
-      apartmentId: json['apartment_id'] as int,
-      fullName: json['full_name'] as String,
+      id: json['id'] as int? ?? 0,
+      apartmentId: json['apartment_id'] as int? ?? 0,
+      fullName: json['full_name'] as String? ?? '',
       phoneNumber: json['phone_number'] as String?,
-      cccdNumber: json['cccd_number'] as String,
+      cccdNumber: json['cccd_number'] as String? ?? '',
       cccdFrontUrl: json['cccd_front_url'] as String?,
       cccdBackUrl: json['cccd_back_url'] as String?,
-      status: json['status'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      status: json['status'] as String? ?? 'PENDING',
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
       unitNumber: json['unit_number'] as String?,
       rejectionReason: json['rejection_reason'] as String?,
     );
