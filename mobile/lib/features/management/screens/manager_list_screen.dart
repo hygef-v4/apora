@@ -11,6 +11,8 @@ import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/filter_pills.dart';
 import '../../../core/widgets/gradient_header.dart';
+import '../../../core/widgets/initials_avatar.dart';
+import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../models/manager_member.dart';
 import '../models/manager_stats.dart';
@@ -35,16 +37,14 @@ class ManagerListScreen extends ConsumerStatefulWidget {
 
 class _ManagerListScreenState extends ConsumerState<ManagerListScreen> {
   Timer? _debounce;
-  final _searchController = TextEditingController();
-  bool _showSearch = false;
 
   @override
   void dispose() {
     _debounce?.cancel();
-    _searchController.dispose();
     super.dispose();
   }
 
+  /// Debounces search input to avoid excessive API calls (400ms delay).
   void _onSearchChanged(String keyword) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
@@ -59,38 +59,24 @@ class _ManagerListScreenState extends ConsumerState<ManagerListScreen> {
     final stats = directory.value?.stats ?? ManagerStats.empty;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
           GradientHeader(
             title: 'Quản lý',
+            subtitle:
+                '${stats.active} đang hoạt động · ${stats.inactive} đã vô hiệu',
             showBack: true,
             actions: [
               HeaderIconButton(
-                icon: Icons.search,
-                tooltip: 'Tìm kiếm',
-                onTap: () {
-                  setState(() {
-                    _showSearch = !_showSearch;
-                    if (!_showSearch) {
-                      _searchController.clear();
-                      notifier.setSearch('');
-                    }
-                  });
-                },
-              ),
-              HeaderIconButton(
-                icon: Icons.add,
+                icon: Icons.person_add_alt_1,
                 tooltip: 'Thêm quản lý',
                 onTap: () => context.push(AppRoutes.managerCreate),
               ),
             ],
-            bottom: _showSearch
-                ? HeaderSearchBar(
-                    hint: 'Tìm tên, số điện thoại...',
-                    onChanged: _onSearchChanged,
-                  )
-                : null,
+            bottom: HeaderSearchBar(
+              hint: 'Tìm tên, số điện thoại...',
+              onChanged: _onSearchChanged,
+            ),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 12, bottom: 4),
@@ -99,13 +85,13 @@ class _ManagerListScreenState extends ConsumerState<ManagerListScreen> {
                 FilterPill(value: null, label: 'Tất cả (${stats.total})'),
                 FilterPill(
                   value: 'ACTIVE',
-                  label: 'Hoạt động (${stats.active})',
+                  label: 'Đang hoạt động (${stats.active})',
                   color: AppColors.success,
                 ),
                 FilterPill(
                   value: 'INACTIVE',
-                  label: 'Vô hiệu hóa (${stats.inactive})',
-                  color: AppColors.error,
+                  label: 'Đã vô hiệu (${stats.inactive})',
+                  color: AppColors.warning,
                 ),
               ],
               selected: notifier.statusFilter,
@@ -136,6 +122,36 @@ class _ManagerListScreenState extends ConsumerState<ManagerListScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
                   children: [
+                    // Summary stat cards
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: StatCard(
+                            label: 'Tổng số',
+                            value: '${result.stats.total}',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: StatCard(
+                            label: 'Đang hoạt động',
+                            value: '${result.stats.active}',
+                            valueColor: AppColors.success,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: StatCard(
+                            label: 'Đã vô hiệu',
+                            value: '${result.stats.inactive}',
+                            valueColor: AppColors.warning,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Empty state or manager card list
                     if (result.managers.isEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 48),
@@ -174,65 +190,27 @@ class _ManagerListScreenState extends ConsumerState<ManagerListScreen> {
   }
 }
 
+/// Individual Manager account card in the list.
+///
+/// Displays avatar (with initials fallback), full name, phone number,
+/// and an Active/Inactive status badge. Tappable to navigate to detail.
 class _ManagerCard extends StatelessWidget {
   const _ManagerCard({required this.member, required this.onTap});
 
   final ManagerMember member;
   final VoidCallback onTap;
 
-  String _getInitials(String name) {
-    if (name.trim().isEmpty) return '??';
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 3) {
-      return '${parts[0][0]}${parts[1][0]}${parts[2][0]}'.toUpperCase();
-    } else if (parts.length == 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return parts.first.substring(0, parts.first.length.clamp(0, 3)).toUpperCase();
-  }
-
-  Color _getManagerColor(ManagerMember member) {
-    if (!member.isActive) return const Color(0xFF94A3B8); // Slate grey cho tài khoản nghỉ/vô hiệu
-    return const Color(0xFF4F46E5); // Indigo cho active manager
-  }
-
   @override
   Widget build(BuildContext context) {
-    final initials = _getInitials(member.fullName);
-    final prefixColor = _getManagerColor(member);
-
-    late final StatusBadge statusBadge;
-    if (member.isActive) {
-      statusBadge = StatusBadge.success('Hoạt động');
-    } else {
-      statusBadge = const StatusBadge(
-        text: 'Vô hiệu hóa',
-        color: AppColors.error,
-        backgroundColor: AppColors.errorBg,
-      );
-    }
-
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: prefixColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+          InitialsAvatar(
+            name: member.fullName,
+            imageUrl: member.avatarUrl,
+            size: 46,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -249,7 +227,7 @@ class _ManagerCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Ban quản lý · ${member.phoneNumber}',
+                  'Quản lý · ${member.phoneNumber}',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
@@ -259,7 +237,9 @@ class _ManagerCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          statusBadge,
+          member.isActive
+              ? StatusBadge.success('Đang hoạt động')
+              : StatusBadge.muted('Đã vô hiệu'),
         ],
       ),
     );

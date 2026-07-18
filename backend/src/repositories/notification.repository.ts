@@ -11,16 +11,6 @@ export async function getAllUserIdsToNotify(): Promise<number[]> {
 }
 
 /**
- * Lấy user IDs của những user có role là RESIDENT
- */
-export async function getResidentUserIdsToNotify(): Promise<number[]> {
-  const result = await query(
-    `SELECT id FROM users WHERE status = 'ACTIVE' AND 'RESIDENT' = ANY(roles)`
-  );
-  return result.rows.map((row) => row.id);
-}
-
-/**
  * Bulk insert thông báo cho nhiều users.
  * Sử dụng UNNEST để insert hiệu quả với 1 query duy nhất.
  */
@@ -82,18 +72,7 @@ export async function markAsRead(notificationId: number, userId: number): Promis
      RETURNING id`,
     [notificationId, userId]
   );
-  return result.rowCount !== null && result.rowCount > 0;
-}
 
-/**
- * Đánh dấu tất cả thông báo dạng NEWS của một user thành đã đọc
- * Dùng khi user vừa mới đăng thông báo chung (chính họ là người gửi).
- */
-export async function markSenderAnnouncementsAsRead(userId: number): Promise<void> {
-  await query(
-    `UPDATE notifications
-     SET is_read = true, read_at = CURRENT_TIMESTAMP
-     WHERE user_id = $1 AND type = 'NEWS' AND is_read = false`,
-    [userId]
-  );
+  // Trả về true nếu có dòng được update, false nếu không tìm thấy hoặc đã đọc rồi
+  return (result.rowCount ?? 0) > 0;
 }

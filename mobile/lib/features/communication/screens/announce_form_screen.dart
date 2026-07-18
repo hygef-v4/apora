@@ -7,7 +7,6 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../providers/announce_notifier.dart';
-import '../providers/notification_list_provider.dart';
 
 class AnnounceFormScreen extends ConsumerStatefulWidget {
   const AnnounceFormScreen({super.key});
@@ -66,7 +65,6 @@ class _AnnounceFormScreenState extends ConsumerState<AnnounceFormScreen> {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(const SnackBar(content: Text('Đăng thông báo thành công')));
-        ref.invalidate(notificationListProvider);
         context.pop();
       }
     });

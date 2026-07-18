@@ -104,7 +104,7 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
                 label: Text(label),
                 selected: selected,
                 onSelected: (_) => setState(() => _filter = f.value),
-                selectedColor: AppColors.navy,
+                selectedColor: AppColors.primary,
                 labelStyle: TextStyle(
                   fontSize: 12,
                   color: selected ? Colors.white : AppColors.textSecondary,

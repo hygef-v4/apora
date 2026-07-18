@@ -147,12 +147,10 @@ const Map<String, String> kTaskStatusLabels = {
   'CANCELLED': 'Đã hủy',
 };
 
-/// BR-40: các bước đổi trạng thái THỦ CÔNG hợp lệ ở dropdown UC20.
-/// Lưu ý: PENDING -> ASSIGNED KHÔNG nằm ở đây vì "Đã phân công" chỉ được đặt
-/// qua chức năng Phân công (UC21) - nơi task + người xử lý được tạo cùng lúc.
-/// Cho ASSIGNED vào dropdown sẽ tạo ticket "đã phân công" mà không có ai làm.
+/// BR-40: các bước chuyển trạng thái hợp lệ - dùng cho dropdown UC20.
+/// Phải khớp TICKET_TRANSITIONS ở backend (ticket.service.ts).
 const Map<String, List<String>> kTicketNextStatuses = {
-  'PENDING': ['CANCELLED'],
+  'PENDING': ['ASSIGNED', 'CANCELLED'],
   'ASSIGNED': ['PROCESSING'],
   'PROCESSING': ['RESOLVED'],
   'RESOLVED': [],

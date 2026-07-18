@@ -1,14 +1,17 @@
 /**
- * UserRepository - Data Access Layer cho bảng users, device_tokens, password_reset_otps
+ * UserRepository - Data Access Layer cho bảng users, device_tokens
  *
  * Chỉ chứa SQL thô (qua pg), KHÔNG chứa business logic.
  * Map raw rows -> entity trong types/index.ts.
+ *
+ * Lưu ý: OTP quên mật khẩu (UC03) đi qua Firebase Phone Auth - backend không
+ * còn sinh/lưu OTP nên bảng password_reset_otps không được truy cập ở đây.
  *
  * @see docs/PRM393_SoftwareDesign_Group5.docx - Module 1 (UserRepository)
  */
 
 import { query } from '@/lib/db';
-import { PasswordResetOtp, User } from '@/types';
+import { User } from '@/types';
 
 // ==========================================
 // users
@@ -93,77 +96,4 @@ export async function revokeDeviceToken(userId: number, token: string): Promise<
     'UPDATE device_tokens SET revoked_at = NOW() WHERE user_id = $1 AND token = $2',
     [userId, token],
   );
-}
-
-// ==========================================
-// password_reset_otps (UC03)
-// ==========================================
-
-/**
- * Tạo OTP mới, đồng thời vô hiệu hóa mọi OTP cũ chưa dùng của số này
- * (flow Resend OTP trong SRS - mã cũ hết hiệu lực ngay khi cấp mã mới).
- * [codeHash] là SHA-256 của mã OTP - KHÔNG lưu OTP plaintext vào DB.
- * Tiện thể dọn lazy các row đã hết hạn > 1 ngày (bảng không phình vô hạn).
- */
-export async function createOtp(phone: string, codeHash: string, expiredAt: Date): Promise<void> {
-  await query(
-    `DELETE FROM password_reset_otps WHERE expired_at < NOW() - INTERVAL '1 day'`,
-  );
-  await query(
-    'UPDATE password_reset_otps SET is_used = TRUE WHERE phone_number = $1 AND is_used = FALSE',
-    [phone],
-  );
-  await query(
-    'INSERT INTO password_reset_otps (phone_number, otp_code, expired_at) VALUES ($1, $2, $3)',
-    [phone, codeHash, expiredAt],
-  );
-}
-
-/** Thời điểm cấp OTP gần nhất (kể cả đã dùng) - phục vụ cooldown chống spam SMS. */
-export async function findLatestOtpCreatedAt(phone: string): Promise<Date | null> {
-  const result = await query(
-    `SELECT created_at FROM password_reset_otps
-     WHERE phone_number = $1
-     ORDER BY created_at DESC
-     LIMIT 1`,
-    [phone],
-  );
-  return result.rows[0]?.created_at ?? null;
-}
-
-/** OTP đang hiệu lực gần nhất (chưa dùng, chưa hết hạn). */
-export async function findActiveOtp(phone: string): Promise<PasswordResetOtp | null> {
-  const result = await query(
-    `SELECT * FROM password_reset_otps
-     WHERE phone_number = $1 AND is_used = FALSE AND expired_at > NOW()
-     ORDER BY created_at DESC
-     LIMIT 1`,
-    [phone],
-  );
-  return result.rows[0] ?? null;
-}
-
-/** Tăng số lần nhập sai; quá 3 lần -> vô hiệu hóa luôn OTP (SRS alternative flow). */
-export async function increaseOtpAttempt(id: number): Promise<number> {
-  const result = await query(
-    `UPDATE password_reset_otps
-     SET attempt_count = attempt_count + 1,
-         is_used = (attempt_count + 1 >= 3)
-     WHERE id = $1
-     RETURNING attempt_count`,
-    [id],
-  );
-  return result.rows[0].attempt_count;
-}
-
-/**
- * Đánh dấu OTP đã dùng - atomic: chỉ 1 request "tiêu" được OTP.
- * @returns false nếu OTP đã bị request khác dùng trước (race) -> coi như không hợp lệ.
- */
-export async function markOtpUsed(id: number): Promise<boolean> {
-  const result = await query(
-    'UPDATE password_reset_otps SET is_used = TRUE WHERE id = $1 AND is_used = FALSE RETURNING id',
-    [id],
-  );
-  return (result.rowCount ?? 0) > 0;
 }

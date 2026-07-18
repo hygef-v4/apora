@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/dio_client.dart';
-import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
@@ -43,24 +42,6 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
     return format.format(value);
   }
 
-  String _getInitials(String name) {
-    if (name.trim().isEmpty) return '??';
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
-      return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-    }
-    return parts.first[0].toUpperCase();
-  }
-
-
-  String _formatCompactCurrency(double rent) {
-    if (rent >= 1000000) {
-      final val = rent / 1000000.0;
-      return '${val.toStringAsFixed(1).replaceAll('.', ',')}M/th';
-    }
-    return '${(rent / 1000.0).toStringAsFixed(0)}k/th';
-  }
-
   @override
   Widget build(BuildContext context) {
     final detailAsync = ref.watch(apartmentDetailProvider);
@@ -71,7 +52,6 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
     final isSecurity = userRoles.contains('SECURITY_GUARD') && !isLandlord && !isManager;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
           GradientHeader(
@@ -126,31 +106,16 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
                   return const Center(child: Text('Không tải được thông tin căn hộ.'));
                 }
 
-                // Tính toán số lượng sự cố chưa xử lý để gán trạng thái Bảo trì
-                final unresolvedCount = detail.recentTickets
-                    .where((t) => t.status != 'RESOLVED' && t.status != 'CANCELLED')
-                    .length;
-
-                // Xác định badge trạng thái giống với danh sách căn hộ
-                late final StatusBadge statusBadge;
-                if (detail.status == 'INACTIVE') {
-                  statusBadge = StatusBadge.warning('Bảo trì');
-                } else if (detail.status == 'OCCUPIED') {
-                  statusBadge = StatusBadge.success('Đang thuê');
-                } else {
-                  statusBadge = StatusBadge(
-                    text: 'Trống',
-                    color: AppColors.primary,
-                    backgroundColor: AppColors.infoBg,
-                  );
-                }
+                final statusLabel = detail.status == 'OCCUPIED'
+                    ? 'Đang ở'
+                    : (detail.status == 'EMPTY' ? 'Phòng trống' : 'Ngừng hoạt động');
 
                 return ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  padding: const EdgeInsets.all(14),
                   children: [
-                    // 1. Physical info (no card wrapper, matches layout in mockup)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    // 1. Physical info card
+                    AppCard(
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -158,500 +123,268 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Căn hộ ${detail.unitNumber}',
+                                'Phòng ${detail.unitNumber}',
                                 style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
                                   color: AppColors.textPrimary,
                                 ),
                               ),
-                              statusBadge,
+                              detail.status == 'OCCUPIED'
+                                  ? StatusBadge.success(statusLabel)
+                                  : (detail.status == 'EMPTY'
+                                      ? StatusBadge.muted(statusLabel)
+                                      : StatusBadge.warning(statusLabel)),
                             ],
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Tầng ${detail.floor} · ${detail.areaSize.toStringAsFixed(0)}m²',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
+                          const Divider(height: 24),
+                          _infoRow(Icons.layers, 'Tầng', detail.floor),
+                          const SizedBox(height: 10),
+                          _infoRow(Icons.aspect_ratio, 'Diện tích', '${detail.areaSize} m²'),
+                          const SizedBox(height: 10),
+                          if (!isSecurity) ...[
+                            _infoRow(
+                              Icons.payments,
+                              'Giá thuê gốc',
+                              _formatCurrency(detail.baseRent),
+                              valueStyle: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
 
-                    // 2. THÔNG TIN CƯ DÂN (tiêu đề đưa vào trong card)
+                    // 2. Owner info card
                     if (detail.status == 'OCCUPIED') ...[
+                      const Text(
+                        'Chủ hộ hiện tại',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
                       AppCard(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
                           children: [
-                            const Text(
-                              'Thông tin cư dân',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.successBg,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.person, color: AppColors.success),
                             ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF2563EB),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    _getInitials(detail.ownerName ?? ''),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    detail.ownerName ?? 'Chưa cập nhật tên',
                                     style: const TextStyle(
-                                      color: Colors.white,
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimary,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        detail.ownerName ?? 'Chưa cập nhật tên',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        detail.ownerPhone!,
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                 InkWell(
-                                   onTap: () {
-                                     // Chat trực tiếp với cư dân
-                                     if (detail.ownerId != null) {
-                                       context.push(
-                                         AppRoutes.chatDetailPath(detail.ownerId!),
-                                         extra: detail.ownerName,
-                                       );
-                                     }
-                                   },
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Container(
-                                    width: 36,
-                                    height: 36,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEFF6FF),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: const Icon(
-                                      Icons.chat_bubble,
-                                      color: Color(0xFF2563EB),
-                                      size: 18,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // 3. THÀNH VIÊN Ở GHÉP (tiêu đề đưa vào trong card)
-                      AppCard(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Thành viên ở ghép',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary),
-                            ),
-                            const SizedBox(height: 10),
-                            if (detail.roommates.isEmpty)
-                              const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  child: Text(
-                                    'Chưa đăng ký thành viên ở ghép.',
-                                    style: TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontStyle: FontStyle.italic,
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    detail.ownerPhone ?? 'Không có số điện thoại',
+                                    style: const TextStyle(
                                       fontSize: 12,
+                                      color: AppColors.textSecondary,
                                     ),
                                   ),
-                                ),
-                              )
-                            else
-                              ListView.separated(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: detail.roommates.length,
-                                separatorBuilder: (context, index) => const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 8),
-                                  child: Divider(height: 1, color: AppColors.divider),
-                                ),
-                                itemBuilder: (context, idx) {
-                                  final r = detail.roommates[idx];
-                                  return Row(
-                                    children: [
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF0EA5E9),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          _getInitials(r.fullName),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              r.fullName,
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.textPrimary,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              'SĐT: ${r.phoneNumber ?? 'Không có'} · CCCD: ${r.cccdNumber}',
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                                color: AppColors.textSecondary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // 4. HỢP ĐỒNG THUÊ & NÚT THU TIỀN THUÊ (Tiêu đề và nút gom chung vào card)
-                      AppCard(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Hợp đồng thuê',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary),
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF8FAFC),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Column(
-                                      children: [
-                                        Text(
-                                          'Bắt đầu',
-                                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          '01/01/2025',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF8FAFC),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Column(
-                                      children: [
-                                        Text(
-                                          'Kết thúc',
-                                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          '31/12/2025',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEFF6FF),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        const Text(
-                                          'Tiền thuê',
-                                          style: TextStyle(fontSize: 11, color: Color(0xFF2563EB)),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          _formatCompactCurrency(detail.baseRent),
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF2563EB),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                // Thu tiền thuê / chuyển hướng quản lý hoá đơn
-                                context.push(AppRoutes.managerInvoiceList);
-                              },
-                              icon: const Icon(Icons.credit_card, color: Colors.white, size: 18),
-                              label: const Text('Thu tiền thuê'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF2563EB),
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size.fromHeight(42),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                elevation: 0,
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      // 5. Recent Bills Section (tiêu đề đưa vào trong card)
-                      if (!isSecurity && detail.recentBills != null) ...[
-                        AppCard(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Hóa đơn gần đây',
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textSecondary),
-                              ),
-                              const SizedBox(height: 10),
-                              if (detail.recentBills!.isEmpty)
-                                const Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 12),
-                                    child: Text(
-                                      'Không tìm thấy hóa đơn nào.',
-                                      style: TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              else
-                                ListView.separated(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: detail.recentBills!.length,
-                                  separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.divider),
-                                  itemBuilder: (context, idx) {
-                                    final bill = detail.recentBills![idx];
-                                    final isPaid = bill.status == 'PAID';
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 4),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'Kỳ hóa đơn: ${bill.monthYear}',
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: AppColors.textPrimary,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                _formatCurrency(bill.totalAmount),
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: AppColors.primary,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          isPaid
-                                              ? StatusBadge.success('Đã thanh toán')
-                                              : StatusBadge.warning('Chưa trả'),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
+                      const SizedBox(height: 14),
                     ],
 
-                    // 6. Recent Tickets Section (tiêu đề đưa vào trong card)
-                    AppCard(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Sự cố phản ánh',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary),
-                          ),
-                          const SizedBox(height: 10),
-                          if (detail.recentTickets.isEmpty)
-                            const Center(
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                                child: Text(
-                                  'Chưa ghi nhận sự cố nào.',
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ),
-                            )
-                          else
-                            ListView.separated(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: detail.recentTickets.length,
-                              separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.divider),
-                              itemBuilder: (context, idx) {
-                                final ticket = detail.recentTickets[idx];
-                                final statusBadge = () {
-                                  switch (ticket.status) {
-                                    case 'RESOLVED':
-                                      return StatusBadge.success('RESOLVED');
-                                    case 'CANCELLED':
-                                      return StatusBadge.muted('CANCELLED');
-                                    case 'PROCESSING':
-                                      return StatusBadge.info('PROCESSING');
-                                    default:
-                                      return StatusBadge.warning(ticket.status);
-                                  }
-                                }();
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              ticket.category,
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.textPrimary,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              ticket.description,
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: AppColors.textSecondary,
-                                              ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      statusBadge,
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                        ],
+                    // 3. Roommates Section
+                    const Text(
+                      'Thành viên ở ghép',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 6),
+                    if (detail.roommates.isEmpty)
+                      const AppCard(
+                        padding: EdgeInsets.all(16),
+                        child: Center(
+                          child: Text(
+                            'Chưa đăng ký thành viên ở ghép.',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      ...detail.roommates.map((r) => Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: AppCard(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.people_outline, color: AppColors.textSecondary, size: 20),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          r.fullName,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'SĐT: ${r.phoneNumber ?? 'Không có'} · CCCD: ${r.cccdNumber}',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  StatusBadge.success('APPROVED'),
+                                ],
+                              ),
+                            ),
+                          )),
+                    const SizedBox(height: 14),
 
-                    // 7. Action Panel (Check-in / Checkout với màu đỏ chữ trắng)
+                    // 4. Recent Bills Section (hidden for Security Guards)
+                    if (!isSecurity && detail.recentBills != null) ...[
+                      const Text(
+                        'Hóa đơn gần đây',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      if (detail.recentBills!.isEmpty)
+                        const AppCard(
+                          padding: EdgeInsets.all(16),
+                          child: Center(
+                            child: Text(
+                              'Không tìm thấy hóa đơn nào.',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        AppCard(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Column(
+                            children: detail.recentBills!.map((bill) {
+                              final isPaid = bill.status == 'PAID';
+                              return ListTile(
+                                dense: true,
+                                title: Text(
+                                  'Kỳ hóa đơn: ${bill.monthYear}',
+                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                                subtitle: Text(
+                                  _formatCurrency(bill.totalAmount),
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                trailing: isPaid
+                                    ? StatusBadge.success('Đã thanh toán')
+                                    : StatusBadge.warning('Chưa trả'),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      const SizedBox(height: 14),
+                    ],
+
+                    // 5. Recent Tickets Section
+                    const Text(
+                      'Sự cố phản ánh',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    if (detail.recentTickets.isEmpty)
+                      const AppCard(
+                        padding: EdgeInsets.all(16),
+                        child: Center(
+                          child: Text(
+                            'Chưa ghi nhận sự cố nào.',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      AppCard(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Column(
+                          children: detail.recentTickets.map((ticket) {
+
+                            return ListTile(
+                              dense: true,
+                              title: Text(
+                                ticket.category,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Text(
+                                ticket.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: () {
+                                switch (ticket.status) {
+                                  case 'RESOLVED':
+                                    return StatusBadge.success('RESOLVED');
+                                  case 'CANCELLED':
+                                    return StatusBadge.muted('CANCELLED');
+                                  case 'PROCESSING':
+                                    return StatusBadge.info('PROCESSING');
+                                  default:
+                                    return StatusBadge.warning(ticket.status);
+                                }
+                              }(),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    const SizedBox(height: 24),
+
+                    // 6. Action Panel (Check-in / Checkout) for Manager/Landlord
                     if (!isSecurity) ...[
                       if (detail.status == 'EMPTY')
                         ElevatedButton.icon(
@@ -667,24 +400,21 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            elevation: 0,
                           ),
                         )
                       else if (detail.status == 'OCCUPIED')
-                        ElevatedButton.icon(
+                        OutlinedButton.icon(
                           onPressed: () {
                             context.push('/manager/apartments/${detail.id}/checkout');
                           },
-                          icon: const Icon(Icons.logout, color: Colors.white, size: 18),
-                          label: const Text('Trả phòng (Checkout)'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFEF4444), // Đỏ 500
-                            foregroundColor: Colors.white,
+                          icon: const Icon(Icons.logout, color: AppColors.warning),
+                          label: const Text('Trả phòng (Checkout)', style: TextStyle(color: AppColors.warning)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.warning),
                             minimumSize: const Size.fromHeight(44),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            elevation: 0,
                           ),
                         ),
                     ],
@@ -695,6 +425,34 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value, {TextStyle? valueStyle}) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.textTertiary),
+        const SizedBox(width: 8),
+        Text(
+          '$label:',
+          style: const TextStyle(
+            fontSize: 13,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ).merge(valueStyle),
+          ),
+        ),
+      ],
     );
   }
 }

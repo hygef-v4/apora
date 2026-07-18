@@ -149,7 +149,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     final state = ref.watch(taskDetailProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF1F5F9),
       body: Column(
         children: [
           const GradientHeader(title: 'Chi Tiết Công Việc', showBack: true),

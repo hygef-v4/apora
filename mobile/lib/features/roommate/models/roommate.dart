@@ -1,9 +1,14 @@
+import '../../../core/utils/mask_utils.dart';
+
 class Roommate {
   final int id;
   final int apartmentId;
   final String fullName;
   final String? phoneNumber;
   final String cccdNumber;
+
+  /// Số CCCD đã được mask theo BR-08 (ví dụ: `********5678`)
+  String get maskedCccdNumber => maskCccdNumber(cccdNumber);
   final String? cccdFrontUrl;
   final String? cccdBackUrl;
   final String status; // 'PENDING', 'APPROVED', 'REJECTED'

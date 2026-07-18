@@ -86,36 +86,21 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
     // Choose icon based on type (same as list)
     IconData icon;
     Color iconColor;
-    Color iconBgColor;
-
+    
     switch (widget.notification.type) {
       case 'INVOICE':
       case 'PAYMENT':
-        icon = Icons.credit_card_outlined;
-        iconColor = const Color(0xFF2563EB); // Xanh dương
-        iconBgColor = const Color(0xFFEFF6FF);
+        icon = Icons.receipt_long;
+        iconColor = AppColors.warning;
         break;
       case 'TICKET':
       case 'TASK':
-        icon = Icons.build_outlined;
-        iconColor = const Color(0xFFDC2626); // Đỏ
-        iconBgColor = const Color(0xFFFEF2F2);
-        break;
-      case 'EXTENSION':
-      case 'CONTRACT':
-        icon = Icons.description_outlined;
-        iconColor = const Color(0xFFD97706); // Cam
-        iconBgColor = const Color(0xFFFFFBEB);
-        break;
-      case 'ROOMMATE':
-        icon = Icons.home_outlined;
-        iconColor = const Color(0xFF16A34A); // Xanh lá
-        iconBgColor = const Color(0xFFF0FDF4);
+        icon = Icons.handyman;
+        iconColor = AppColors.info;
         break;
       default:
-        icon = Icons.analytics_outlined;
-        iconColor = const Color(0xFF4F46E5); // Indigo
-        iconBgColor = const Color(0xFFEEF2FF);
+        icon = Icons.campaign;
+        iconColor = AppColors.primary;
     }
 
     return Scaffold(
@@ -157,14 +142,12 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        width: 56,
-                        height: 56,
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: iconBgColor,
-                          borderRadius: BorderRadius.circular(14),
+                          color: iconColor.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
                         ),
-                        alignment: Alignment.center,
-                        child: Icon(icon, color: iconColor, size: 28),
+                        child: Icon(icon, color: iconColor, size: 32),
                       ),
                       const SizedBox(width: 16),
                       Expanded(

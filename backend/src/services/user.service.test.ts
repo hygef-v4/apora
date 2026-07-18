@@ -1,10 +1,9 @@
 /**
  * Unit test UserService (Module 1: UC01-UC05) - mock repository, không cần DB.
- * Phủ các Business Rule chính: BR-01/04 (login), BR-07/08/09 (OTP + mật khẩu),
- * BR-12 (audit đổi SĐT), chống brute-force login.
+ * Phủ các Business Rule chính: BR-01/04 (login), BR-07/08/09 (OTP Firebase +
+ * mật khẩu), BR-12 (audit đổi SĐT), chống brute-force login.
  */
 
-import { createHash } from 'crypto';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { hashPassword } from '@/lib/auth';
@@ -19,8 +18,13 @@ vi.mock('@/repositories/audit.repository');
 vi.mock('@/lib/cloudinary', () => ({
   uploadImage: vi.fn(),
 }));
+// UC03: mock Firebase Admin - không gọi Firebase thật trong unit test
+vi.mock('@/services/firebase.service', () => ({
+  verifyPhoneIdToken: vi.fn(),
+}));
 
 import { uploadImage } from '@/lib/cloudinary';
+import { verifyPhoneIdToken } from '@/services/firebase.service';
 
 const PASSWORD = 'Apora@123';
 let passwordHash: string;
@@ -39,10 +43,6 @@ function makeUser(overrides: Partial<User> = {}): User {
     created_at: new Date(),
     ...overrides,
   };
-}
-
-function sha256(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
 }
 
 beforeAll(async () => {
@@ -125,114 +125,91 @@ describe('UC01: authenticateUser', () => {
   });
 });
 
-describe('UC03: generateOTP / verifyOTPAndReset', () => {
-  it('tài khoản INACTIVE không được cấp OTP (BR-05)', async () => {
+describe('UC03: ensureAccountForPasswordReset / resetPasswordWithFirebase', () => {
+  const ID_TOKEN = 'firebase-id-token';
+
+  it('SĐT không có tài khoản -> 404 (không tốn SMS Firebase)', async () => {
+    vi.mocked(userRepo.findByPhone).mockResolvedValue(null);
+
+    await expect(
+      userService.ensureAccountForPasswordReset('0999999999'),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('tài khoản INACTIVE không được nhận OTP (BR-05)', async () => {
     vi.mocked(userRepo.findByPhone).mockResolvedValue(
       makeUser({ status: 'INACTIVE' }),
     );
 
-    await expect(userService.generateOTP('0900000001')).rejects.toMatchObject({
-      status: 403,
-    });
+    await expect(
+      userService.ensureAccountForPasswordReset('0900000001'),
+    ).rejects.toMatchObject({ status: 403 });
   });
 
-  it('cấp OTP: lưu HASH của mã (không plaintext), dev mode trả devOtp', async () => {
+  it('tài khoản ACTIVE -> pass (mobile được phép nhờ Firebase gửi SMS)', async () => {
     vi.mocked(userRepo.findByPhone).mockResolvedValue(makeUser());
-    vi.mocked(userRepo.findLatestOtpCreatedAt).mockResolvedValue(null);
-
-    const { devOtp } = await userService.generateOTP('0900000001');
-
-    expect(devOtp).toMatch(/^\d{6}$/);
-    const [, storedHash] = vi.mocked(userRepo.createOtp).mock.calls[0];
-    expect(storedHash).toBe(sha256(devOtp!)); // DB chỉ giữ SHA-256
-    expect(storedHash).not.toBe(devOtp);
-  });
-
-  it('xin OTP lại trong 60s -> 429 (cooldown chống spam SMS)', async () => {
-    vi.mocked(userRepo.findByPhone).mockResolvedValue(makeUser());
-    vi.mocked(userRepo.findLatestOtpCreatedAt).mockResolvedValue(new Date());
-
-    await expect(userService.generateOTP('0900000001')).rejects.toMatchObject({
-      status: 429,
-    });
-  });
-
-  it('OTP sai -> 400 + tăng attempt_count (BR-08)', async () => {
-    vi.mocked(userRepo.findByPhone).mockResolvedValue(makeUser());
-    vi.mocked(userRepo.findActiveOtp).mockResolvedValue({
-      id: 10,
-      phone_number: '0900000001',
-      otp_code: sha256('123456'),
-      expired_at: new Date(Date.now() + 60000),
-      is_used: false,
-      attempt_count: 0,
-      created_at: new Date(),
-    });
 
     await expect(
-      userService.verifyOTPAndReset('0900000001', '654321', 'MatKhauMoi1'),
-    ).rejects.toMatchObject({ status: 400 });
-    expect(userRepo.increaseOtpAttempt).toHaveBeenCalledWith(10);
+      userService.ensureAccountForPasswordReset('0900000001'),
+    ).resolves.toBeUndefined();
   });
 
-  it('OTP đúng -> tiêu OTP atomic rồi đổi mật khẩu (bump token_version - BR-07)', async () => {
+  it('token Firebase giả/hết hạn -> 400, KHÔNG đổi mật khẩu', async () => {
     vi.mocked(userRepo.findByPhone).mockResolvedValue(makeUser());
-    vi.mocked(userRepo.findActiveOtp).mockResolvedValue({
-      id: 10,
-      phone_number: '0900000001',
-      otp_code: sha256('123456'),
-      expired_at: new Date(Date.now() + 60000),
-      is_used: false,
-      attempt_count: 0,
-      created_at: new Date(),
-    });
-    vi.mocked(userRepo.markOtpUsed).mockResolvedValue(true);
-
-    await userService.verifyOTPAndReset('0900000001', '123456', 'MatKhauMoi1');
-
-    expect(userRepo.markOtpUsed).toHaveBeenCalledWith(10);
-    expect(userRepo.updatePasswordHash).toHaveBeenCalled();
-  });
-
-  it('OTP bị request khác tiêu trước (race) -> 400, KHÔNG đổi mật khẩu', async () => {
-    vi.mocked(userRepo.findByPhone).mockResolvedValue(makeUser());
-    vi.mocked(userRepo.findActiveOtp).mockResolvedValue({
-      id: 10,
-      phone_number: '0900000001',
-      otp_code: sha256('123456'),
-      expired_at: new Date(Date.now() + 60000),
-      is_used: false,
-      attempt_count: 0,
-      created_at: new Date(),
-    });
-    vi.mocked(userRepo.markOtpUsed).mockResolvedValue(false);
+    vi.mocked(verifyPhoneIdToken).mockRejectedValue(new Error('id-token-expired'));
 
     await expect(
-      userService.verifyOTPAndReset('0900000001', '123456', 'MatKhauMoi1'),
+      userService.resetPasswordWithFirebase('0900000001', ID_TOKEN, 'MatKhauMoi1'),
     ).rejects.toMatchObject({ status: 400 });
     expect(userRepo.updatePasswordHash).not.toHaveBeenCalled();
   });
 
-  it('mật khẩu mới trùng mật khẩu hiện tại -> 400', async () => {
+  it('SĐT trong token khác tài khoản cần reset -> 400 (chặn chiếm tài khoản khác)', async () => {
     vi.mocked(userRepo.findByPhone).mockResolvedValue(makeUser());
-    vi.mocked(userRepo.findActiveOtp).mockResolvedValue({
-      id: 10,
-      phone_number: '0900000001',
-      otp_code: sha256('123456'),
-      expired_at: new Date(Date.now() + 60000),
-      is_used: false,
-      attempt_count: 0,
-      created_at: new Date(),
-    });
+    vi.mocked(verifyPhoneIdToken).mockResolvedValue('+84888888888'); // số khác
 
     await expect(
-      userService.verifyOTPAndReset('0900000001', '123456', PASSWORD),
+      userService.resetPasswordWithFirebase('0900000001', ID_TOKEN, 'MatKhauMoi1'),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(userRepo.updatePasswordHash).not.toHaveBeenCalled();
+  });
+
+  it('token hợp lệ + SĐT khớp (E.164 +84 <-> 0) -> đổi mật khẩu (BR-07)', async () => {
+    vi.mocked(userRepo.findByPhone).mockResolvedValue(makeUser());
+    // user.phone_number = '0900000001' <-> token '+84900000001'
+    vi.mocked(verifyPhoneIdToken).mockResolvedValue('+84900000001');
+
+    await userService.resetPasswordWithFirebase(
+      '0900000001',
+      ID_TOKEN,
+      'MatKhauMoi1',
+    );
+
+    expect(userRepo.updatePasswordHash).toHaveBeenCalled();
+  });
+
+  it('tài khoản bị vô hiệu hóa giữa chừng -> 403 (BR-05 re-check)', async () => {
+    vi.mocked(userRepo.findByPhone).mockResolvedValue(
+      makeUser({ status: 'INACTIVE' }),
+    );
+
+    await expect(
+      userService.resetPasswordWithFirebase('0900000001', ID_TOKEN, 'MatKhauMoi1'),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('mật khẩu mới trùng mật khẩu hiện tại -> 400', async () => {
+    vi.mocked(userRepo.findByPhone).mockResolvedValue(makeUser());
+    vi.mocked(verifyPhoneIdToken).mockResolvedValue('+84900000001');
+
+    await expect(
+      userService.resetPasswordWithFirebase('0900000001', ID_TOKEN, PASSWORD),
     ).rejects.toMatchObject({ status: 400 });
   });
 
   it('mật khẩu mới yếu -> 400 (BR-09)', async () => {
     await expect(
-      userService.verifyOTPAndReset('0900000001', '123456', 'yeu'),
+      userService.resetPasswordWithFirebase('0900000001', ID_TOKEN, 'yeu'),
     ).rejects.toMatchObject({ status: 400 });
   });
 });

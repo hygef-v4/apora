@@ -5,7 +5,6 @@ class ChatSessionModel {
   final bool isLastMessageImage;
   final int unreadCount;
   final DateTime updatedAt;
-  final String unitNumber;
 
   ChatSessionModel({
     required this.residentId,
@@ -14,7 +13,6 @@ class ChatSessionModel {
     this.isLastMessageImage = false,
     this.unreadCount = 0,
     required this.updatedAt,
-    this.unitNumber = '',
   });
 
   factory ChatSessionModel.fromJson(Map<String, dynamic> json) {
@@ -24,10 +22,7 @@ class ChatSessionModel {
       lastMessage: json['last_message'] as String? ?? '',
       isLastMessageImage: json['is_last_message_image'] ?? false,
       unreadCount: json['unread_count'] ?? 0,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now()
-          : DateTime.now(),
-      unitNumber: json['unit_number'] ?? '',
+      updatedAt: DateTime.parse(json['updated_at']),
     );
   }
 
@@ -38,7 +33,6 @@ class ChatSessionModel {
     bool? isLastMessageImage,
     int? unreadCount,
     DateTime? updatedAt,
-    String? unitNumber,
   }) {
     return ChatSessionModel(
       residentId: residentId ?? this.residentId,
@@ -47,7 +41,6 @@ class ChatSessionModel {
       isLastMessageImage: isLastMessageImage ?? this.isLastMessageImage,
       unreadCount: unreadCount ?? this.unreadCount,
       updatedAt: updatedAt ?? this.updatedAt,
-      unitNumber: unitNumber ?? this.unitNumber,
     );
   }
 
@@ -59,7 +52,6 @@ class ChatSessionModel {
       'is_last_message_image': isLastMessageImage,
       'unread_count': unreadCount,
       'updated_at': updatedAt.toIso8601String(),
-      'unit_number': unitNumber,
     };
   }
 }

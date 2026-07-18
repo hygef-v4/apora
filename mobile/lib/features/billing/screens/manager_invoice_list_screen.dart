@@ -74,14 +74,14 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
       body: Column(
         children: [
           GradientHeader(
-            title: 'Hóa Đơn',
+            title: 'Hóa Đơn & Thu Tiền',
             subtitle: 'Quản lý công nợ toàn tòa nhà',
             showBack: true,
             actions: [
               HeaderIconButton(
-                icon: Icons.settings,
-                tooltip: 'Thiết lập đơn giá',
-                onTap: () => context.push(AppRoutes.pricingSettings),
+                icon: Icons.refresh,
+                tooltip: 'Làm mới',
+                onTap: () => ref.read(billingProvider.notifier).fetchData(),
               ),
             ],
           ),
