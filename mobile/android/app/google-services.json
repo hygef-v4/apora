@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "639435995014-psplsl6bhiotprpck9g83t94nluj80qe.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.apartment_management",
+            "certificate_hash": "3388931f654391a55c9c4cdd46604aa162af0d93"
+          }
+        },
+        {
           "client_id": "639435995014-dullhoehd33svenkpi763e82h3rbl5r7.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +37,13 @@
             {
               "client_id": "639435995014-dullhoehd33svenkpi763e82h3rbl5r7.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "639435995014-g20sik79brevecdn4f6kqs0vvlls50mc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.apartmentManagement"
+              }
             }
           ]
         }
