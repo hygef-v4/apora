@@ -107,8 +107,8 @@ class _ManagementHubTab extends ConsumerWidget {
                     icon: Icons.admin_panel_settings,
                     iconBg: Color(0xFFEEF2FF),
                     iconColor: Color(0xFF4F46E5),
-                    title: 'Tài khoản',
-                    subtitle: 'Danh sách Quản lý viên',
+                    title: 'Quản lý',
+                    subtitle: 'Danh sách quản lý',
                     trailing: Icon(
                       Icons.chevron_right,
                       color: AppColors.textTertiary,

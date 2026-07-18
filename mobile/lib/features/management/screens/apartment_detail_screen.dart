@@ -52,14 +52,6 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
     return parts.first[0].toUpperCase();
   }
 
-  String _getMockEmail(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.isNotEmpty) {
-      final lastWord = parts.last.toLowerCase();
-      return '$lastWord@email.com';
-    }
-    return 'resident@email.com';
-  }
 
   String _formatCompactCurrency(double rent) {
     if (rent >= 1000000) {
