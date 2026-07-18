@@ -108,7 +108,7 @@ class _ManagementHubTab extends ConsumerWidget {
                     iconBg: Color(0xFFEEF2FF),
                     iconColor: Color(0xFF4F46E5),
                     title: 'Quản lý',
-                    subtitle: 'Danh sách quản lý',
+                    subtitle: 'Danh sách quản lý viên',
                     trailing: Icon(
                       Icons.chevron_right,
                       color: AppColors.textTertiary,

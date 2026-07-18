@@ -15,10 +15,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:apartment_management/features/management/models/apartment.dart';
+import 'package:apartment_management/features/management/providers/apartment_notifier.dart';
 
 class MockDio extends Mock implements Dio {}
 class MockChatRepository extends Mock implements ChatRepository {}
 class MockImagePicker extends Mock implements ImagePicker {}
+
+class MockApartmentDirectoryNotifier extends ApartmentDirectoryNotifier {
+  final List<Apartment> apartments;
+
+  MockApartmentDirectoryNotifier(this.apartments);
+
+  @override
+  Future<List<Apartment>> build() async => apartments;
+}
 
 class MockAuthNotifier extends Notifier<AuthState> implements AuthNotifier {
   final User mockUser;
@@ -49,6 +60,9 @@ class MockAuthNotifier extends Notifier<AuthState> implements AuthNotifier {
 
   @override
   Future<void> restoreSession() async {}
+
+  @override
+  Future<void> updateUser(User user) async {}
 }
 
 void main() {
@@ -99,6 +113,21 @@ void main() {
           overrides: [
             dioProvider.overrideWithValue(mockDio),
             chatRepositoryProvider.overrideWithValue(mockRepo),
+            apartmentDirectoryProvider.overrideWith(() => MockApartmentDirectoryNotifier([
+                  Apartment(
+                    id: 1,
+                    unitNumber: '101',
+                    floor: '1',
+                    status: 'OCCUPIED',
+                    areaSize: 45,
+                    baseRent: 5000000,
+                    ownerId: 10,
+                    ownerName: 'Nguyen Van A',
+                    ownerPhone: '0900000000',
+                    unpaidInvoiceCount: 0,
+                    unresolvedTicketCount: 0,
+                  ),
+                ])),
             authNotifierProvider.overrideWith(() => MockAuthNotifier(mockUser)),
           ],
           child: const MaterialApp(
@@ -178,12 +207,13 @@ void main() {
       });
 
       testWidgets('Hiển thị giao diện danh sách chat (Manager)', (tester) async {
-        when(() => mockRepo.getChatSessions(limit: any(named: 'limit'), offset: any(named: 'offset')))
+        when(() => mockRepo.getChatSessions())
             .thenAnswer((_) async => [
                   ChatSessionModel(
                     residentId: 10,
                     residentName: 'Nguyen Van A',
                     lastMessage: 'Cho tôi hỏi về hóa đơn',
+                    unitNumber: '101',
                     updatedAt: DateTime.now(),
                     unreadCount: 2,
                     isLastMessageImage: false,
@@ -193,9 +223,9 @@ void main() {
         await tester.pumpWidget(createChatListScreen());
         await tester.pumpAndSettle();
 
-        expect(find.text('Hỗ trợ Resident'), findsOneWidget);
+        expect(find.text('Hỗ trợ'), findsOneWidget);
+        expect(find.text('Căn hộ 101'), findsOneWidget);
         expect(find.text('Nguyen Van A'), findsOneWidget);
-        expect(find.text('Cho tôi hỏi về hóa đơn'), findsOneWidget);
         expect(find.text('2'), findsOneWidget); // unread count
       });
     });

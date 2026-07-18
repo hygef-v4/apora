@@ -254,7 +254,7 @@ class StayExtensionDetail extends StayExtension {
 
 /// Nhãn tiếng Việt cho trạng thái hợp đồng (FID-09 field 4).
 const Map<String, String> kContractStatusLabels = {
-  'ACTIVE': 'Đang hiệu lực',
+  'ACTIVE': 'Hiệu lực',
   'EXPIRED': 'Hết hạn',
 };
 
