@@ -288,36 +288,32 @@ class DashboardTab extends ConsumerWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 QuickActionButton(
-                                  icon: Icons.add,
-                                  label: 'Thêm CH',
+                                  icon: Icons.apartment,
+                                  label: 'Căn hộ',
                                   color: AppColors.primary,
                                   backgroundColor: AppColors.infoBg,
-                                  onTap: () => context.push(AppRoutes.apartmentCreate),
-                                ),
-                                QuickActionButton(
-                                  icon: Icons.credit_card,
-                                  label: 'Thu tiền',
-                                  color: AppColors.success,
-                                  backgroundColor: AppColors.successBg,
-                                  onTap: () => context.push(AppRoutes.managerInvoiceList),
+                                  onTap: () => context.push(AppRoutes.apartmentList),
                                 ),
                                 QuickActionButton(
                                   icon: Icons.people,
                                   label: 'Cư dân',
-                                  color: AppColors.warning,
-                                  backgroundColor: AppColors.warningBg,
+                                  color: AppColors.success,
+                                  backgroundColor: AppColors.successBg,
                                   onTap: () => context.push(AppRoutes.managerRoommates),
                                 ),
                                 QuickActionButton(
-                                  icon: Icons.bar_chart,
-                                  label: 'Báo cáo',
+                                  icon: Icons.engineering,
+                                  label: 'Nhân viên',
+                                  color: AppColors.warning,
+                                  backgroundColor: AppColors.warningBg,
+                                  onTap: () => context.push(AppRoutes.staffList),
+                                ),
+                                QuickActionButton(
+                                  icon: Icons.receipt_long,
+                                  label: 'Hóa đơn',
                                   color: AppColors.purple,
                                   backgroundColor: AppColors.purpleBg,
-                                  onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Vui lòng chọn tab Báo cáo ở thanh điều hướng để xem chi tiết.')),
-                                    );
-                                  },
+                                  onTap: () => context.push(AppRoutes.managerInvoiceList),
                                 ),
                               ],
                             ),

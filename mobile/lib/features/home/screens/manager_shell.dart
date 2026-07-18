@@ -129,8 +129,8 @@ class _ManagementHubTab extends ConsumerWidget {
                 onTap: () => context.push(AppRoutes.apartmentList),
                 child: const _HubRow(
                   icon: Icons.apartment,
-                  iconBg: Color(0xFFECFDF5),
-                  iconColor: Color(0xFF10B981),
+                  iconBg: Color(0xFFECFEFF),
+                  iconColor: Color(0xFF0891B2),
                   title: 'Căn hộ',
                   subtitle: 'Quản lý căn hộ, check-in, check-out',
                   trailing: Icon(
@@ -195,7 +195,7 @@ class _ManagementHubTab extends ConsumerWidget {
                   icon: Icons.engineering,
                   iconBg: Color(0xFFF0FDF4),
                   iconColor: Color(0xFF22C55E),
-                  title: 'Nhân viên vận hành',
+                  title: 'Nhân viên',
                   subtitle: 'Bảo vệ, lao công, kỹ thuật viên',
                   trailing: Icon(
                     Icons.chevron_right,
