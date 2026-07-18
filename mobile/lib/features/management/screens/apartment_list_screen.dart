@@ -9,7 +9,6 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/filter_pills.dart';
 import '../../../core/widgets/gradient_header.dart';
-import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/apartment.dart';
@@ -17,7 +16,7 @@ import '../providers/apartment_notifier.dart';
 
 /// UC29 (FID-29): Danh sách căn hộ.
 /// Cho phép tìm kiếm theo số phòng hoặc tên chủ hộ.
-/// Bộ lọc trạng thái: Tất cả, Trống, Đang ở, Nợ phí.
+/// Bộ lọc trạng thái: Tất cả, Đang thuê, Trống, Bảo trì.
 class ApartmentListScreen extends ConsumerStatefulWidget {
   const ApartmentListScreen({super.key, this.showBack = false});
 
@@ -30,6 +29,8 @@ class ApartmentListScreen extends ConsumerStatefulWidget {
 class _ApartmentListScreenState extends ConsumerState<ApartmentListScreen> {
   Timer? _debounce;
   final _searchController = TextEditingController();
+  bool _showSearch = false;
+  String? _selectedFilter;
 
   @override
   void dispose() {
@@ -50,34 +51,61 @@ class _ApartmentListScreenState extends ConsumerState<ApartmentListScreen> {
     final apartmentsAsync = ref.watch(apartmentDirectoryProvider);
     final notifier = ref.read(apartmentDirectoryProvider.notifier);
     final userRoles = ref.watch(authNotifierProvider).user?.roles ?? const [];
-    final isLandlord = userRoles.contains('LANDLORD');
+    final isManagement = userRoles.contains('LANDLORD') || userRoles.contains('MANAGER');
 
-    // Tính toán thống kê nhanh từ danh sách dữ liệu thực tế
+    // Dữ liệu thô từ provider để tính toán số liệu trên các tab bộ lọc
     final list = apartmentsAsync.value ?? [];
     final total = list.length;
-    final empty = list.where((a) => a.status == 'EMPTY').length;
     final occupied = list.where((a) => a.status == 'OCCUPIED').length;
-    final debt = list.where((a) => a.unpaidInvoiceCount > 0).length;
+    final empty = list.where((a) => a.status == 'EMPTY').length;
+    final repair = list.where((a) => a.status == 'INACTIVE').length;
+
+    // Áp dụng bộ lọc client-side cho mượt mà
+    final filteredList = list.where((apt) {
+      if (_selectedFilter == 'OCCUPIED') {
+        return apt.status == 'OCCUPIED';
+      } else if (_selectedFilter == 'EMPTY') {
+        return apt.status == 'EMPTY';
+      } else if (_selectedFilter == 'REPAIR') {
+        return apt.status == 'INACTIVE';
+      }
+      return true;
+    }).toList();
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
           GradientHeader(
             title: 'Căn hộ',
-            subtitle: '$occupied đang ở · $empty trống · $debt nợ phí',
             showBack: widget.showBack,
             actions: [
-              if (isLandlord)
+              HeaderIconButton(
+                icon: Icons.search,
+                tooltip: 'Tìm kiếm',
+                onTap: () {
+                  setState(() {
+                    _showSearch = !_showSearch;
+                    if (!_showSearch) {
+                      _searchController.clear();
+                      notifier.setSearch('');
+                    }
+                  });
+                },
+              ),
+              if (isManagement)
                 HeaderIconButton(
-                  icon: Icons.add_business,
+                  icon: Icons.add,
                   tooltip: 'Thêm căn hộ',
                   onTap: () => context.push('/manager/apartments/create'),
                 ),
             ],
-            bottom: HeaderSearchBar(
-              hint: 'Tìm số phòng, tên chủ hộ...',
-              onChanged: _onSearchChanged,
-            ),
+            bottom: _showSearch
+                ? HeaderSearchBar(
+                    hint: 'Tìm số phòng, tên chủ hộ...',
+                    onChanged: _onSearchChanged,
+                  )
+                : null,
           ),
           Padding(
             padding: const EdgeInsets.only(top: 12, bottom: 4),
@@ -85,23 +113,23 @@ class _ApartmentListScreenState extends ConsumerState<ApartmentListScreen> {
               pills: [
                 FilterPill(value: null, label: 'Tất cả ($total)'),
                 FilterPill(
-                  value: 'EMPTY',
-                  label: 'Phòng trống ($empty)',
-                  color: AppColors.textSecondary,
-                ),
-                FilterPill(
                   value: 'OCCUPIED',
-                  label: 'Đang ở ($occupied)',
+                  label: 'Đang thuê ($occupied)',
                   color: AppColors.success,
                 ),
                 FilterPill(
-                  value: 'HAS_DEBT',
-                  label: 'Nợ phí ($debt)',
+                  value: 'EMPTY',
+                  label: 'Trống ($empty)',
+                  color: AppColors.primary,
+                ),
+                FilterPill(
+                  value: 'REPAIR',
+                  label: 'Bảo trì ($repair)',
                   color: AppColors.warning,
                 ),
               ],
-              selected: notifier.statusFilter,
-              onSelected: notifier.setStatusFilter,
+              selected: _selectedFilter,
+              onSelected: (value) => setState(() => _selectedFilter = value),
             ),
           ),
           Expanded(
@@ -123,33 +151,12 @@ class _ApartmentListScreenState extends ConsumerState<ApartmentListScreen> {
                   ),
                 ),
               ),
-              data: (result) => RefreshIndicator(
+              data: (_) => RefreshIndicator(
                 onRefresh: notifier.refresh,
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: StatCard(
-                            label: 'Phòng Trống',
-                            value: '$empty',
-                            valueColor: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: StatCard(
-                            label: 'Cần Thu Phí',
-                            value: '$debt',
-                            valueColor: AppColors.warning,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (result.isEmpty)
+                    if (filteredList.isEmpty)
                       const Padding(
                         padding: EdgeInsets.only(top: 48),
                         child: Center(
@@ -162,7 +169,7 @@ class _ApartmentListScreenState extends ConsumerState<ApartmentListScreen> {
                         ),
                       )
                     else
-                      ...result.map(
+                      ...filteredList.map(
                         (apt) => Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: _ApartmentCard(
@@ -188,11 +195,53 @@ class _ApartmentCard extends StatelessWidget {
   final Apartment apartment;
   final VoidCallback onTap;
 
+  String _getPrefix(String unitNumber) {
+    if (unitNumber.length >= 3) {
+      return unitNumber.substring(0, 3);
+    }
+    return unitNumber;
+  }
+
+  Color _getPrefixColor(String prefix) {
+    final letter = prefix.isNotEmpty ? prefix[0].toUpperCase() : 'A';
+    switch (letter) {
+      case 'A':
+        if (prefix.length >= 2) {
+          if (prefix[1] == '1') return const Color(0xFF2563EB); // Blue
+          if (prefix[1] == '2') return const Color(0xFF059669); // Emerald
+        }
+        return const Color(0xFF2563EB);
+      case 'B':
+        return const Color(0xFF7C3AED); // Purple
+      case 'C':
+        return const Color(0xFF0EA5E9); // Cyan
+      case 'D':
+        return const Color(0xFFEF4444); // Red
+      case 'E':
+        return const Color(0xFFF59E0B); // Amber
+      default:
+        return const Color(0xFF2563EB);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final statusLabel = apartment.status == 'OCCUPIED'
-        ? 'Đang ở'
-        : (apartment.status == 'EMPTY' ? 'Phòng trống' : 'Ngừng hoạt động');
+    final prefix = _getPrefix(apartment.unitNumber);
+    final prefixColor = _getPrefixColor(prefix);
+
+    // Xác định badge trạng thái khớp thiết kế
+    late final StatusBadge statusBadge;
+    if (apartment.status == 'INACTIVE') {
+      statusBadge = StatusBadge.warning('Bảo trì');
+    } else if (apartment.status == 'OCCUPIED') {
+      statusBadge = StatusBadge.success('Đang thuê');
+    } else {
+      statusBadge = StatusBadge(
+        text: 'Trống',
+        color: AppColors.primary,
+        backgroundColor: AppColors.infoBg,
+      );
+    }
 
     return AppCard(
       onTap: onTap,
@@ -200,22 +249,20 @@ class _ApartmentCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: apartment.status == 'OCCUPIED'
-                    ? [AppColors.success.withOpacity(0.2), AppColors.success.withOpacity(0.05)]
-                    : [AppColors.textSecondary.withOpacity(0.2), AppColors.textSecondary.withOpacity(0.05)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
+              color: prefixColor,
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              Icons.meeting_room,
-              size: 22,
-              color: apartment.status == 'OCCUPIED' ? AppColors.success : AppColors.textTertiary,
+            alignment: Alignment.center,
+            child: Text(
+              prefix,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -224,7 +271,7 @@ class _ApartmentCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Phòng ${apartment.unitNumber}',
+                  'Căn hộ ${apartment.unitNumber}',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -233,54 +280,28 @@ class _ApartmentCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Tầng ${apartment.floor} · Diện tích: ${apartment.areaSize} m²',
+                  'Tầng ${apartment.floor} · ${apartment.areaSize.toStringAsFixed(0)}m²',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 4),
-                if (apartment.status == 'OCCUPIED' && apartment.ownerName != null) ...[
-                  Text(
-                    'Chủ hộ: ${apartment.ownerName}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
-                    ),
+                const SizedBox(height: 3),
+                 Text(
+                  apartment.status == 'EMPTY'
+                      ? '— Căn trống'
+                      : (apartment.ownerName ?? 'Chưa có chủ hộ'),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: apartment.status == 'EMPTY' ? FontWeight.normal : FontWeight.w500,
+                    color: apartment.status == 'EMPTY' ? AppColors.textTertiary : AppColors.textSecondary,
                   ),
-                ] else ...[
-                  const Text(
-                    'Chưa có chủ hộ',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontStyle: FontStyle.italic,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-                if (apartment.unpaidInvoiceCount > 0 || apartment.unresolvedTicketCount > 0) ...[
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      if (apartment.unpaidInvoiceCount > 0)
-                        StatusBadge.warning('${apartment.unpaidInvoiceCount} hoá đơn nợ'),
-                      if (apartment.unresolvedTicketCount > 0)
-                        StatusBadge.info('${apartment.unresolvedTicketCount} sự cố mở'),
-                    ],
-                  ),
-                ]
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          apartment.status == 'OCCUPIED'
-              ? StatusBadge.success(statusLabel)
-              : (apartment.status == 'EMPTY'
-                  ? StatusBadge.muted(statusLabel)
-                  : StatusBadge.warning(statusLabel)),
+          statusBadge,
         ],
       ),
     );

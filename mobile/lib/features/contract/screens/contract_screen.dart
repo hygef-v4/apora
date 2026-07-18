@@ -162,9 +162,10 @@ class _ContractScreenState extends ConsumerState<ContractScreen> {
                   children: [
                     const Expanded(child: _SectionTitle('Chi tiết hợp đồng')),
                     if (contract != null)
-                      contract.isActive
-                          ? StatusBadge.success(
-                              kContractStatusLabels[contract.status]!)
+                      contract.status == 'ACTIVE'
+                          ? (contract.remainingDays != null && contract.remainingDays! <= 30
+                              ? StatusBadge.warning('Sắp hết hạn')
+                              : StatusBadge.success(kContractStatusLabels[contract.status]!))
                           : StatusBadge.muted(
                               kContractStatusLabels[contract.status] ??
                                   contract.status),

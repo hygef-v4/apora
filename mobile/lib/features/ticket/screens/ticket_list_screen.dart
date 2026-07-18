@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
-import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/ticket.dart';
 import '../providers/ticket_provider.dart';
 
-/// UC18 - Danh sách sự cố (theo màn FID-18). Dùng chung cho Resident
-/// (sự cố của mình) và Manager (toàn bộ) - backend tự phân luồng theo vai trò.
-/// Tải toàn bộ 1 lần rồi lọc phía client: tab đếm được số "Chờ xử lý"
-/// (field 2) và ô tìm kiếm lọc realtime (AT3) không cần gọi lại API.
+/// UC18 - Danh sách sự cố (theo màn FID-18).
+/// Đã được thiết kế lại theo mockup giao diện cao cấp:
+/// - Bộ lọc trạng thái: Tất cả, Mới, Đang xử lý, Xong.
+/// - Mỗi thẻ sự cố có thanh viền trái hiển thị màu sắc theo trạng thái của sự cố.
+/// - Không hiển thị mức độ ưu tiên (Cao/Trung bình/Thấp) và số điện thoại của người báo.
 class TicketListScreen extends ConsumerStatefulWidget {
-  /// true khi mở bằng push (Manager) -> hiện nút back; false khi nhúng làm tab
-  /// trong Home cư dân -> không có nút back.
   const TicketListScreen({super.key, this.showBack = false});
 
   final bool showBack;
@@ -26,16 +24,6 @@ class TicketListScreen extends ConsumerStatefulWidget {
 }
 
 class _TicketListScreenState extends ConsumerState<TicketListScreen> {
-  /// Bộ lọc trạng thái trên thanh chip. null = Tất cả.
-  static const List<({String? value, String label})> _filters = [
-    (value: null, label: 'Tất cả'),
-    (value: 'PENDING', label: 'Chờ xử lý'),
-    (value: 'ASSIGNED', label: 'Đã phân công'),
-    (value: 'PROCESSING', label: 'Đang xử lý'),
-    (value: 'RESOLVED', label: 'Đã xong'),
-    (value: 'CANCELLED', label: 'Đã hủy'),
-  ];
-
   String? _filter;
   bool _searchOpen = false;
   final _searchController = TextEditingController();
@@ -52,43 +40,65 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     super.dispose();
   }
 
-  /// Badge màu theo FID-18 field 4: PENDING cam, ASSIGNED xanh dương,
-  /// PROCESSING vàng, RESOLVED xanh lá, CANCELLED đỏ.
-  StatusBadge _statusBadge(String status) {
-    final label = kTicketStatusLabels[status] ?? status;
+  String _getRelativeTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.isNegative) return 'Vừa xong';
+    if (diff.inMinutes < 60) {
+      return '${diff.inMinutes.clamp(1, 59)} phút trước';
+    } else if (diff.inHours < 24) {
+      return '${diff.inHours} giờ trước';
+    } else if (diff.inDays < 30) {
+      return '${diff.inDays} ngày trước';
+    }
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
+  Color _getStatusColor(String status) {
     switch (status) {
       case 'RESOLVED':
-        return StatusBadge.success(label);
+        return const Color(0xFF10B981); // Xanh lá
       case 'ASSIGNED':
-        return StatusBadge.info(label);
       case 'PROCESSING':
-        return StatusBadge.warning(label);
+        return const Color(0xFFF59E0B); // Cam
       case 'CANCELLED':
-        return StatusBadge(
-          text: label,
-          color: AppColors.error,
-          backgroundColor: AppColors.errorBg,
-        );
-      default: // PENDING - cam
+        return const Color(0xFF94A3B8); // Xám
+      default:
+        return const Color(0xFF3B82F6); // Xanh dương (Mới)
+    }
+  }
+
+  Widget _buildStatusBadge(String status) {
+    switch (status) {
+      case 'RESOLVED':
+        return StatusBadge.success('Hoàn thành');
+      case 'ASSIGNED':
+      case 'PROCESSING':
+        return StatusBadge.warning('Đang xử lý');
+      case 'CANCELLED':
         return const StatusBadge(
-          text: 'Chờ xử lý',
-          color: Color(0xFFEA580C),
-          backgroundColor: Color(0xFFFFEDD5),
+          text: 'Đã hủy',
+          color: Color(0xFF64748B),
+          backgroundColor: Color(0xFFF1F5F9),
+        );
+      default:
+        return const StatusBadge(
+          text: 'Mới',
+          color: Color(0xFF2563EB),
+          backgroundColor: Color(0xFFEFF6FF),
         );
     }
   }
 
-  String _formatDate(DateTime dt) {
-    final l = dt.toLocal();
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${two(l.day)}/${two(l.month)}/${l.year} ${two(l.hour)}:${two(l.minute)}';
-  }
-
-  /// AT3: lọc realtime theo mã sự cố, tên người báo hoặc số phòng.
   List<Ticket> _applyFilters(List<Ticket> all) {
-    var list = _filter == null
-        ? all
-        : all.where((t) => t.status == _filter).toList();
+    var list = all;
+    if (_filter == 'PENDING') {
+      list = all.where((t) => t.status == 'PENDING').toList();
+    } else if (_filter == 'PROCESSING') {
+      list = all.where((t) => t.status == 'ASSIGNED' || t.status == 'PROCESSING').toList();
+    } else if (_filter == 'RESOLVED') {
+      list = all.where((t) => t.status == 'RESOLVED').toList();
+    }
+
     final q = _searchController.text.trim().toLowerCase();
     if (q.isEmpty) return list;
     return list.where((t) {
@@ -104,33 +114,22 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(ticketProvider);
     final notifier = ref.read(ticketProvider.notifier);
-    final isResident = ref.watch(authNotifierProvider).roles.contains('RESIDENT');
-    final pendingCount =
-        state.tickets.where((t) => t.status == 'PENDING').length;
+
+    // Tính toán số lượng cho từng tab bộ lọc
+    final total = state.tickets.length;
+    final pendingCount = state.tickets.where((t) => t.status == 'PENDING').length;
+    final processingCount = state.tickets.where((t) => t.status == 'ASSIGNED' || t.status == 'PROCESSING').length;
+    final resolvedCount = state.tickets.where((t) => t.status == 'RESOLVED').length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      floatingActionButton: isResident
-          ? FloatingActionButton.extended(
-              onPressed: () async {
-                await context.push(AppRoutes.ticketCreate);
-                // Quay lại từ màn tạo -> làm mới danh sách
-                if (context.mounted) notifier.fetchTickets();
-              },
-              backgroundColor: AppColors.navy,
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text('BÁO SỰ CỐ',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-            )
-          : null,
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
           GradientHeader(
-            title: 'Sự Cố & Sửa Chữa',
-            subtitle: 'Theo dõi các yêu cầu sửa chữa',
+            title: 'Bảo trì',
+            subtitle: '$processingCount đang xử lý · $pendingCount mới',
             showBack: widget.showBack,
             actions: [
-              // FID-18 field 1: mở/đóng thanh tìm kiếm (AT3)
               HeaderIconButton(
                 icon: _searchOpen ? Icons.search_off : Icons.search,
                 tooltip: 'Tìm kiếm',
@@ -140,9 +139,12 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                 }),
               ),
               HeaderIconButton(
-                icon: Icons.refresh,
-                tooltip: 'Làm mới',
-                onTap: () => notifier.fetchTickets(),
+                icon: Icons.add,
+                tooltip: 'Báo sự cố',
+                onTap: () async {
+                  await context.push(AppRoutes.ticketCreate);
+                  if (mounted) ref.read(ticketProvider.notifier).fetchTickets();
+                },
               ),
             ],
           ),
@@ -154,15 +156,14 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                 autofocus: true,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                  hintText: 'Tìm theo mã (TK-1), tên người báo, số phòng...',
+                  hintText: 'Tìm theo người báo, số phòng...',
                   hintStyle: const TextStyle(fontSize: 13),
                   prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _searchController.text.isEmpty
                       ? null
                       : IconButton(
                           icon: const Icon(Icons.clear, size: 18),
-                          onPressed: () =>
-                              setState(_searchController.clear),
+                          onPressed: () => setState(_searchController.clear),
                         ),
                   isDense: true,
                   filled: true,
@@ -174,38 +175,92 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                 ),
               ),
             ),
-          // Thanh lọc trạng thái - tab "Chờ xử lý" kèm số lượng (field 2)
-          SizedBox(
-            height: 48,
-            child: ListView.separated(
+          // Tab bộ lọc theo mockup
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              itemCount: _filters.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final f = _filters[i];
-                final selected = _filter == f.value;
-                final label = f.value == 'PENDING' && pendingCount > 0
-                    ? '${f.label} ($pendingCount)'
-                    : f.label;
-                return ChoiceChip(
-                  label: Text(label),
-                  selected: selected,
-                  onSelected: (_) => setState(() => _filter = f.value),
-                  selectedColor: AppColors.primary,
-                  labelStyle: TextStyle(
-                    fontSize: 12,
-                    color: selected ? Colors.white : AppColors.textSecondary,
-                    fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+              child: Row(
+                children: [
+                  _buildTabItem(
+                    label: 'Tất cả ($total)',
+                    selected: _filter == null,
+                    onTap: () => setState(() => _filter = null),
+                    selectedBgColor: const Color(0xFF1E293B),
+                    selectedTextColor: Colors.white,
+                    unselectedTextColor: const Color(0xFF64748B),
+                    borderColor: const Color(0xFFCBD5E1),
                   ),
-                  backgroundColor: Colors.white,
-                  showCheckmark: false,
-                );
-              },
+                  const SizedBox(width: 8),
+                  _buildTabItem(
+                    label: 'Mới ($pendingCount)',
+                    selected: _filter == 'PENDING',
+                    onTap: () => setState(() => _filter = 'PENDING'),
+                    selectedBgColor: const Color(0xFFEFF6FF),
+                    selectedTextColor: const Color(0xFF2563EB),
+                    unselectedTextColor: const Color(0xFF2563EB),
+                    borderColor: const Color(0xFFBFDBFE),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildTabItem(
+                    label: 'Đang xử lý ($processingCount)',
+                    selected: _filter == 'PROCESSING',
+                    onTap: () => setState(() => _filter = 'PROCESSING'),
+                    selectedBgColor: const Color(0xFFFFFBEB),
+                    selectedTextColor: const Color(0xFFD97706),
+                    unselectedTextColor: const Color(0xFFD97706),
+                    borderColor: const Color(0xFFFEF3C7),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildTabItem(
+                    label: 'Xong ($resolvedCount)',
+                    selected: _filter == 'RESOLVED',
+                    onTap: () => setState(() => _filter = 'RESOLVED'),
+                    selectedBgColor: const Color(0xFFF0FDF4),
+                    selectedTextColor: const Color(0xFF16A34A),
+                    unselectedTextColor: const Color(0xFF16A34A),
+                    borderColor: const Color(0xFFBBF7D0),
+                  ),
+                ],
+              ),
             ),
           ),
           Expanded(child: _buildBody(state, notifier)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTabItem({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    required Color selectedBgColor,
+    required Color selectedTextColor,
+    required Color unselectedTextColor,
+    required Color borderColor,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? selectedBgColor : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? selectedBgColor : borderColor,
+            width: 1.2,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: selected ? selectedTextColor : unselectedTextColor,
+          ),
+        ),
       ),
     );
   }
@@ -223,22 +278,19 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     }
     final visible = _applyFilters(state.tickets);
     if (visible.isEmpty) {
-      // AT1/AT2: trạng thái rỗng chung / theo bộ lọc-tìm kiếm đang chọn
       final searching = _searchController.text.trim().isNotEmpty;
       return _emptyOrError(
-        icon: Icons.inbox_outlined,
+        icon: Icons.build_circle_outlined,
         message: searching
             ? 'Không tìm thấy sự cố nào khớp từ khóa.'
-            : _filter == null
-                ? 'Chưa có sự cố nào.'
-                : 'Không có sự cố "${kTicketStatusLabels[_filter]}" nào.',
+            : 'Không có sự cố nào.',
       );
     }
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: () => notifier.fetchTickets(),
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         itemCount: visible.length,
         itemBuilder: (_, i) => _ticketCard(visible[i]),
       ),
@@ -246,118 +298,88 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
   }
 
   Widget _ticketCard(Ticket t) {
-    // FID-18 field 9: tên nhân viên chỉ hiện khi ASSIGNED / PROCESSING
-    final showAssignee = t.assigneeName != null &&
-        (t.status == 'ASSIGNED' || t.status == 'PROCESSING');
+    final statusColor = _getStatusColor(t.status);
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AppCard(
-        // UC20 (TRG-01): bấm thẻ mở chi tiết; quay lại làm mới danh sách
-        // (Manager có thể vừa đổi trạng thái trong màn chi tiết).
-        onTap: () async {
-          await context.push(AppRoutes.ticketDetailPath(t.id));
-          if (!mounted) return;
-          ref.read(ticketProvider.notifier).fetchTickets();
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppColors.cardShadow,
+          border: Border(
+            left: BorderSide(color: statusColor, width: 4),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () async {
+            await context.push(AppRoutes.ticketDetailPath(t.id));
+            if (!mounted) return;
+            ref.read(ticketProvider.notifier).fetchTickets();
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // FID-18 field 3: mã sự cố "#TK-XXX"
-                Expanded(
-                  child: Text(
-                    '#TK-${t.id}',
-                    style: const TextStyle(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      t.unitNumber,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      _getRelativeTime(t.createdAt),
+                      style: const TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textTertiary),
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  t.category,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
                   ),
                 ),
-                _statusBadge(t.status),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(Icons.build_circle_outlined,
-                    size: 18, color: AppColors.primary),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    t.category,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 14),
-                    overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 4),
+                Text(
+                  t.description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              t.description,
-              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            // FID-18 field 8: người báo sự cố
-            Row(
-              children: [
-                const Icon(Icons.person_outline,
-                    size: 13, color: AppColors.textTertiary),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(t.reporterName,
-                      overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      t.reporterName,
                       style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    _buildStatusBadge(t.status),
+                  ],
                 ),
-                const Icon(Icons.location_on_outlined,
-                    size: 13, color: AppColors.textTertiary),
-                const SizedBox(width: 4),
-                Text('Phòng ${t.unitNumber}',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary)),
               ],
             ),
-            if (showAssignee) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(Icons.engineering_outlined,
-                      size: 13, color: AppColors.textTertiary),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text('Giao cho: ${t.assigneeName}',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary)),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                if (t.beforeImages.isNotEmpty) ...[
-                  const Icon(Icons.image_outlined,
-                      size: 13, color: AppColors.textTertiary),
-                  const SizedBox(width: 4),
-                  Text('${t.beforeImages.length} ảnh',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
-                ],
-                const Spacer(),
-                const Icon(Icons.schedule,
-                    size: 13, color: AppColors.textTertiary),
-                const SizedBox(width: 4),
-                Text(_formatDate(t.createdAt),
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary)),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );

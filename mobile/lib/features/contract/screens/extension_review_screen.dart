@@ -237,8 +237,9 @@ class _ExtensionReviewScreenState extends ConsumerState<ExtensionReviewScreen> {
                 children: [
                   const Expanded(child: _SectionTitle('Hợp đồng hiện tại')),
                   ext.contractStatus == 'ACTIVE'
-                      ? StatusBadge.success(
-                          kContractStatusLabels[ext.contractStatus]!)
+                      ? (ext.currentEndDate.difference(DateTime.now()).inDays <= 30
+                          ? StatusBadge.warning('Sắp hết hạn')
+                          : StatusBadge.success(kContractStatusLabels[ext.contractStatus]!))
                       : StatusBadge.muted(
                           kContractStatusLabels[ext.contractStatus] ??
                               ext.contractStatus),
