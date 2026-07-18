@@ -13,12 +13,12 @@ APORA — "Super App" quản lý chung cư/căn hộ, số hóa tương tác gi�
 - `docs/PRM393_SoftwareDesign_Group5.docx` — Software Design: kiến trúc 4 tầng, thiết kế DB (15 bảng), class diagram Controller/Service/Repository và Notifier/APIService cho 9 module.
 - `docs/PRM393.txt` — bản mô tả use case gốc (tiếng Việt).
 
-⚠️ **Trạng thái code:** Module 1 (Auth & Profile, UC01–UC05) và Module 8 (Staff Management, UC36–UC40) đã triển khai full-stack theo thiết kế mới; các module còn lại vẫn là scaffold `.gitkeep`. **Khi triển khai, bám theo tài liệu thiết kế + `types/index.ts`, không bám theo README/CONTRIBUTING (đã cũ).** Lấy Module 1/8 làm mẫu chuẩn cho các module sau (Controller→Service→Repository ở backend; Notifier→APIService→Screen ở mobile).
+⚠️ **Trạng thái code:** Phần lớn 9 module đã triển khai full-stack theo thiết kế mới — Auth & Profile (M1), Tenancy/Roommate (M2), Billing & Payment (M3), Incident & Task (M4), Communication/Chat/Notifications (M5), Apartment (M6), Operational Staff (M8), Manager (M9). **Khi triển khai/hoàn thiện, bám theo tài liệu thiết kế + `types/index.ts`, không bám theo README/CONTRIBUTING (đã cũ).** Lấy Module 1/8 làm mẫu chuẩn (đã có unit test đầy đủ): Controller→Service→Repository ở backend; Notifier→APIService→Screen ở mobile.
 
 ## Cấu trúc Monorepo
 
 - `backend/` — Next.js App Router, **chỉ API** (không có UI). Route dưới `src/app/api/**`, mỗi thư mục map tới một use case.
-- `mobile/` — Flutter cho cả 4 role. Cấu trúc **feature-first**: `lib/features/<feature>/{models,repositories,screens}`; code dùng chung ở `lib/core/{constants,network,router,utils}`. `main.dart` vẫn là scaffold counter mặc định.
+- `mobile/` — Flutter cho cả 4 role. Cấu trúc **feature-first**: `lib/features/<feature>/{models,providers,repositories,screens}`; code dùng chung ở `lib/core/{constants,network,router,services,theme,utils,widgets}`. `main.dart` đã hoàn chỉnh: load `.env`, init Firebase + push notification, khôi phục phiên đăng nhập, `MaterialApp.router` theo `app_router.dart`.
 - `docs/` — tài liệu SRS & Design.
 
 ## Lệnh thường dùng
@@ -107,16 +107,16 @@ Lưu ý quan hệ dễ nhầm:
 - State management: Riverpod (BLoC được phép). Hằng số/màu/base URL ở `lib/core/constants/`.
 - PR phải test PASS mới merge.
 
-## Hiện trạng triển khai (Module 1 + Module 8 đã xong)
+## Hiện trạng triển khai (phần lớn module đã full-stack)
 
 `backend/src/types/index.ts` đã refactor theo thiết kế mới: 6 role (`LANDLORD/MANAGER/RESIDENT/SECURITY_GUARD/JANITOR/TECHNICIAN`, `roles` là mảng), `TicketStatus` theo bộ đã chốt, entity Module 1/8 + `Apartment`/`RepairTicket`/`Task` đầy đủ. Entity module sau (`Contract`, `Invoice`, `StayExtension`...) bổ sung dần khi triển khai.
 
 Điểm cần biết khi làm module tiếp theo:
-- **DB schema:** `backend/db/schema.sql` (+ `seed.sql`, mật khẩu seed: `Apora@123`) — chạy tay trên Supabase SQL Editor. Bảng mới thêm vào file này. Đã có: `users`, `device_tokens`, `password_reset_otps`, `apartments`, `repair_tickets`, `tasks` (tạo trước cho Module 4/6 — chỉ cần viết logic, không đổi schema), `audit_logs`.
+- **DB schema:** `backend/db/schema.sql` (+ `seed.sql`, mật khẩu seed: `Apora@123`) — chạy tay trên Supabase SQL Editor. Bảng mới thêm vào file này. Đã có: `users`, `device_tokens`, `password_reset_otps` (⚠️ giữ theo thiết kế 15 bảng nhưng **không còn code nào truy cập** — xem OTP bên dưới), `apartments`, `repair_tickets`, `tasks`, `audit_logs`, cùng các bảng module sau.
 - **Các mở rộng có chủ đích so với SRS**: cột `users.must_change_password` (BR-01), `users.token_version` (BR-07 — JWT stateless nên bump version để vô hiệu token; JWT payload là `{id, roles, tv}`), và bảng `audit_logs` (UC39/UC40 BR-04 yêu cầu "dedicated audit log table" — ghi actor/target/action/old/new/reason cho thao tác quản lý nhân sự).
 - **Module 8 (`/api/staff/**`, `mobile/lib/features/management/`):** mẫu cho Module 9 (Manager Management — SD nói cấu trúc giống hệt, chỉ đổi role). BR-50 enforce ở `staff.service.ts` (đếm `tasks` ASSIGNED/IN_PROGRESS → 409). Deactivate = soft-delete: `INACTIVE` + bump `token_version` + revoke `device_tokens`.
 - **Backend:** `requireAuth(req, allowedRoles?)` trong `src/lib/middleware.ts` (ném `HttpError`, route bắt bằng `jsonError`); repository ở `src/repositories/`, service ở `src/services/`.
 - **Mobile:** JWT lưu qua interface `TokenStorage` (`lib/core/network/token_storage.dart`) — test override bằng bản in-memory; lỗi Dio map qua `mapDioError()`; router redirect tập trung ở `lib/core/router/app_router.dart` (ép đổi mật khẩu lần đầu, rẽ nhánh theo role).
-- **OTP quên mật khẩu:** backend tự sinh, SMS đang **mock** (hàm `sendSms()` trong `user.service.ts`); dev mode trả `devOtp` trong response để demo.
+- **OTP quên mật khẩu (UC03):** đã chuyển sang **Firebase Phone Auth** — mobile nhận SMS trực tiếp từ Firebase (`lib/core/services/phone_otp_service.dart`), backend **không sinh/lưu OTP**. Flow: `POST /forgot-password` chỉ `ensureAccountForPasswordReset()` (check tài khoản tồn tại + ACTIVE, tránh tốn SMS); `POST /reset-password` nhận `firebaseIdToken`, backend `verifyPhoneIdToken()` (firebase-admin) + đối chiếu SĐT trong token (E.164, chuẩn hóa qua `normalizeVnPhone`) với tài khoản rồi mới đổi mật khẩu (bump `token_version` — BR-07). Firebase tự lo gửi SMS/hết hạn/đếm nhập sai (BR-08). Bảng `password_reset_otps` và hàm SMS mock cũ đã bỏ.
 
 Khi đụng vào các phần này, ưu tiên cập nhật theo tài liệu thiết kế thay vì giữ nguyên type cũ.
