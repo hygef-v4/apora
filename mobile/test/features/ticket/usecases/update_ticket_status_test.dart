@@ -1,6 +1,7 @@
 import 'package:apartment_management/core/network/dio_client.dart';
 import 'package:apartment_management/features/auth_profile/models/user.dart';
 import 'package:apartment_management/features/auth_profile/providers/auth_notifier.dart';
+import 'package:apartment_management/features/ticket/models/ticket.dart';
 import 'package:apartment_management/features/ticket/screens/ticket_detail_screen.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -190,6 +191,26 @@ void main() {
       await tester.pumpAndSettle();
 
       verify(() => mockDio.put(any(), data: any(named: 'data'))).called(1);
+    });
+  });
+
+  // Regression BR-40: dropdown đổi trạng thái THỦ CÔNG (UC20) không bao giờ
+  // được chào "Đã phân công" (ASSIGNED). ASSIGNED chỉ đặt qua Phân công (UC21)
+  // để luôn có task + người xử lý đi kèm. Khóa lại đúng bug đã sửa.
+  group('BR-40 regression: không cho chuyển thủ công sang ASSIGNED', () {
+    test('PENDING chỉ cho phép CANCELLED, KHÔNG có ASSIGNED', () {
+      expect(kTicketNextStatuses['PENDING'], equals(['CANCELLED']));
+      expect(kTicketNextStatuses['PENDING'], isNot(contains('ASSIGNED')));
+    });
+
+    test('Không bước THỦ CÔNG nào dẫn tới ASSIGNED', () {
+      for (final entry in kTicketNextStatuses.entries) {
+        expect(
+          entry.value,
+          isNot(contains('ASSIGNED')),
+          reason: '${entry.key} không được phép chuyển thủ công sang ASSIGNED',
+        );
+      }
     });
   });
 }
