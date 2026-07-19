@@ -144,9 +144,9 @@ const Map<String, String> kTicketStatusLabels = {
 
 /// Nhãn tiếng Việt cho trạng thái công việc của nhân viên (UC20/UC22).
 const Map<String, String> kTaskStatusLabels = {
-  'ASSIGNED': 'Đã phân công',
+  'ASSIGNED': 'Đang chờ',
   'IN_PROGRESS': 'Đang làm',
-  'COMPLETED': 'Hoàn thành',
+  'COMPLETED': 'Đã xong',
   'CANCELLED': 'Đã hủy',
 };
 

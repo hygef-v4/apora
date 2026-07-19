@@ -138,7 +138,7 @@ class _HomeTab extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Căn hộ A101 · Apora Tower',
+                            'Cư dân · Chung cư Apora',
                             style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13, fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 4),

@@ -410,7 +410,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     height: 46,
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.play_arrow),
-                      label: const Text('BẮT ĐẦU LÀM',
+                      label: const Text('BẮT ĐẦU',
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
@@ -435,7 +435,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                                 strokeWidth: 2, color: Colors.white),
                           )
                         : const Icon(Icons.check_circle_outline),
-                    label: const Text('ĐÁNH DẤU HOÀN THÀNH',
+                    label: const Text('HOÀN THÀNH',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.success,

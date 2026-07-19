@@ -20,14 +20,7 @@ import '../../contract/providers/contract_provider.dart';
 class DashboardTab extends ConsumerWidget {
   const DashboardTab({super.key});
 
-  static const _weekdays = [
-    'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật',
-  ];
 
-  String get _today {
-    final now = DateTime.now();
-    return '${_weekdays[now.weekday - 1]}, ${now.day} tháng ${now.month} · ${now.year}';
-  }
 
   String _formatCurrency(double amount) {
     final format = amount.toStringAsFixed(0);
@@ -59,6 +52,8 @@ class DashboardTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider).user;
     final firstName = user?.fullName.split(' ').last ?? 'Quản lý';
+    final isLandlord = user?.roles.contains('LANDLORD') ?? false;
+    final roleLabel = isLandlord ? 'Chủ sở hữu' : 'Quản lý';
     
     // Watch real data providers
     final apartmentsAsync = ref.watch(apartmentDirectoryProvider);
@@ -159,7 +154,7 @@ class DashboardTab extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Quản lý · Chung cư Apora',
+                      '$roleLabel · Chung cư Apora',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -173,14 +168,6 @@ class DashboardTab extends ConsumerWidget {
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _today,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: .55),
                       ),
                     ),
                   ],

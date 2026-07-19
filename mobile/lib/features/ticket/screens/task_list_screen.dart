@@ -9,6 +9,7 @@ import '../../../core/widgets/status_badge.dart';
 import '../models/task.dart';
 import '../models/ticket.dart';
 import '../providers/task_provider.dart';
+import '../../home/screens/task_board_screen.dart';
 
 /// UC22 - Thân danh sách công việc (theo màn FID-22), nhúng dưới header
 /// của TaskBoardScreen. Backend tự phân luồng: staff thấy việc của mình
@@ -21,16 +22,13 @@ class TaskListBody extends ConsumerStatefulWidget {
 }
 
 class _TaskListBodyState extends ConsumerState<TaskListBody> {
-  /// Filter tabs theo FID-22 field 1: Tất cả / Đang làm / Hoàn thành.
+  /// Filter tabs: Tất cả / Đang chờ / Đang làm / Đã xong.
   static const List<({String? value, String label})> _filters = [
     (value: null, label: 'Tất cả'),
-    (value: 'ACTIVE', label: 'Đang làm'),
-    (value: 'COMPLETED', label: 'Hoàn thành'),
+    (value: 'ASSIGNED', label: 'Đang chờ'),
+    (value: 'IN_PROGRESS', label: 'Đang làm'),
+    (value: 'COMPLETED', label: 'Đã xong'),
   ];
-
-  /// Lọc phía client (tải toàn bộ 1 lần) để tab "Đang làm" đếm được
-  /// số việc chưa xong (FID-22 field 1) mà không cần gọi lại API.
-  String? _filter;
 
   @override
   void initState() {
@@ -38,17 +36,9 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
     Future.microtask(() => ref.read(taskProvider.notifier).fetchTasks());
   }
 
-  List<TaskItem> _applyFilter(List<TaskItem> all) {
-    switch (_filter) {
-      case 'ACTIVE':
-        return all
-            .where((t) => t.status == 'ASSIGNED' || t.status == 'IN_PROGRESS')
-            .toList();
-      case 'COMPLETED':
-        return all.where((t) => t.status == 'COMPLETED').toList();
-      default:
-        return all;
-    }
+  List<TaskItem> _applyFilter(List<TaskItem> all, String? currentFilter) {
+    if (currentFilter == null) return all;
+    return all.where((t) => t.status == currentFilter).toList();
   }
 
   StatusBadge _statusBadge(String status) {
@@ -69,6 +59,8 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
     }
   }
 
+
+
   String _formatDate(DateTime dt) {
     final l = dt.toLocal();
     String two(int n) => n.toString().padLeft(2, '0');
@@ -79,10 +71,13 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
   Widget build(BuildContext context) {
     final state = ref.watch(taskProvider);
     final notifier = ref.read(taskProvider.notifier);
-    // FID-22 field 1: số việc chưa xong hiện trên tab "Đang làm"
-    final activeCount = state.tasks
-        .where((t) => t.status == 'ASSIGNED' || t.status == 'IN_PROGRESS')
-        .length;
+    
+    final nav = ref.watch(staffTabProvider);
+    final currentFilter = nav.filter;
+
+    final waitingCount = state.tasks.where((t) => t.status == 'ASSIGNED').length;
+    final processingCount = state.tasks.where((t) => t.status == 'IN_PROGRESS').length;
+    final completedCount = state.tasks.where((t) => t.status == 'COMPLETED').length;
 
     return Column(
       children: [
@@ -96,14 +91,23 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (_, i) {
               final f = _filters[i];
-              final selected = _filter == f.value;
-              final label = f.value == 'ACTIVE' && activeCount > 0
-                  ? '${f.label} ($activeCount)'
-                  : f.label;
+              final selected = currentFilter == f.value;
+
+              int count = 0;
+              if (f.value == 'ASSIGNED') {
+                count = waitingCount;
+              } else if (f.value == 'IN_PROGRESS') {
+                count = processingCount;
+              } else if (f.value == 'COMPLETED') {
+                count = completedCount;
+              }
+
+              final label = count > 0 ? '${f.label} ($count)' : f.label;
+
               return ChoiceChip(
                 label: Text(label),
                 selected: selected,
-                onSelected: (_) => setState(() => _filter = f.value),
+                onSelected: (_) => ref.read(staffTabProvider.notifier).setFilter(f.value),
                 selectedColor: AppColors.navy,
                 labelStyle: TextStyle(
                   fontSize: 12,
@@ -116,12 +120,12 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
             },
           ),
         ),
-        Expanded(child: _buildBody(state, notifier)),
+        Expanded(child: _buildBody(state, notifier, currentFilter)),
       ],
     );
   }
 
-  Widget _buildBody(TaskListState state, TaskNotifier notifier) {
+  Widget _buildBody(TaskListState state, TaskNotifier notifier, String? currentFilter) {
     if (state.isLoading && state.tasks.isEmpty) {
       return const Center(
           child: CircularProgressIndicator(color: AppColors.primary));
@@ -133,14 +137,14 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
         onRetry: () => notifier.fetchTasks(),
       );
     }
-    final visible = _applyFilter(state.tasks);
+    final visible = _applyFilter(state.tasks, currentFilter);
     if (visible.isEmpty) {
       // AT1/AT2: trạng thái rỗng theo filter đang chọn
       return _emptyOrError(
         icon: Icons.assignment_outlined,
-        message: _filter == null
+        message: currentFilter == null
             ? 'Chưa có công việc nào được giao cho bạn.'
-            : 'Không có công việc "${_filter == 'ACTIVE' ? 'Đang làm' : 'Hoàn thành'}".',
+            : 'Không có công việc "${currentFilter == 'ASSIGNED' ? 'Đang chờ' : currentFilter == 'IN_PROGRESS' ? 'Đang làm' : 'Đã xong'}".',
       );
     }
     return RefreshIndicator(
@@ -168,21 +172,27 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Dòng 1: Số phòng · loại bên trái và status bên phải
             Row(
               children: [
                 Expanded(
                   child: Text(
-                    'TASK-${t.id}',
+                    'Phòng ${t.unitNumber} · ${t.category}',
                     style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textTertiary),
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
                 _statusBadge(t.status),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
+            // Dòng 2: Tên công việc
             Text(
               t.title,
               style: const TextStyle(
@@ -192,34 +202,8 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.infoBg,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    t.category,
-                    style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.location_on_outlined,
-                    size: 13, color: AppColors.textTertiary),
-                const SizedBox(width: 2),
-                Text('Phòng ${t.unitNumber}',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary)),
-              ],
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
+            // Dòng 3: Người giao và Ngày giao
             Row(
               children: [
                 Expanded(
@@ -230,14 +214,9 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Icon(
-                  isCompleted ? Icons.check_circle_outline : Icons.schedule,
-                  size: 13,
-                  color: AppColors.textTertiary,
-                ),
+                const Icon(Icons.schedule,
+                    size: 13, color: AppColors.textTertiary),
                 const SizedBox(width: 4),
-                // FID-22 field 8/9: task xong hiện ngày hoàn thành,
-                // chưa xong hiện ngày được giao
                 Text(
                   isCompleted && t.completedAt != null
                       ? _formatDate(t.completedAt!)
@@ -247,6 +226,103 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
                 ),
               ],
             ),
+            if (t.status == 'ASSIGNED') ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        try {
+                          await ref.read(taskDetailProvider.notifier).updateProgress(
+                            t.id,
+                            status: 'IN_PROGRESS',
+                          );
+                          ref.read(taskProvider.notifier).fetchTasks();
+                        } catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Lỗi: $e')),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      child: const Text(
+                        'Bắt đầu',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        await context.push(AppRoutes.taskDetailPath(t.id));
+                        if (!mounted) return;
+                        ref.read(taskProvider.notifier).fetchTasks();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      child: const Text(
+                        'Hoàn thành',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ] else if (t.status == 'IN_PROGRESS') ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await context.push(AppRoutes.taskDetailPath(t.id));
+                    if (!mounted) return;
+                    ref.read(taskProvider.notifier).fetchTasks();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  child: const Text(
+                    'Hoàn thành',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -29,11 +29,17 @@ class GradientHeader extends ConsumerWidget {
     final user = ref.watch(authNotifierProvider).user;
     final isAdminOrOwner = user != null &&
         (user.roles.contains('MANAGER') || user.roles.contains('LANDLORD'));
+    final isStaff = user != null &&
+        (user.roles.contains('SECURITY_GUARD') ||
+            user.roles.contains('JANITOR') ||
+            user.roles.contains('TECHNICIAN'));
 
     return Container(
       decoration: isAdminOrOwner
           ? const BoxDecoration(gradient: AppColors.headerGradient)
-          : const BoxDecoration(gradient: AppColors.residentGradient),
+          : isStaff
+              ? const BoxDecoration(gradient: AppColors.staffGradient)
+              : const BoxDecoration(gradient: AppColors.residentGradient),
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 12,
         left: 20,
