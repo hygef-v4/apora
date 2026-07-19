@@ -93,7 +93,7 @@ class DashboardReportScreen extends ConsumerWidget {
       body: Column(
         children: [
           GradientHeader(
-            title: 'Báo cáo & Thống kê',
+            title: 'Báo cáo',
             subtitle: 'Tổng quan tài chính & sự cố vận hành',
             actions: [
               // Nút lọc tháng ở Header
