@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -95,8 +96,10 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
       dynamic invoice;
       dynamic payment;
 
-      // 1. Polling kiểm tra trạng thái hóa đơn (chờ Webhook PayOS xử lý)
-      for (int attempt = 0; attempt < 4; attempt++) {
+      // 1. Poll trạng thái hóa đơn, chờ webhook PayOS server-to-server đánh dấu
+      // PAID (BR-32: webhook là nguồn chân lý duy nhất). Cửa sổ ~12s để đủ cho
+      // độ trễ mạng + thời gian PayOS gọi webhook thực tế (không chỉ 3s).
+      for (int attempt = 0; attempt < 10; attempt++) {
         await ref.read(billingProvider.notifier).fetchData();
         final billingState = ref.read(billingProvider);
         for (final inv in billingState.invoices) {
@@ -107,27 +110,30 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
         }
 
         if (invoice != null) break;
-        await Future.delayed(const Duration(milliseconds: 800));
+        await Future.delayed(const Duration(milliseconds: 1200));
       }
 
-      // 2. Fallback cho môi trường Local/Dev nếu chưa nhận được Webhook
-      if (invoice == null) {
+      // 2. CHỈ môi trường DEV: chưa có PayOS/webhook thật -> giả lập thành công
+      // để test end-to-end. TUYỆT ĐỐI KHÔNG giả lập trên release build (backend
+      // cũng chặn 403 - BR-33), tránh hiển thị biên lai giả khi backend UNPAID.
+      if (invoice == null && kDebugMode) {
         try {
           payment = await ref.read(billingProvider.notifier).simulateSuccessPayment(widget.invoiceId);
-          await ref.read(billingProvider.notifier).fetchData();
           final billingState = ref.read(billingProvider);
           for (final inv in billingState.invoices) {
-            if (inv.id == widget.invoiceId) {
+            if (inv.id == widget.invoiceId && inv.status == 'PAID') {
               invoice = inv;
               break;
             }
           }
         } catch (e) {
-          debugPrint('[WebView] Fallback simulate payment exception: $e');
+          debugPrint('[WebView] Fallback simulate (dev) lỗi: $e');
         }
       }
 
-      if (mounted && invoice != null) {
+      if (!mounted) return;
+
+      if (invoice != null) {
         // Điều hướng tới màn biên lai
         context.pushReplacement(
           '/invoices/receipt',
@@ -136,8 +142,20 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
             'payment': payment,
           },
         );
-      } else if (mounted) {
+      } else {
+        // Webhook về chậm: KHÔNG bịa trạng thái PAID trên UI. Báo rõ và quay lại
+        // danh sách hóa đơn - hóa đơn sẽ tự cập nhật khi webhook tới.
         setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(
+            content: Text(
+              'Đã ghi nhận giao dịch. Hệ thống đang chờ ngân hàng xác nhận, '
+              'hóa đơn sẽ tự cập nhật trong giây lát. Vui lòng kiểm tra lại sau.',
+            ),
+            duration: Duration(seconds: 5),
+          ));
+        context.pop();
       }
     } catch (_) {
       if (mounted) {

@@ -225,7 +225,7 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                     ),
-                                    value: _selectedContract,
+                                    initialValue: _selectedContract,
                                     items: _contracts.map<DropdownMenuItem<Map<String, dynamic>>>((contract) {
                                       return DropdownMenuItem<Map<String, dynamic>>(
                                         value: contract as Map<String, dynamic>,
