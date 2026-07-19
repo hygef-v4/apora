@@ -32,13 +32,6 @@ class _RoommateApprovalListScreenState extends ConsumerState<RoommateApprovalLis
             title: 'Duyệt Thành Viên',
             subtitle: 'Phê duyệt yêu cầu tạm trú mới',
             showBack: true,
-            actions: [
-              HeaderIconButton(
-                icon: Icons.refresh,
-                tooltip: 'Làm mới',
-                onTap: () => ref.read(roommateProvider.notifier).fetchPendingRequests(),
-              ),
-            ],
           ),
           Expanded(
             child: state.isLoading && state.pendingRequests.isEmpty

@@ -94,23 +94,16 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
                           ],
                         ),
                       ),
-                      StatusBadge(
-                        text: member.isActive ? 'Đang hoạt động' : 'Đã vô hiệu',
-                        color: Colors.white,
-                        backgroundColor: member.isActive
-                            ? Colors.white.withValues(alpha: .2)
-                            : Colors.black.withValues(alpha: .2),
-                      ),
+                      member.isActive
+                          ? StatusBadge.success('Hoạt động')
+                          : const StatusBadge(
+                              text: 'Vô hiệu hóa',
+                              color: AppColors.error,
+                              backgroundColor: AppColors.errorBg,
+                            ),
                     ],
                   ),
-            actions: [
-              if (member != null)
-                HeaderIconButton(
-                  icon: Icons.edit,
-                  tooltip: 'Chỉnh sửa',
-                  onTap: () => context.push('/managers/${member.id}/edit', extra: member),
-                ),
-            ],
+            actions: const [],
           ),
 
           // Body content
@@ -143,37 +136,11 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
                 return ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    // Contact Information section
-                    _SectionTitle(title: 'Thông tin liên hệ'),
-                    const SizedBox(height: 8),
+                    // 1. Account Information (leaving only "Ngày tạo" card, no section title)
                     AppCard(
                       padding: EdgeInsets.zero,
                       child: Column(
                         children: [
-                          _InfoRow(
-                            icon: Icons.phone,
-                            label: 'Số điện thoại',
-                            value: m.phoneNumber,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Account Information section
-                    _SectionTitle(title: 'Thông tin tài khoản'),
-                    const SizedBox(height: 8),
-                    AppCard(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          _InfoRow(
-                            icon: Icons.badge,
-                            label: 'Mã tài khoản',
-                            value: '#${m.id}',
-                          ),
-                          const Divider(height: 1, indent: 56),
                           _InfoRow(
                             icon: Icons.calendar_today,
                             label: 'Ngày tạo',
@@ -181,40 +148,13 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
                                 ? DateFormat('dd/MM/yyyy').format(m.createdAt!)
                                 : '—',
                           ),
-                          const Divider(height: 1, indent: 56),
-                          _InfoRow(
-                            icon: Icons.circle,
-                            label: 'Trạng thái',
-                            value: m.isActive ? 'Đang hoạt động' : 'Đã vô hiệu',
-                            valueColor: m.isActive
-                                ? AppColors.success
-                                : AppColors.warning,
-                          ),
                         ],
                       ),
                     ),
 
                     const SizedBox(height: 20),
 
-                    // Permissions section
-                    _SectionTitle(title: 'Quyền hạn'),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: const [
-                        _PermissionChip(label: 'Quản lý nhân viên'),
-                        _PermissionChip(label: 'Quản lý hóa đơn'),
-                        _PermissionChip(label: 'Phân công sự cố'),
-                        _PermissionChip(label: 'Duyệt yêu cầu'),
-                        _PermissionChip(label: 'Đăng tin'),
-                        _PermissionChip(label: 'Trò chuyện'),
-                      ],
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Management History section
+                    // 2. Management History section
                     _SectionTitle(title: 'Lịch sử quản lý'),
                     const SizedBox(height: 8),
                     if (data.managementHistory.isEmpty)
@@ -240,8 +180,21 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
 
                     const SizedBox(height: 24),
 
-                    // UC45: Toggle Status Button
-                    // BR-58: Prevent self-deactivation. Hide button if looking at own profile.
+                    // 3. Action Buttons (Edit and Toggle Status)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        icon: const Icon(Icons.edit, size: 18),
+                        label: const Text('Chỉnh sửa hồ sơ'),
+                        onPressed: m.isActive
+                            ? () => context.push('/managers/${m.id}/edit', extra: m)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     if (currentUser?.id != m.id) ...[
                       SizedBox(
                         width: double.infinity,
@@ -352,13 +305,11 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    this.valueColor,
   });
 
   final IconData icon;
   final String label;
   final String value;
-  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -390,43 +341,16 @@ class _InfoRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: valueColor ?? AppColors.textPrimary,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Permission chip displaying an assigned module/capability.
-class _PermissionChip extends StatelessWidget {
-  const _PermissionChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.infoBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withValues(alpha: .2)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: AppColors.primary,
-        ),
       ),
     );
   }
