@@ -22,6 +22,14 @@ class ApartmentCheckoutScreen extends ConsumerStatefulWidget {
 class _ApartmentCheckoutScreenState extends ConsumerState<ApartmentCheckoutScreen> {
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(apartmentDetailProvider.notifier).fetch(widget.apartmentId);
+    });
+  }
+
   Future<void> _submit() async {
     final confirmed = await showDialog<bool>(
       context: context,
