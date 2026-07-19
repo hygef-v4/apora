@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/gradient_header.dart';
-import '../../../core/widgets/status_badge.dart';
 import '../models/invoice.dart';
 import '../models/payment.dart';
 import '../providers/billing_provider.dart';
@@ -174,8 +172,8 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
                     );
 
                     String methodText = 'Chuyển khoản';
-                    if (payment.paymentMethod?.toLowerCase().contains('cash') == true || 
-                        payment.paymentMethod?.toLowerCase().contains('tiền mặt') == true) {
+                    if (payment.paymentMethod.toLowerCase().contains('cash') == true || 
+                        payment.paymentMethod.toLowerCase().contains('tiền mặt') == true) {
                       methodText = 'Tiền mặt';
                     }
 

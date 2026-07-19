@@ -49,6 +49,7 @@ class TaskSummary {
   final int id;
   final int assignedTo;
   final String assigneeName;
+  final String? assigneePhone;
   final String title;
   final String status; // ASSIGNED | IN_PROGRESS | COMPLETED | CANCELLED
   final DateTime assignedAt;
@@ -58,6 +59,7 @@ class TaskSummary {
     required this.id,
     required this.assignedTo,
     required this.assigneeName,
+    this.assigneePhone,
     required this.title,
     required this.status,
     required this.assignedAt,
@@ -69,6 +71,7 @@ class TaskSummary {
       id: json['id'] as int,
       assignedTo: json['assignedTo'] as int,
       assigneeName: json['assigneeName'] as String,
+      assigneePhone: json['assigneePhone'] as String?,
       title: json['title'] as String,
       status: json['status'] as String,
       assignedAt: DateTime.parse(json['assignedAt'] as String),
@@ -141,7 +144,7 @@ const Map<String, String> kTicketStatusLabels = {
 
 /// Nhãn tiếng Việt cho trạng thái công việc của nhân viên (UC20/UC22).
 const Map<String, String> kTaskStatusLabels = {
-  'ASSIGNED': 'Đã giao',
+  'ASSIGNED': 'Đã phân công',
   'IN_PROGRESS': 'Đang làm',
   'COMPLETED': 'Hoàn thành',
   'CANCELLED': 'Đã hủy',

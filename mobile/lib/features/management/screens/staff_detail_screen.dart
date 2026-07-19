@@ -270,7 +270,7 @@ class _StaffDetailScreenState extends ConsumerState<StaffDetailScreen> {
                                   ),
                                 ),
                                 task.status == 'ASSIGNED'
-                                    ? StatusBadge.info('Đã giao')
+                                    ? StatusBadge.info('Đã phân công')
                                     : StatusBadge.warning('Đang xử lý'),
                               ],
                             ),

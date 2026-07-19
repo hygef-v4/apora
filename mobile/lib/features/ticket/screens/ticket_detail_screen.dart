@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/ticket.dart';
@@ -68,10 +67,10 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
       case 'ASSIGNED':
         return StatusBadge.info(label);
       case 'CANCELLED':
-        return StatusBadge(
-          text: label,
-          color: AppColors.error,
-          backgroundColor: AppColors.errorBg,
+        return const StatusBadge(
+          text: 'Đã hủy',
+          color: Color(0xFF64748B),
+          backgroundColor: Color(0xFFF1F5F9),
         );
       default: // PENDING - cam (FID-20 field 1)
         return const StatusBadge(
@@ -152,7 +151,32 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          const GradientHeader(title: 'Chi Tiết Sự Cố', showBack: true),
+          Container(
+            color: const Color(0xFF149EE7), // Đồng bộ màu xanh dương sáng của ứng dụng
+            width: double.infinity,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                    const Text(
+                      'Chi tiết sự cố',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
           Expanded(
             child: state.when(
               loading: () => const Center(
@@ -273,6 +297,74 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
         ),
         const SizedBox(height: 10),
 
+        // 2.5. Nhân viên xử lý (Assigned Staff)
+        if (ticket.assignedTask != null) ...[
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionTitle('Nhân viên xử lý'),
+                const SizedBox(height: 8),
+                _InfoRow(
+                  icon: Icons.engineering_outlined,
+                  label: 'Họ tên',
+                  value: ticket.assignedTask!.assigneeName,
+                ),
+                _InfoRow(
+                  icon: Icons.phone_outlined,
+                  label: 'SĐT',
+                  value: ticket.assignedTask!.assigneePhone ?? '—',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+        ] else if (isManager && ticket.status == 'PENDING') ...[
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionTitle('Nhân viên xử lý'),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Chưa phân công nhân viên',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () async {
+                        final assigned = await context.push<bool>(
+                          AppRoutes.ticketAssignPath(ticket.id),
+                          extra: ticket,
+                        );
+                        if (assigned == true && mounted) {
+                          ref.read(ticketDetailProvider.notifier).fetch(widget.ticketId);
+                        }
+                      },
+                      icon: const Icon(Icons.add, size: 16, color: Color(0xFF149EE7)),
+                      label: const Text(
+                        'Phân công',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF149EE7),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+
         // 3. Mô tả sự cố
         AppCard(
           child: Column(
@@ -340,79 +432,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           ),
         ],
 
-        // 5. Công việc đã phân công (UC21 - nếu có)
-        if (ticket.assignedTask != null) ...[
-          const SizedBox(height: 10),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _SectionTitle('Công việc đã phân công'),
-                const SizedBox(height: 8),
-                _InfoRow(
-                  icon: Icons.assignment_outlined,
-                  label: 'Tiêu đề',
-                  value: ticket.assignedTask!.title,
-                ),
-                _InfoRow(
-                  icon: Icons.engineering_outlined,
-                  label: 'Người xử lý',
-                  value: ticket.assignedTask!.assigneeName,
-                ),
-                _InfoRow(
-                  icon: Icons.flag_outlined,
-                  label: 'Trạng thái',
-                  value: kTaskStatusLabels[ticket.assignedTask!.status] ??
-                      ticket.assignedTask!.status,
-                ),
-                _InfoRow(
-                  icon: Icons.schedule,
-                  label: 'Giao lúc',
-                  value: _formatDate(ticket.assignedTask!.assignedAt),
-                ),
-                if (ticket.assignedTask!.completedAt != null)
-                  _InfoRow(
-                    icon: Icons.check_circle_outline,
-                    label: 'Hoàn thành',
-                    value: _formatDate(ticket.assignedTask!.completedAt!),
-                  ),
-              ],
-            ),
-          ),
-        ],
 
-        // UC21: ticket PENDING -> Manager phân công tạo task cho nhân viên
-        if (isManager && ticket.status == 'PENDING') ...[
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const Icon(Icons.assignment_ind_outlined),
-              label: const Text('PHÂN CÔNG CHO NHÂN VIÊN',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              onPressed: () async {
-                final assigned = await context.push<bool>(
-                  AppRoutes.ticketAssignPath(ticket.id),
-                  extra: ticket,
-                );
-                // Phân công xong -> tải lại chi tiết (đã ASSIGNED + có task)
-                if (assigned == true && mounted) {
-                  ref
-                      .read(ticketDetailProvider.notifier)
-                      .fetch(widget.ticketId);
-                }
-              },
-            ),
-          ),
-        ],
 
         // 6. Khối cập nhật - chỉ MANAGER/LANDLORD (BR-39)
         if (isManager) ...[

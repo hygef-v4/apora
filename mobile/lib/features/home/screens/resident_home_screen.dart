@@ -214,7 +214,6 @@ class _HomeTab extends ConsumerWidget {
                           height: 48,
                           child: ElevatedButton(
                             onPressed: () async {
-                              if (currentInvoice == null) return;
                               showDialog(
                                 context: context,
                                 barrierDismissible: false,

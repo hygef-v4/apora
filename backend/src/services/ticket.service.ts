@@ -208,6 +208,7 @@ function toTicketDetail(row: ticketRepo.TicketDetailRow): TicketDetail {
             id: row.task_id,
             assignedTo: row.task_assigned_to!,
             assigneeName: row.task_assignee_name!,
+            assigneePhone: row.task_assignee_phone,
             title: row.task_title!,
             status: row.task_status!,
             assignedAt: row.task_assigned_at!,

@@ -115,6 +115,7 @@ export interface TicketDetailRow extends TicketRow {
   task_id: number | null;
   task_assigned_to: number | null;
   task_assignee_name: string | null;
+  task_assignee_phone: string | null;
   task_title: string | null;
   task_status: TaskStatus | null;
   task_assigned_at: Date | null;
@@ -134,6 +135,7 @@ export async function findTicketDetailById(id: number): Promise<TicketDetailRow 
             t.id          AS task_id,
             t.assigned_to AS task_assigned_to,
             su.full_name  AS task_assignee_name,
+            su.phone_number AS task_assignee_phone,
             t.title       AS task_title,
             t.status      AS task_status,
             t.assigned_at AS task_assigned_at,
