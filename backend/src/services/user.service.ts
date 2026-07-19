@@ -144,9 +144,19 @@ export async function authenticateUser(
 // UC02: Logout
 // ==========================================
 
+/**
+ * UC02 BR-01: logout phải vô hiệu hóa JWT phía server -> bump token_version
+ * (mọi JWT đang hoạt động của user mất hiệu lực, kể cả thiết bị khác - app
+ * định hướng 1 phiên/người nên đây là hành vi mong muốn).
+ * BR-44: revoke FCM token của thiết bị logout; không rõ token (hoặc gọi từ
+ * luồng vô hiệu hóa tài khoản) thì revoke toàn bộ token của user.
+ */
 export async function invalidateSession(userId: number, fcmToken?: string): Promise<void> {
+  await userRepo.bumpTokenVersion(userId); // BR-01 (UC02) / BR-07
   if (fcmToken) {
     await userRepo.revokeDeviceToken(userId, fcmToken); // BR-44
+  } else {
+    await userRepo.revokeAllDeviceTokens(userId);
   }
 }
 

@@ -10,6 +10,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/utils/image_util.dart';
+import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
@@ -111,6 +112,17 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final user = ref.read(profileNotifierProvider).value;
+
+    // AT4 (UC05): không sửa gì mà bấm Lưu -> báo và bỏ qua API call
+    final nothingChanged = user != null &&
+        _fullNameController.text.trim() == user.fullName &&
+        _phoneController.text.trim() == user.phoneNumber &&
+        _avatarBytes == null;
+    if (nothingChanged) {
+      _showMessage(AppStrings.msgNoChanges);
+      return;
+    }
+
     final phoneChanged =
         user != null && _phoneController.text.trim() != user.phoneNumber;
     String? currentPassword;
@@ -212,10 +224,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                           prefixIcon: Icon(Icons.phone, size: 20),
                           counterText: '',
                         ),
-                        validator: (value) =>
-                            (value == null || value.trim().isEmpty)
-                                ? AppStrings.msgPhoneRequired
-                                : null,
+                        // BR-02: validate định dạng ngay trên client, khớp backend
+                        validator: Validators.vnPhone,
                       ),
                       const SizedBox(height: 20),
                       FilledButton(

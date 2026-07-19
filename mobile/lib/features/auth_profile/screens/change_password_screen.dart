@@ -10,6 +10,7 @@ import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../providers/auth_notifier.dart';
+import '../widgets/logout_confirm.dart';
 
 /// Đổi mật khẩu khi đã đăng nhập.
 /// BR-01: bị ép vào màn này khi đăng nhập lần đầu bằng mật khẩu mặc định
@@ -89,8 +90,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 HeaderIconButton(
                   icon: Icons.logout,
                   tooltip: 'Đăng xuất',
-                  onTap: () =>
-                      ref.read(authNotifierProvider.notifier).logout(),
+                  // UC02: hỏi xác nhận trước khi đăng xuất (FID-02)
+                  onTap: () => confirmAndLogout(context, ref),
                 ),
             ],
           ),

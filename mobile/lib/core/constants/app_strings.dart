@@ -14,6 +14,15 @@ class AppStrings {
   static const String msgLoginFailed =
       'Số điện thoại hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.';
 
+  // UC02: xác nhận đăng xuất (FID-02 - Confirmation Dialog bắt buộc)
+  static const String msgLogoutConfirm = 'Bạn có chắc chắn muốn đăng xuất?';
+
+  // UC05 - AT4: bấm Lưu khi không sửa gì
+  static const String msgNoChanges = 'Không có thay đổi để lưu.';
+
+  static const String msgPhoneInvalid =
+      'Số điện thoại không hợp lệ. Vui lòng nhập 10 chữ số bắt đầu bằng 0.';
+
   // Lỗi chung
   static const String msgNetworkError =
       'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.';

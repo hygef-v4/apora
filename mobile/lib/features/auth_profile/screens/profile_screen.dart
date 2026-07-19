@@ -9,8 +9,8 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
 import '../../../core/widgets/status_badge.dart';
-import '../providers/auth_notifier.dart';
 import '../providers/profile_notifier.dart';
+import '../widgets/logout_confirm.dart';
 
 /// UC04: Xem hồ sơ cá nhân (FID-04) - read-only.
 /// Muốn sửa phải bấm sang màn Update Profile (UC05).
@@ -115,7 +115,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               HeaderIconButton(
                 icon: Icons.logout,
                 tooltip: 'Đăng xuất',
-                onTap: () => ref.read(authNotifierProvider.notifier).logout(),
+                // UC02: hỏi xác nhận trước khi đăng xuất (FID-02)
+                onTap: () => confirmAndLogout(context, ref),
               ),
             ],
           ),

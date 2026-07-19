@@ -11,6 +11,7 @@
  * @see docs/PRM393_SoftwareDesign_Group5.docx - Module 9 (ManagerService)
  */
 
+import { withTransaction } from '@/lib/db';
 import { HttpError } from '@/lib/middleware';
 import * as auditRepo from '@/repositories/audit.repository';
 import * as managerRepo from '@/repositories/manager.repository';
@@ -258,26 +259,32 @@ export async function updateManagerStatus(
     throw new HttpError(400, `Tài khoản đã ở trạng thái ${status}`);
   }
 
-  const updatedUser = await managerRepo.updateManagerStatus(targetId, status);
-
-  // BR-05: Invalidate sessions if deactivated
-  if (status === 'INACTIVE') {
-    const { invalidateSession } = await import('./user.service');
-    await invalidateSession(targetId);
-  }
-
-  // BR-11: Audit log
+  // Đổi status + revoke FCM token + audit trong 1 transaction (đồng bộ hành vi
+  // với Module 8 - UC40): vô hiệu hóa mà thiếu vết audit hoặc còn nhận push
+  // là không chấp nhận được. updateManagerStatus tự bump token_version (BR-05).
   const actionType = status === 'ACTIVE' ? 'MANAGER_REACTIVATE' : 'MANAGER_DEACTIVATE';
   const reason = status === 'ACTIVE' ? 'Khôi phục tài khoản' : 'Vô hiệu hóa tài khoản';
-  
-  await auditRepo.insertAuditLog(
-    actorId,
-    targetId,
-    actionType,
-    { status: status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' },
-    { status },
-    reason
-  );
+
+  const updatedUser = await withTransaction(async (client) => {
+    const user = await managerRepo.updateManagerStatus(targetId, status, client);
+
+    // BR-05: ngừng gửi push notification cho tài khoản đã vô hiệu hóa
+    if (status === 'INACTIVE') {
+      await userRepo.revokeAllDeviceTokens(targetId, client);
+    }
+
+    // BR-11: Audit log
+    await auditRepo.insertAuditLog(
+      actorId,
+      targetId,
+      actionType,
+      { status: status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' },
+      { status },
+      reason,
+      client,
+    );
+    return user;
+  });
 
   return {
     id: updatedUser.id,
