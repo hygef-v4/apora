@@ -292,51 +292,6 @@ class DashboardReportScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-
-                      // Gợi ý quản trị vận hành (Business recommendations)
-                      AppCard(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Gợi ý vận hành',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            if (stats.unpaidBillsCount > 0)
-                              _recommendationItem(
-                                Icons.notification_important,
-                                AppColors.warning,
-                                'Gửi thông báo nhắc nhở thanh toán cho ${stats.unpaidBillsCount} hóa đơn còn nợ đọng.',
-                              )
-                            else
-                              _recommendationItem(
-                                Icons.check_circle,
-                                AppColors.success,
-                                'Tuyệt vời! Toàn bộ hóa đơn phát sinh trong tháng đã được thu hồi đầy đủ.',
-                              ),
-                            const SizedBox(height: 8),
-                            if (stats.unresolvedTicketsCount > 0)
-                              _recommendationItem(
-                                Icons.engineering,
-                                Colors.redAccent,
-                                'Hiện đang có ${stats.unresolvedTicketsCount} yêu cầu sự cố kỹ thuật chưa xử lý xong. Hãy kiểm tra và phân công công việc sớm.',
-                              )
-                            else
-                              _recommendationItem(
-                                Icons.verified,
-                                AppColors.primary,
-                                'Hệ thống vận hành tốt, không có sự cố tồn đọng trong tháng.',
-                              ),
-                          ],
-                        ),
-                      ),
                     ],
                   );
                 },
