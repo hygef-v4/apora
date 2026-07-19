@@ -83,6 +83,24 @@ class _HomeTab extends ConsumerWidget {
     
     final billingState = ref.watch(billingProvider);
     final unpaidInvoices = billingState.invoices.where((inv) => inv.status == 'UNPAID' || inv.status == 'PARTIAL').toList();
+    // Sắp xếp tăng dần theo MonthYear (định dạng MM/yyyy) để lấy hoá đơn cũ nhất
+    unpaidInvoices.sort((a, b) {
+      try {
+        final aParts = a.monthYear.split('/');
+        final bParts = b.monthYear.split('/');
+        final aMonth = int.parse(aParts[0]);
+        final aYear = int.parse(aParts[1]);
+        final bMonth = int.parse(bParts[0]);
+        final bYear = int.parse(bParts[1]);
+        
+        if (aYear != bYear) {
+          return aYear.compareTo(bYear);
+        }
+        return aMonth.compareTo(bMonth);
+      } catch (_) {
+        return a.id.compareTo(b.id);
+      }
+    });
     final hasUnpaid = unpaidInvoices.isNotEmpty;
     final currentInvoice = hasUnpaid ? unpaidInvoices.first : null;
 
@@ -195,7 +213,39 @@ class _HomeTab extends ConsumerWidget {
                           width: double.infinity,
                           height: 48,
                           child: ElevatedButton(
-                            onPressed: () => onSwitchTab(1), // Switch to Hóa đơn tab
+                            onPressed: () async {
+                              if (currentInvoice == null) return;
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                              try {
+                                final paymentUrl = await ref
+                                    .read(billingProvider.notifier)
+                                    .getPaymentLink(currentInvoice.id);
+                                if (context.mounted) {
+                                  Navigator.of(context).pop(); // Đóng loading dialog
+                                  context.push(
+                                    '/invoices/pay',
+                                    extra: {
+                                      'invoiceId': currentInvoice.id,
+                                      'paymentUrl': paymentUrl,
+                                      'totalAmount': currentInvoice.totalAmount,
+                                    },
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  Navigator.of(context).pop(); // Đóng loading dialog
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Lỗi tải link thanh toán: $e')),
+                                  );
+                                }
+                              }
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF12A8F1), // Bright blue button
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -257,7 +307,10 @@ class _HomeTab extends ConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text('Thông báo từ BQL', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                            Text('Xem tất cả', style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                            GestureDetector(
+                              onTap: () => context.push(AppRoutes.notifications),
+                              child: const Text('Xem tất cả', style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                            ),
                           ],
                         ),
                       ),
