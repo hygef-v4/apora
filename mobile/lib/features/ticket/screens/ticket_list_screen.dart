@@ -130,12 +130,18 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     final resolvedCount = state.tickets.where((t) => t.status == 'RESOLVED').length;
     final cancelledCount = state.tickets.where((t) => t.status == 'CANCELLED').length;
 
+    final user = ref.watch(authNotifierProvider).user;
+    final isAdminOrOwner = user != null &&
+        (user.roles.contains('MANAGER') || user.roles.contains('LANDLORD'));
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
           Container(
-            color: const Color(0xFF149EE7), // Đồng bộ màu xanh dương sáng của ứng dụng
+            decoration: isAdminOrOwner
+                ? const BoxDecoration(gradient: AppColors.headerGradient)
+                : const BoxDecoration(color: Color(0xFF149EE7)),
             width: double.infinity,
             child: SafeArea(
               bottom: false,

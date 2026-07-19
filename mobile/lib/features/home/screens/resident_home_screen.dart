@@ -109,15 +109,18 @@ class _HomeTab extends ConsumerWidget {
       return format.format(amount);
     }
 
+    final isAdminOrOwner = user != null &&
+        (user.roles.contains('MANAGER') || user.roles.contains('LANDLORD'));
+
     return Stack(
       children: [
-        // Blue Header Background
+        // Header Background
         Container(
           height: 240,
           width: double.infinity,
-          decoration: const BoxDecoration(
-            color: Color(0xFF149EE7), // Màu xanh dương sáng theo UI
-          ),
+          decoration: isAdminOrOwner
+              ? const BoxDecoration(gradient: AppColors.headerGradient)
+              : const BoxDecoration(color: Color(0xFF149EE7)),
         ),
         // Scrollable content overlapping the header
         SafeArea(

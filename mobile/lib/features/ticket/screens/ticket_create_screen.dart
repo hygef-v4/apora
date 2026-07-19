@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/image_util.dart';
+import '../../auth_profile/providers/auth_notifier.dart';
 import '../providers/ticket_provider.dart';
 
 /// UC19 - Màn hình tạo sự cố (Resident) với giao diện mới.
@@ -121,13 +122,19 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(authNotifierProvider).user;
+    final isAdminOrOwner = user != null &&
+        (user.roles.contains('MANAGER') || user.roles.contains('LANDLORD'));
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
-          // Custom Header Solid Blue
+          // Custom Header
           Container(
-            color: const Color(0xFF149EE7),
+            decoration: isAdminOrOwner
+                ? const BoxDecoration(gradient: AppColors.headerGradient)
+                : const BoxDecoration(color: Color(0xFF149EE7)),
             width: double.infinity,
             child: SafeArea(
               bottom: false,

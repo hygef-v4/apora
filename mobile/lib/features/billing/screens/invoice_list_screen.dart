@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/invoice.dart';
 import '../models/payment.dart';
 import '../providers/billing_provider.dart';
@@ -67,12 +68,18 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
       }
     });
 
+    final user = ref.watch(authNotifierProvider).user;
+    final isAdminOrOwner = user != null &&
+        (user.roles.contains('MANAGER') || user.roles.contains('LANDLORD'));
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
           Container(
-            color: const Color(0xFF149EE7), // Màu xanh dương sáng y hệt màn hình chính
+            decoration: isAdminOrOwner
+                ? const BoxDecoration(gradient: AppColors.headerGradient)
+                : const BoxDecoration(color: Color(0xFF149EE7)),
             width: double.infinity,
             child: const SafeArea(
               bottom: false,

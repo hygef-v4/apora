@@ -99,6 +99,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildHeader() {
+    final user = ref.watch(authNotifierProvider).user;
+    final isAdminOrOwner = user != null &&
+        (user.roles.contains('MANAGER') || user.roles.contains('LANDLORD'));
+
     return Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 12,
@@ -106,15 +110,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         left: 8,
         right: 16,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
-      ),
+      decoration: isAdminOrOwner
+          ? const BoxDecoration(gradient: AppColors.headerGradient)
+          : const BoxDecoration(color: Color(0xFF149EE7)),
       child: Row(
         children: [
           if (widget.showBack)
             IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () => context.pop(),
             ),
           const SizedBox(width: 4),
@@ -122,7 +125,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             width: 44,
             height: 44,
             decoration: const BoxDecoration(
-              color: Color(0xFF149EE7),
+              color: Colors.white24,
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.home, color: Colors.white, size: 24),
@@ -137,7 +140,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.navy,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -147,7 +150,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       width: 6,
                       height: 6,
                       decoration: const BoxDecoration(
-                        color: AppColors.success,
+                        color: Color(0xFF4ADE80),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -156,17 +159,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       'Đang hoạt động',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.success,
+                        color: Colors.white70,
                       ),
                     ),
                   ],
                 ),
               ],
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.phone_outlined, color: Color(0xFF149EE7)),
-            onPressed: () {},
           ),
         ],
       ),
