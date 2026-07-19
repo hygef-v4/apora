@@ -28,301 +28,218 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
       }
       buffer.write(str[i]);
     }
-    return '${buffer.toString()} đ';
+    return '${buffer.toString()}đ';
   }
 
   @override
   Widget build(BuildContext context) {
     final billingState = ref.watch(billingProvider);
-    final unpaidInvoices = billingState.invoices.where((inv) => inv.status == 'UNPAID').toList();
+    
+    // Hóa đơn chưa thanh toán sắp xếp tăng dần theo MonthYear (cũ nhất lên đầu)
+    final unpaidInvoices = billingState.invoices.where((inv) => inv.status == 'UNPAID' || inv.status == 'PARTIAL').toList();
+    unpaidInvoices.sort((a, b) {
+      try {
+        final aParts = a.monthYear.split('/');
+        final bParts = b.monthYear.split('/');
+        final aMonth = int.parse(aParts[0]);
+        final aYear = int.parse(aParts[1]);
+        final bMonth = int.parse(bParts[0]);
+        final bYear = int.parse(bParts[1]);
+        if (aYear != bYear) return aYear.compareTo(bYear);
+        return aMonth.compareTo(bMonth);
+      } catch (_) {
+        return a.id.compareTo(b.id);
+      }
+    });
+
+    // Hóa đơn đã thanh toán sắp xếp giảm dần theo MonthYear (mới nhất lên đầu)
     final paidInvoices = billingState.invoices.where((inv) => inv.status == 'PAID').toList();
+    paidInvoices.sort((a, b) {
+      try {
+        final aParts = a.monthYear.split('/');
+        final bParts = b.monthYear.split('/');
+        final aMonth = int.parse(aParts[0]);
+        final aYear = int.parse(aParts[1]);
+        final bMonth = int.parse(bParts[0]);
+        final bYear = int.parse(bParts[1]);
+        if (aYear != bYear) return bYear.compareTo(aYear);
+        return bMonth.compareTo(aMonth);
+      } catch (_) {
+        return b.id.compareTo(a.id);
+      }
+    });
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            GradientHeader(
-              title: 'Hóa đơn của tôi',
-              subtitle: 'Căn hộ 502 · Chung cư Apora',
-              bottom: const TabBar(
-                indicatorColor: Colors.white,
-                indicatorWeight: 3,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-                labelStyle: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-                unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-                tabs: [
-                  Tab(text: 'Chưa thanh toán'),
-                  Tab(text: 'Đã thanh toán'),
-                ],
-              ),
-            ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  // Tab 1: Chưa thanh toán
-                  _buildUnpaidTab(unpaidInvoices, billingState.isLoading),
-                  // Tab 2: Đã thanh toán
-                  _buildPaidTab(paidInvoices),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBreakdown(Invoice invoice) {
-    return Column(
-      children: [
-        _buildBreakdownItem(
-          icon: Icons.home_work_rounded,
-          iconColor: AppColors.primary,
-          title: 'Tiền thuê căn hộ',
-          subtitle: 'Theo giá cố định hợp đồng',
-          value: _formatMoney(invoice.roomRentSnapshot),
-        ),
-        const Divider(height: 20, color: AppColors.divider),
-        _buildBreakdownItem(
-          icon: Icons.electric_bolt_rounded,
-          iconColor: AppColors.warning,
-          title: 'Tiền điện tiêu thụ',
-          subtitle: 'Chỉ số: ${invoice.prevElectricityIndex.toInt()} → ${invoice.currElectricityIndex.toInt()} (${invoice.electricityConsumption.toInt()} kWh)',
-          value: _formatMoney(invoice.electricityConsumption * invoice.electricityRateSnapshot),
-        ),
-        const Divider(height: 20, color: AppColors.divider),
-        _buildBreakdownItem(
-          icon: Icons.water_drop_rounded,
-          iconColor: Colors.cyan,
-          title: 'Tiền nước sinh hoạt',
-          subtitle: 'Chỉ số: ${invoice.prevWaterIndex.toInt()} → ${invoice.currWaterIndex.toInt()} (${invoice.waterConsumption.toInt()} m³)',
-          value: _formatMoney(invoice.waterConsumption * invoice.waterRateSnapshot),
-        ),
-        const Divider(height: 20, color: AppColors.divider),
-        _buildBreakdownItem(
-          icon: Icons.admin_panel_settings_rounded,
-          iconColor: AppColors.success,
-          title: 'Phí dịch vụ & Quản lý',
-          subtitle: 'Phí vận hành chung cư',
-          value: _formatMoney(invoice.mgmtFeeSnapshot),
-        ),
-        if (invoice.extraFee > 0) ...[
-          const Divider(height: 20, color: AppColors.divider),
-          _buildBreakdownItem(
-            icon: Icons.add_circle_rounded,
-            iconColor: AppColors.purple,
-            title: 'Chi phí phát sinh',
-            subtitle: invoice.extraFeeDescription ?? 'Không có mô tả',
-            value: _formatMoney(invoice.extraFee),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildUnpaidTab(List<Invoice> unpaidInvoices, bool isLoading) {
-    if (unpaidInvoices.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: const BoxDecoration(
-                  color: AppColors.successBg,
-                  shape: BoxShape.circle,
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Column(
+        children: [
+          Container(
+            color: const Color(0xFF149EE7), // Màu xanh dương sáng y hệt màn hình chính
+            width: double.infinity,
+            child: const SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: Text(
+                  'Hoá đơn của tôi',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
                 ),
-                child: const Icon(Icons.check_circle, size: 40, color: AppColors.success),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Hoàn thành hóa đơn!',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Căn hộ của bạn hiện không có hóa đơn nào cần thanh toán. Tuyệt vời!',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-              ),
-            ],
+            ),
           ),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: unpaidInvoices.length,
-      itemBuilder: (context, idx) {
-        final invoice = unpaidInvoices[idx];
-        return _UnpaidInvoiceCard(
-          invoice: invoice,
-          isLoading: isLoading,
-          formatMoney: _formatMoney,
-          buildBreakdown: _buildBreakdown,
-          onPay: () async {
-            final paymentUrl = await ref.read(billingProvider.notifier).getPaymentLink(invoice.id);
-            if (!context.mounted) return;
-            context.push(
-              '/invoices/pay',
-              extra: {
-                'invoiceId': invoice.id,
-                'paymentUrl': paymentUrl,
-                'totalAmount': invoice.totalAmount,
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildPaidTab(List<Invoice> paidInvoices) {
-    if (paidInvoices.isEmpty) {
-      return const Center(
-        child: Text(
-          'Không có lịch sử hóa đơn đã thanh toán',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: paidInvoices.length,
-      itemBuilder: (context, index) {
-        final invoice = paidInvoices[index];
-        final billingState = ref.watch(billingProvider);
-        // Tìm transaction tương ứng
-        final payment = billingState.payments.firstWhere(
-          (p) => p.invoiceId == invoice.id,
-          orElse: () => Payment(
-            id: 0,
-            invoiceId: invoice.id,
-            residentId: 3,
-            payosOrderId: '',
-            amount: invoice.totalAmount,
-            paymentMethod: 'VietQR / PayOS',
-            status: 'SUCCESS',
-            createdAt: DateTime.now(),
-          ),
-        );
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: AppCard(
-            onTap: () {
-              // Chuyển tới xem biên lai thanh toán (UC17)
-              context.push(
-                '/invoices/receipt',
-                extra: {
-                  'invoice': invoice,
-                  'payment': payment,
-                },
-              );
-            },
-            child: Row(
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    color: AppColors.successBg,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.receipt_long, color: AppColors.success, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Hóa đơn Tháng ${invoice.monthYear}',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary),
+                // 1. Danh sách hóa đơn chưa thanh toán
+                ...unpaidInvoices.map((invoice) {
+                  return _UnpaidInvoiceCard(
+                    invoice: invoice,
+                    isLoading: billingState.isLoading,
+                    formatMoney: _formatMoney,
+                    buildBreakdown: (_) => const SizedBox.shrink(),
+                    onPay: () async {
+                      final paymentUrl = await ref.read(billingProvider.notifier).getPaymentLink(invoice.id);
+                      if (!context.mounted) return;
+                      context.push(
+                        '/invoices/pay',
+                        extra: {
+                          'invoiceId': invoice.id,
+                          'paymentUrl': paymentUrl,
+                          'totalAmount': invoice.totalAmount,
+                        },
+                      );
+                    },
+                  );
+                }),
+
+                if (unpaidInvoices.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: AppCard(
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: const BoxDecoration(
+                              color: AppColors.successBg,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.check_circle, color: AppColors.success),
+                          ),
+                          const SizedBox(width: 16),
+                          const Expanded(
+                            child: Text(
+                              'Không có hoá đơn chưa thanh toán',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        payment.paidAt != null
-                            ? 'Thanh toán: ${payment.paidAt!.day}/${payment.paidAt!.month}/${payment.paidAt!.year}'
-                            : 'Đã hoàn thành',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      _formatMoney(invoice.totalAmount),
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textPrimary),
+
+                // 2. Nhãn "LỊCH SỬ THANH TOÁN"
+                if (paidInvoices.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12, bottom: 12),
+                    child: Text(
+                      'LỊCH SỬ THANH TOÁN',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF94A3B8),
+                        letterSpacing: 0.8,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Đã đóng',
-                      style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w600, fontSize: 11),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.chevron_right, size: 18, color: AppColors.textTertiary),
+                  ),
+                  // 3. Danh sách hóa đơn đã thanh toán
+                  ...paidInvoices.map((invoice) {
+                    final payment = billingState.payments.firstWhere(
+                      (p) => p.invoiceId == invoice.id,
+                      orElse: () => Payment(
+                        id: 0,
+                        invoiceId: invoice.id,
+                        residentId: 3,
+                        payosOrderId: '',
+                        amount: invoice.totalAmount,
+                        paymentMethod: 'VietQR / PayOS',
+                        status: 'SUCCESS',
+                        createdAt: DateTime.now(),
+                      ),
+                    );
+
+                    String methodText = 'Chuyển khoản';
+                    if (payment.paymentMethod?.toLowerCase().contains('cash') == true || 
+                        payment.paymentMethod?.toLowerCase().contains('tiền mặt') == true) {
+                      methodText = 'Tiền mặt';
+                    }
+
+                    final payDate = payment.paidAt ?? payment.createdAt;
+                    final dateStr = '${payDate.day.toString().padLeft(2, '0')}/${payDate.month.toString().padLeft(2, '0')}';
+
+                    final double amountInMillions = invoice.totalAmount / 1000000;
+                    final String amountStr = '${amountInMillions.toStringAsFixed(2)}M';
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: AppCard(
+                        onTap: () {
+                          context.push(
+                            '/invoices/receipt',
+                            extra: {
+                              'invoice': invoice,
+                              'payment': payment,
+                            },
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFDCFCE7),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.check, color: Color(0xFF16A34A), size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Tháng ${invoice.monthYear}',
+                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Thanh toán $dateStr · $methodText',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              amountStr,
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF16A34A)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
               ],
             ),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildBreakdownItem({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required String value,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 18, color: iconColor),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -349,124 +266,161 @@ class _UnpaidInvoiceCard extends StatefulWidget {
 class _UnpaidInvoiceCardState extends State<_UnpaidInvoiceCard> {
   bool _isExpanded = false;
 
+  Widget _buildExpandedDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: AppCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            InkWell(
-              onTap: () => setState(() => _isExpanded = !_isExpanded),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
+    if (!_isExpanded) {
+      // Trạng thái ĐÓNG: giao diện gọn giống lịch sử thanh toán bên dưới
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: AppCard(
+          onTap: () => setState(() => _isExpanded = true),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFEF3C7), // Màu nền vàng nhạt
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.receipt_long, color: Color(0xFFD97706), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Hóa đơn Tháng ${widget.invoice.monthYear}',
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                        ),
-                        const StatusBadge(
-                          text: 'Chưa đóng',
-                          color: AppColors.error,
-                          backgroundColor: AppColors.errorBg,
-                        ),
-                      ],
+                    Text(
+                      'Hóa đơn Tháng ${widget.invoice.monthYear}',
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.calendar_month, size: 13, color: AppColors.textTertiary),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Hạn đóng: ${widget.invoice.dueDate.day}/${widget.invoice.dueDate.month}/${widget.invoice.dueDate.year}',
-                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Text(
-                              _isExpanded ? 'Thu gọn' : 'Xem chi tiết',
-                              style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600),
-                            ),
-                            Icon(
-                              _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                              size: 16,
-                              color: AppColors.primary,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 18, color: AppColors.divider),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Tổng tiền cần đóng',
-                              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              widget.formatMoney(widget.invoice.totalAmount),
-                              style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.error),
-                            ),
-                          ],
-                        ),
-                        if (!_isExpanded)
-                          ElevatedButton.icon(
-                            onPressed: widget.isLoading ? null : widget.onPay,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            icon: const Icon(Icons.qr_code, size: 14),
-                            label: const Text('Đóng tiền', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                          ),
-                      ],
+                    const SizedBox(height: 3),
+                    Text(
+                      'Hạn đóng: ${widget.invoice.dueDate.day}/${widget.invoice.dueDate.month}/${widget.invoice.dueDate.year}',
+                      style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
                     ),
                   ],
                 ),
               ),
-            ),
-            if (_isExpanded) ...[
-              const SizedBox(height: 10),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: Text(
-                  'BẢNG KÊ CHI TIẾT KHOẢN PHÍ',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.textSecondary),
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    widget.formatMoney(widget.invoice.totalAmount),
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Chưa đóng',
+                    style: TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.w600, fontSize: 11),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              widget.buildBreakdown(widget.invoice),
+              const SizedBox(width: 4),
+              const Icon(Icons.keyboard_arrow_down, size: 18, color: AppColors.textTertiary),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Trạng thái MỞ: giao diện thẻ chi tiết có viền xanh và nút thanh toán VietQR
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFF12A8F1), width: 2), // Viền xanh dương
+          boxShadow: AppColors.cardShadow,
+        ),
+        padding: const EdgeInsets.all(20),
+        child: InkWell(
+          onTap: () => setState(() => _isExpanded = false),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Tháng ${widget.invoice.monthYear}',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Chưa thanh toán',
+                      style: TextStyle(color: Color(0xFFD97706), fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
+              // Bảng kê chi tiết khoản phí
+              _buildExpandedDetailRow('Tiền thuê', widget.formatMoney(widget.invoice.roomRentSnapshot)),
+              _buildExpandedDetailRow(
+                'Điện · ${widget.invoice.electricityConsumption.toInt()} kWh',
+                widget.formatMoney(widget.invoice.electricityConsumption * widget.invoice.electricityRateSnapshot),
+              ),
+              _buildExpandedDetailRow(
+                'Nước · ${widget.invoice.waterConsumption.toInt()} m³',
+                widget.formatMoney(widget.invoice.waterConsumption * widget.invoice.waterRateSnapshot),
+              ),
+              _buildExpandedDetailRow('Phí dịch vụ', widget.formatMoney(widget.invoice.mgmtFeeSnapshot)),
+              if (widget.invoice.extraFee > 0)
+                _buildExpandedDetailRow(
+                  widget.invoice.extraFeeDescription ?? 'Phí phát sinh',
+                  widget.formatMoney(widget.invoice.extraFee),
+                ),
+              const Divider(height: 24, color: AppColors.divider),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Tổng',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                  Text(
+                    widget.formatMoney(widget.invoice.totalAmount),
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF12A8F1)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
-                height: 44,
+                height: 48,
                 child: ElevatedButton(
                   onPressed: widget.isLoading ? null : widget.onPay,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: const Color(0xFF12A8F1),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
                   ),
                   child: widget.isLoading
                       ? const SizedBox(
@@ -474,21 +428,14 @@ class _UnpaidInvoiceCardState extends State<_UnpaidInvoiceCard> {
                           height: 16,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         )
-                      : const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.qr_code_scanner, size: 16),
-                            SizedBox(width: 6),
-                            Text(
-                              'THANH TOÁN NGAY VIA VietQR',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
-                          ],
+                      : const Text(
+                          'Thanh toán qua QR',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
