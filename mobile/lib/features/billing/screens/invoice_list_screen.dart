@@ -187,9 +187,6 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
                     final payDate = payment.paidAt ?? payment.createdAt;
                     final dateStr = '${payDate.day.toString().padLeft(2, '0')}/${payDate.month.toString().padLeft(2, '0')}';
 
-                    final double amountInMillions = invoice.totalAmount / 1000000;
-                    final String amountStr = '${amountInMillions.toStringAsFixed(2)}M';
-
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: AppCard(
@@ -229,10 +226,6 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
                                   ),
                                 ],
                               ),
-                            ),
-                            Text(
-                              amountStr,
-                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF16A34A)),
                             ),
                           ],
                         ),

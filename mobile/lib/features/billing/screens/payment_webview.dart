@@ -62,6 +62,22 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
                 _checkRedirect(change.url!);
               }
             },
+            onNavigationRequest: (NavigationRequest request) {
+              final uri = Uri.tryParse(request.url);
+              if (uri != null) {
+                final path = uri.path;
+                final isSuccessPath = path.contains('/api/payments/payos/success');
+                final isCancelPath = path.contains('/api/payments/payos/cancel');
+                final isPayOsSuccess = uri.queryParameters['code'] == '00' && uri.queryParameters['cancel'] == 'false';
+                final isPayOsCancel = uri.queryParameters['cancel'] == 'true';
+
+                if (isSuccessPath || isPayOsSuccess || isCancelPath || isPayOsCancel) {
+                  _checkRedirect(request.url);
+                  return NavigationDecision.prevent;
+                }
+              }
+              return NavigationDecision.navigate;
+            },
           ),
         )
         ..loadRequest(Uri.parse(widget.paymentUrl));
@@ -97,9 +113,8 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
       dynamic payment;
 
       // 1. Poll trạng thái hóa đơn, chờ webhook PayOS server-to-server đánh dấu
-      // PAID (BR-32: webhook là nguồn chân lý duy nhất). Cửa sổ ~12s để đủ cho
-      // độ trễ mạng + thời gian PayOS gọi webhook thực tế (không chỉ 3s).
-      for (int attempt = 0; attempt < 10; attempt++) {
+      // PAID (BR-32: webhook là nguồn chân lý duy nhất).
+      for (int attempt = 0; attempt < 3; attempt++) {
         await ref.read(billingProvider.notifier).fetchData();
         final billingState = ref.read(billingProvider);
         for (final inv in billingState.invoices) {
@@ -110,7 +125,7 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
         }
 
         if (invoice != null) break;
-        await Future.delayed(const Duration(milliseconds: 1200));
+        await Future.delayed(const Duration(milliseconds: 600));
       }
 
       // 2. CHỈ môi trường DEV: chưa có PayOS/webhook thật -> giả lập thành công
@@ -130,6 +145,15 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
           debugPrint('[WebView] Fallback simulate (dev) lỗi: $e');
         }
       }
+
+      if (!mounted) return;
+
+      if (_isRealPayment) {
+        try {
+          _webViewController.loadRequest(Uri.parse('about:blank'));
+        } catch (_) {}
+      }
+      await Future.delayed(const Duration(milliseconds: 100));
 
       if (!mounted) return;
 
@@ -167,6 +191,11 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
   @override
   void dispose() {
     _pulseController.dispose();
+    if (_isRealPayment) {
+      try {
+        _webViewController.loadRequest(Uri.parse('about:blank'));
+      } catch (_) {}
+    }
     super.dispose();
   }
 
