@@ -37,6 +37,14 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
     final unpaidInvoices = billingState.invoices.where((inv) => inv.status == 'UNPAID').toList();
     final paidInvoices = billingState.invoices.where((inv) => inv.status == 'PAID').toList();
 
+    String unitSubtitle = 'Căn hộ của tôi · Chung cư Apora';
+    for (final inv in billingState.invoices) {
+      if (inv.unitNumber != null && inv.unitNumber!.trim().isNotEmpty) {
+        unitSubtitle = 'Căn hộ ${inv.unitNumber} · Chung cư Apora';
+        break;
+      }
+    }
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -45,7 +53,7 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
           children: [
             GradientHeader(
               title: 'Hóa đơn của tôi',
-              subtitle: 'Căn hộ 502 · Chung cư Apora',
+              subtitle: unitSubtitle,
               bottom: const TabBar(
                 indicatorColor: Colors.white,
                 indicatorWeight: 3,
