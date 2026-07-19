@@ -69,11 +69,19 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
 
   void _checkRedirect(String url) {
     debugPrint('[WebView] URL thay đổi: $url');
-    // Nhận diện chuyển hướng khi thanh toán thành công/hủy từ backend
-    if (url.contains('/api/payments/payos/success') || url.contains('/success')) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+
+    final path = uri.path;
+    final isSuccessPath = path.contains('/api/payments/payos/success');
+    final isCancelPath = path.contains('/api/payments/payos/cancel');
+    final isPayOsSuccess = uri.queryParameters['code'] == '00' && uri.queryParameters['cancel'] == 'false';
+    final isPayOsCancel = uri.queryParameters['cancel'] == 'true';
+
+    if (isSuccessPath || isPayOsSuccess) {
       _handleSuccessRedirect();
-    } else if (url.contains('/api/payments/payos/cancel') || url.contains('/cancel')) {
-      if (mounted) {
+    } else if (isCancelPath || isPayOsCancel) {
+      if (mounted && !_isProcessing) {
         context.pop();
       }
     }
@@ -84,12 +92,42 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
     setState(() => _isProcessing = true);
 
     try {
-      // Gọi API để cập nhật trạng thái PAID
-      final payment = await ref.read(billingProvider.notifier).simulateSuccessPayment(widget.invoiceId);
-      final billingState = ref.read(billingProvider);
-      final invoice = billingState.invoices.firstWhere((inv) => inv.id == widget.invoiceId);
+      dynamic invoice;
+      dynamic payment;
 
-      if (mounted) {
+      // 1. Polling kiểm tra trạng thái hóa đơn (chờ Webhook PayOS xử lý)
+      for (int attempt = 0; attempt < 4; attempt++) {
+        await ref.read(billingProvider.notifier).fetchData();
+        final billingState = ref.read(billingProvider);
+        for (final inv in billingState.invoices) {
+          if (inv.id == widget.invoiceId && inv.status == 'PAID') {
+            invoice = inv;
+            break;
+          }
+        }
+
+        if (invoice != null) break;
+        await Future.delayed(const Duration(milliseconds: 800));
+      }
+
+      // 2. Fallback cho môi trường Local/Dev nếu chưa nhận được Webhook
+      if (invoice == null) {
+        try {
+          payment = await ref.read(billingProvider.notifier).simulateSuccessPayment(widget.invoiceId);
+          await ref.read(billingProvider.notifier).fetchData();
+          final billingState = ref.read(billingProvider);
+          for (final inv in billingState.invoices) {
+            if (inv.id == widget.invoiceId) {
+              invoice = inv;
+              break;
+            }
+          }
+        } catch (e) {
+          debugPrint('[WebView] Fallback simulate payment exception: $e');
+        }
+      }
+
+      if (mounted && invoice != null) {
         // Điều hướng tới màn biên lai
         context.pushReplacement(
           '/invoices/receipt',
@@ -98,6 +136,8 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
             'payment': payment,
           },
         );
+      } else if (mounted) {
+        setState(() => _isProcessing = false);
       }
     } catch (_) {
       if (mounted) {
