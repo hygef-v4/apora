@@ -33,7 +33,7 @@ class GradientHeader extends ConsumerWidget {
     return Container(
       decoration: isAdminOrOwner
           ? const BoxDecoration(gradient: AppColors.headerGradient)
-          : const BoxDecoration(color: Color(0xFF149EE7)),
+          : const BoxDecoration(gradient: AppColors.residentGradient),
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 12,
         left: 20,

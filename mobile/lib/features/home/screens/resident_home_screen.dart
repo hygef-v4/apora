@@ -120,7 +120,7 @@ class _HomeTab extends ConsumerWidget {
           width: double.infinity,
           decoration: isAdminOrOwner
               ? const BoxDecoration(gradient: AppColors.headerGradient)
-              : const BoxDecoration(color: Color(0xFF149EE7)),
+              : const BoxDecoration(gradient: AppColors.residentGradient),
         ),
         // Scrollable content overlapping the header
         SafeArea(
@@ -151,9 +151,24 @@ class _HomeTab extends ConsumerWidget {
                     ),
                     GestureDetector(
                       onTap: () => context.push(AppRoutes.profile),
-                      child: InitialsAvatar(
-                        name: user?.fullName ?? 'N A',
-                        size: 46,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: InitialsAvatar(
+                            name: user?.fullName ?? '?',
+                            imageUrl: user?.avatarUrl,
+                            size: 40,
+                            square: true,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 4),

@@ -17,6 +17,13 @@ class AppColors {
     colors: [navy, primary],
   );
 
+  /// Gradient header cho cư dân: xanh dương sáng -> xanh dương trung bình.
+  static const LinearGradient residentGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF149EE7), Color(0xFF0D7BB4)],
+  );
+
   // Chữ
   static const Color textPrimary = Color(0xFF0F172A);
   static const Color textSecondary = Color(0xFF64748B);

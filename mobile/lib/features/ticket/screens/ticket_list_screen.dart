@@ -141,7 +141,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
           Container(
             decoration: isAdminOrOwner
                 ? const BoxDecoration(gradient: AppColors.headerGradient)
-                : const BoxDecoration(color: Color(0xFF149EE7)),
+                : const BoxDecoration(gradient: AppColors.residentGradient),
             width: double.infinity,
             child: SafeArea(
               bottom: false,

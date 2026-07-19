@@ -58,6 +58,7 @@ class DashboardTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider).user;
+    final firstName = user?.fullName.split(' ').last ?? 'Quản lý';
     
     // Watch real data providers
     final apartmentsAsync = ref.watch(apartmentDirectoryProvider);
@@ -167,7 +168,7 @@ class DashboardTab extends ConsumerWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      'Xin chào, ${user?.fullName ?? 'Quản lý'} 👋',
+                      'Chào $firstName 👋',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
