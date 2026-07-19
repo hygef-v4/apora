@@ -196,6 +196,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      AppCard(
+                        onTap: () => context.push(AppRoutes.myContract),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.description,
+                                size: 20, color: AppColors.primary),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Hợp đồng của tôi',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            Icon(Icons.chevron_right,
+                                color: AppColors.textTertiary),
+                          ],
+                        ),
+                      ),
                     ],
                     const SizedBox(height: 12),
                     AppCard(
