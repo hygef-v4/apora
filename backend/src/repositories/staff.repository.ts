@@ -148,17 +148,26 @@ export async function saveStaff(
   return result.rows[0];
 }
 
-/** UC39: cập nhật hồ sơ staff (tên, SĐT, role, avatar). */
+/**
+ * UC39: cập nhật hồ sơ staff (tên, SĐT, role, avatar).
+ * Chỉ THAY role staff trong mảng roles, giữ nguyên các role ngoài nhóm staff
+ * (user đa vai, vd vừa TECHNICIAN vừa RESIDENT) - không ghi đè mất role khác.
+ */
 export async function updateStaffDetails(
   id: number,
   fullName: string,
   phone: string,
   role: StaffRole,
   avatarUrl?: string,
+  client?: Queryable,
 ): Promise<User> {
-  const result = await query(
+  const result = await (client ?? { query }).query(
     `UPDATE users
-     SET full_name = $2, phone_number = $3, roles = ARRAY[$4]::text[],
+     SET full_name = $2, phone_number = $3,
+         roles = ARRAY[$4]::text[] || ARRAY(
+           SELECT r FROM unnest(roles) AS r
+           WHERE r != ALL(${STAFF_ROLES_SQL})
+         ),
          avatar_url = COALESCE($5, avatar_url)
      WHERE id = $1
      RETURNING *`,

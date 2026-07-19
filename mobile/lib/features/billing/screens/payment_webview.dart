@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -69,11 +70,19 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
 
   void _checkRedirect(String url) {
     debugPrint('[WebView] URL thay đổi: $url');
-    // Nhận diện chuyển hướng khi thanh toán thành công/hủy từ backend
-    if (url.contains('/api/payments/payos/success') || url.contains('/success')) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+
+    final path = uri.path;
+    final isSuccessPath = path.contains('/api/payments/payos/success');
+    final isCancelPath = path.contains('/api/payments/payos/cancel');
+    final isPayOsSuccess = uri.queryParameters['code'] == '00' && uri.queryParameters['cancel'] == 'false';
+    final isPayOsCancel = uri.queryParameters['cancel'] == 'true';
+
+    if (isSuccessPath || isPayOsSuccess) {
       _handleSuccessRedirect();
-    } else if (url.contains('/api/payments/payos/cancel') || url.contains('/cancel')) {
-      if (mounted) {
+    } else if (isCancelPath || isPayOsCancel) {
+      if (mounted && !_isProcessing) {
         context.pop();
       }
     }
@@ -84,12 +93,47 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
     setState(() => _isProcessing = true);
 
     try {
-      // Gọi API để cập nhật trạng thái PAID
-      final payment = await ref.read(billingProvider.notifier).simulateSuccessPayment(widget.invoiceId);
-      final billingState = ref.read(billingProvider);
-      final invoice = billingState.invoices.firstWhere((inv) => inv.id == widget.invoiceId);
+      dynamic invoice;
+      dynamic payment;
 
-      if (mounted) {
+      // 1. Poll trạng thái hóa đơn, chờ webhook PayOS server-to-server đánh dấu
+      // PAID (BR-32: webhook là nguồn chân lý duy nhất). Cửa sổ ~12s để đủ cho
+      // độ trễ mạng + thời gian PayOS gọi webhook thực tế (không chỉ 3s).
+      for (int attempt = 0; attempt < 10; attempt++) {
+        await ref.read(billingProvider.notifier).fetchData();
+        final billingState = ref.read(billingProvider);
+        for (final inv in billingState.invoices) {
+          if (inv.id == widget.invoiceId && inv.status == 'PAID') {
+            invoice = inv;
+            break;
+          }
+        }
+
+        if (invoice != null) break;
+        await Future.delayed(const Duration(milliseconds: 1200));
+      }
+
+      // 2. CHỈ môi trường DEV: chưa có PayOS/webhook thật -> giả lập thành công
+      // để test end-to-end. TUYỆT ĐỐI KHÔNG giả lập trên release build (backend
+      // cũng chặn 403 - BR-33), tránh hiển thị biên lai giả khi backend UNPAID.
+      if (invoice == null && kDebugMode) {
+        try {
+          payment = await ref.read(billingProvider.notifier).simulateSuccessPayment(widget.invoiceId);
+          final billingState = ref.read(billingProvider);
+          for (final inv in billingState.invoices) {
+            if (inv.id == widget.invoiceId && inv.status == 'PAID') {
+              invoice = inv;
+              break;
+            }
+          }
+        } catch (e) {
+          debugPrint('[WebView] Fallback simulate (dev) lỗi: $e');
+        }
+      }
+
+      if (!mounted) return;
+
+      if (invoice != null) {
         // Điều hướng tới màn biên lai
         context.pushReplacement(
           '/invoices/receipt',
@@ -98,6 +142,20 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
             'payment': payment,
           },
         );
+      } else {
+        // Webhook về chậm: KHÔNG bịa trạng thái PAID trên UI. Báo rõ và quay lại
+        // danh sách hóa đơn - hóa đơn sẽ tự cập nhật khi webhook tới.
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(
+            content: Text(
+              'Đã ghi nhận giao dịch. Hệ thống đang chờ ngân hàng xác nhận, '
+              'hóa đơn sẽ tự cập nhật trong giây lát. Vui lòng kiểm tra lại sau.',
+            ),
+            duration: Duration(seconds: 5),
+          ));
+        context.pop();
       }
     } catch (_) {
       if (mounted) {

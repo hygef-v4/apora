@@ -220,9 +220,11 @@ describe('resetStaffPasswordByManager (UC39 - flow riêng)', () => {
 });
 
 describe('UC39: modifyStaffAccount', () => {
-  it('đổi phone/role -> audit STAFF_UPDATE với old/new value (BR-04)', async () => {
+  it('đổi phone/role -> audit STAFF_UPDATE với old/new value, cùng transaction (BR-04)', async () => {
     vi.mocked(staffRepo.findStaffById).mockResolvedValue(makeStaff());
     vi.mocked(userRepo.findByPhone).mockResolvedValue(null);
+    // AT4: nhân viên còn 2 task mở tại thời điểm đổi role
+    vi.mocked(staffRepo.countActiveAssignedTasks).mockResolvedValue(2);
     vi.mocked(staffRepo.updateStaffDetails).mockResolvedValue(
       makeStaff({ phone_number: '0988888888', roles: ['JANITOR'] }),
     );
@@ -233,11 +235,22 @@ describe('UC39: modifyStaffAccount', () => {
       role: 'JANITOR',
     });
 
+    // Update + audit phải chạy trong CÙNG transaction (client truyền xuống repo)
+    expect(vi.mocked(staffRepo.updateStaffDetails).mock.calls[0][5]).toBe(
+      FAKE_CLIENT,
+    );
     const auditCall = vi.mocked(auditRepo.insertAuditLog).mock.calls[0];
     expect(auditCall[2]).toBe('STAFF_UPDATE');
     expect(auditCall[3]).toEqual({
       phone: '0900000004',
       roles: ['TECHNICIAN'],
     });
+    // AT4 (UC39): số task mở tại thời điểm đổi role được ghi vào audit
+    expect(auditCall[4]).toEqual({
+      phone: '0988888888',
+      roles: ['JANITOR'],
+      openTasksAtRoleChange: 2,
+    });
+    expect(auditCall[6]).toBe(FAKE_CLIENT);
   });
 });

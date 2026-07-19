@@ -9,6 +9,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/utils/image_util.dart';
+import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
@@ -174,6 +175,13 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
     );
 
     if (confirmed != true) return;
+    // BR-09: validate độ phức tạp ngay trên client trước khi gọi API
+    final complexityError =
+        Validators.passwordComplexity(passwordController.text);
+    if (complexityError != null) {
+      _showMessage(complexityError);
+      return;
+    }
     try {
       await ref
           .read(staffDetailProvider.notifier)
@@ -285,10 +293,8 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
                             prefixIcon: Icon(Icons.phone, size: 20),
                             counterText: '',
                           ),
-                          validator: (value) =>
-                              (value == null || value.trim().isEmpty)
-                                  ? AppStrings.msgPhoneRequired
-                                  : null,
+                          // BR-02: validate định dạng ngay trên client
+                          validator: Validators.vnPhone,
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(

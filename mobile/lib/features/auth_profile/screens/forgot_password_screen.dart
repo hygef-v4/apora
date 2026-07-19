@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -31,13 +33,33 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   bool _otpSent = false;
   bool _isSubmitting = false;
 
+  /// Đếm ngược trước khi được "Gửi lại OTP" - giảm bấm liên tục dính
+  /// rate-limit `too-many-requests` của Firebase (khớp timeout 60s của SMS).
+  static const int _resendCooldownSeconds = 60;
+  int _resendCountdown = 0;
+  Timer? _resendTimer;
+
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _phoneController.dispose();
     _otpController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  void _startResendCountdown() {
+    _resendTimer?.cancel();
+    setState(() => _resendCountdown = _resendCooldownSeconds);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _resendCountdown -= 1);
+      if (_resendCountdown <= 0) timer.cancel();
+    });
   }
 
   void _showMessage(String message) {
@@ -62,6 +84,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     try {
       await ref.read(authNotifierProvider.notifier).requestOtp(phone);
       setState(() => _otpSent = true);
+      _startResendCountdown();
       _showMessage(AppStrings.msgOtpSent);
     } catch (e) {
       _showMessage(_errorText(e));
@@ -175,8 +198,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                           child: const Text('Đổi mật khẩu'),
                         ),
                         TextButton(
-                          onPressed: _isSubmitting ? null : _sendOtp,
-                          child: const Text('Gửi lại OTP'),
+                          onPressed: (_isSubmitting || _resendCountdown > 0)
+                              ? null
+                              : _sendOtp,
+                          child: Text(_resendCountdown > 0
+                              ? 'Gửi lại OTP (${_resendCountdown}s)'
+                              : 'Gửi lại OTP'),
                         ),
                         // Gõ nhầm SĐT -> quay lại bước 1 sửa, không phải thoát màn
                         TextButton(

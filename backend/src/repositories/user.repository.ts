@@ -10,7 +10,7 @@
  * @see docs/PRM393_SoftwareDesign_Group5.docx - Module 1 (UserRepository)
  */
 
-import { query } from '@/lib/db';
+import { Queryable, query } from '@/lib/db';
 import { User } from '@/types';
 
 // ==========================================
@@ -56,6 +56,17 @@ export async function updatePasswordById(id: number, hash: string): Promise<numb
   return result.rows[0].token_version;
 }
 
+/**
+ * UC02 BR-01: tăng token_version để vô hiệu hóa mọi JWT đang hoạt động của user
+ * (logout server-side / vô hiệu hóa tài khoản). Dùng chung cho Module 1 và 9.
+ */
+export async function bumpTokenVersion(id: number, client?: Queryable): Promise<void> {
+  await (client ?? { query }).query(
+    'UPDATE users SET token_version = token_version + 1 WHERE id = $1',
+    [id],
+  );
+}
+
 export async function updateProfileDetails(
   id: number,
   fullName: string,
@@ -90,10 +101,30 @@ export async function saveDeviceToken(userId: number, token: string): Promise<vo
   );
 }
 
-/** Revoke FCM token khi logout (BR-44 - tránh gửi noti cho người dùng sau). */
+/**
+ * Revoke FCM token khi logout (BR-44 - tránh gửi noti cho người dùng sau).
+ * Set cả status = 'REVOKED' cho nhất quán với luồng checkout/deactivate
+ * (mọi query đọc token đều lọc revoked_at IS NULL AND status = 'ACTIVE').
+ */
 export async function revokeDeviceToken(userId: number, token: string): Promise<void> {
   await query(
-    'UPDATE device_tokens SET revoked_at = NOW() WHERE user_id = $1 AND token = $2',
+    `UPDATE device_tokens SET revoked_at = NOW(), status = 'REVOKED'
+     WHERE user_id = $1 AND token = $2`,
     [userId, token],
+  );
+}
+
+/**
+ * Revoke TOÀN BỘ FCM token của user - dùng khi logout không rõ token thiết bị
+ * hoặc khi vô hiệu hóa tài khoản (Module 9 UC45, cùng hành vi với Module 8).
+ */
+export async function revokeAllDeviceTokens(
+  userId: number,
+  client?: Queryable,
+): Promise<void> {
+  await (client ?? { query }).query(
+    `UPDATE device_tokens SET revoked_at = NOW(), status = 'REVOKED'
+     WHERE user_id = $1 AND revoked_at IS NULL`,
+    [userId],
   );
 }

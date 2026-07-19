@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../models/staff_member.dart';
@@ -140,10 +141,8 @@ class _StaffFormScreenState extends ConsumerState<StaffFormScreen> {
                             prefixIcon: Icon(Icons.phone, size: 20),
                             counterText: '',
                           ),
-                          validator: (value) =>
-                              (value == null || value.trim().isEmpty)
-                                  ? AppStrings.msgPhoneRequired
-                                  : null,
+                          // BR-02: validate định dạng ngay trên client
+                          validator: Validators.vnPhone,
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
@@ -174,10 +173,9 @@ class _StaffFormScreenState extends ConsumerState<StaffFormScreen> {
                             helperMaxLines: 2,
                             prefixIcon: Icon(Icons.lock, size: 20),
                           ),
-                          validator: (value) =>
-                              (value == null || value.isEmpty)
-                                  ? AppStrings.msgFieldRequired
-                                  : null,
+                          // BR-09: validate độ phức tạp ngay trên client,
+                          // nhất quán với màn Quên/Đổi mật khẩu
+                          validator: Validators.passwordComplexity,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(

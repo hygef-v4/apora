@@ -121,9 +121,18 @@ class BillingNotifier extends Notifier<BillingState> {
       return payment;
     } catch (e) {
       state = state.copyWith(isLoading: false);
-      debugPrint('[Billing] Lỗi gọi API Sandbox, chạy xử lý mock offline: $e');
+      debugPrint('[Billing] Lỗi gọi API Sandbox: $e');
 
-      // Fallback: Xử lý trạng thái offline cục bộ
+      // BR-32: chỉ webhook PayOS server-to-server mới được đánh dấu hóa đơn PAID.
+      // CHỈ ở môi trường DEV mới giả lập trạng thái PAID cục bộ (demo offline khi
+      // chưa cấu hình PayOS/webhook thật). Trên release build TUYỆT ĐỐI KHÔNG bịa
+      // trạng thái đã thanh toán trên UI - ném lỗi để lớp gọi xử lý (tránh hiển
+      // thị biên lai giả trong khi backend vẫn UNPAID).
+      if (!kDebugMode) {
+        rethrow;
+      }
+
+      // Fallback: Xử lý trạng thái offline cục bộ (chỉ DEV)
       final invoiceIndex = state.invoices.indexWhere((inv) => inv.id == invoiceId);
       if (invoiceIndex == -1) {
         throw Exception('Hóa đơn không tồn tại');

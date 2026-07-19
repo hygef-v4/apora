@@ -9,7 +9,7 @@
  * @see schema.sql - tables: users, audit_logs
  */
 
-import { query } from '@/lib/db';
+import { Queryable, query } from '@/lib/db';
 import { User, UserStatus } from '@/types';
 
 /** SQL condition to identify Manager accounts in the users table. */
@@ -169,14 +169,19 @@ export async function updateManager(
 
 /**
  * Updates the status of an existing Manager account (UC45).
+ * Bump token_version ở MỌI lần đổi trạng thái: deactivate đá mọi phiên đang
+ * đăng nhập ngay lập tức (đồng bộ hành vi với Module 8 - UC40 bước 4);
+ * reactivate cũng bump để chắc chắn token cấp trước khi vô hiệu hóa không
+ * sống lại được.
  */
 export async function updateManagerStatus(
   id: number,
   status: UserStatus,
+  client?: Queryable,
 ): Promise<User> {
-  const result = await query(
+  const result = await (client ?? { query }).query(
     `UPDATE users
-     SET status = $2
+     SET status = $2, token_version = token_version + 1
      WHERE id = $1 AND ${MANAGER_ROLE_SQL} = ANY(roles)
      RETURNING *`,
     [id, status],

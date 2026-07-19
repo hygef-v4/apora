@@ -125,6 +125,24 @@ describe('UC01: authenticateUser', () => {
   });
 });
 
+describe('UC02: invalidateSession', () => {
+  it('logout bump token_version (BR-01 UC02) + revoke FCM token của thiết bị (BR-44)', async () => {
+    await userService.invalidateSession(1, 'fcm-token-device-1');
+
+    expect(userRepo.bumpTokenVersion).toHaveBeenCalledWith(1);
+    expect(userRepo.revokeDeviceToken).toHaveBeenCalledWith(1, 'fcm-token-device-1');
+    expect(userRepo.revokeAllDeviceTokens).not.toHaveBeenCalled();
+  });
+
+  it('không có fcmToken -> vẫn bump token_version và revoke TOÀN BỘ token', async () => {
+    await userService.invalidateSession(1);
+
+    expect(userRepo.bumpTokenVersion).toHaveBeenCalledWith(1);
+    expect(userRepo.revokeAllDeviceTokens).toHaveBeenCalledWith(1);
+    expect(userRepo.revokeDeviceToken).not.toHaveBeenCalled();
+  });
+});
+
 describe('UC03: ensureAccountForPasswordReset / resetPasswordWithFirebase', () => {
   const ID_TOKEN = 'firebase-id-token';
 

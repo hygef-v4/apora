@@ -191,6 +191,8 @@ export async function modifyStaffAccount(
   }
   assertStaffRole(data.role);
   assertFullNameLength(data.fullName.trim());
+  // Giữ narrowing StaffRole khi dùng trong closure transaction bên dưới
+  const role = data.role;
 
   const phoneError = validatePhoneNumber(data.phone.trim()); // BR-02
   if (phoneError) throw new HttpError(400, phoneError);
@@ -217,26 +219,46 @@ export async function modifyStaffAccount(
     }
   }
 
-  const updated = await staffRepo.updateStaffDetails(
-    staffId,
-    data.fullName.trim(),
-    data.phone.trim(),
-    data.role,
-    avatarUrl,
-  );
-
-  // BR-04 (UC39): audit khi đổi field quan trọng (phone / role)
-  const phoneChanged = current.phone_number !== updated.phone_number;
-  const roleChanged = current.roles.join(',') !== updated.roles.join(',');
-  if (phoneChanged || roleChanged) {
-    await auditRepo.insertAuditLog(
-      actorId,
+  // Update + audit trong 1 transaction (đồng bộ với UC38/UC40): BR-04 yêu cầu
+  // đổi phone/role phải có vết audit - ghi vết lỗi thì không được lưu thay đổi.
+  const updated = await withTransaction(async (client) => {
+    const user = await staffRepo.updateStaffDetails(
       staffId,
-      'STAFF_UPDATE',
-      { phone: current.phone_number, roles: current.roles },
-      { phone: updated.phone_number, roles: updated.roles },
+      data.fullName.trim(),
+      data.phone.trim(),
+      role,
+      avatarUrl,
+      client,
     );
-  }
+
+    // BR-04 (UC39): audit khi đổi field quan trọng (phone / role)
+    const phoneChanged = current.phone_number !== user.phone_number;
+    const roleChanged = current.roles.join(',') !== user.roles.join(',');
+    if (phoneChanged || roleChanged) {
+      // AT4 (UC39): đổi role khi còn task mở - client đã cảnh báo xác nhận;
+      // server ghi nhận số task mở tại thời điểm đổi vào audit để truy vết
+      // các task cần phân công lại.
+      const openTasksAtChange = roleChanged
+        ? await staffRepo.countActiveAssignedTasks(staffId, client)
+        : undefined;
+      await auditRepo.insertAuditLog(
+        actorId,
+        staffId,
+        'STAFF_UPDATE',
+        { phone: current.phone_number, roles: current.roles },
+        {
+          phone: user.phone_number,
+          roles: user.roles,
+          ...(openTasksAtChange !== undefined
+            ? { openTasksAtRoleChange: openTasksAtChange }
+            : {}),
+        },
+        undefined,
+        client,
+      );
+    }
+    return user;
+  });
 
   return {
     id: updated.id,
