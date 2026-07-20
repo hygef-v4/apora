@@ -35,9 +35,9 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
   String _formatCompactRent(num rent) {
     if (rent >= 1000000) {
       final val = rent / 1000000.0;
-      return '${val.toStringAsFixed(1).replaceAll('.', ',')}M/th';
+      return '${val.toStringAsFixed(1).replaceAll('.', ',')}M/mo';
     }
-    return '${(rent / 1000.0).toStringAsFixed(0)}k/th';
+    return '${(rent / 1000.0).toStringAsFixed(0)}k/mo';
   }
 
   @override
@@ -49,8 +49,8 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
       body: Column(
         children: [
           const GradientHeader(
-            title: 'Hợp đồng',
-            subtitle: 'Toàn bộ hợp đồng thuê của cư dân',
+            title: 'Contracts',
+            subtitle: 'All lease contracts of residents',
             showBack: true,
           ),
           Expanded(
@@ -72,7 +72,7 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
                       OutlinedButton(
                         onPressed: () =>
                             ref.read(allContractsProvider.notifier).fetch(),
-                        child: const Text('Thử lại'),
+                        child: const Text('Retry'),
                       ),
                     ],
                   ),
@@ -105,7 +105,7 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
             child: Row(
               children: [
                 _buildTabItem(
-                  label: 'Tất cả ($allCount)',
+                  label: 'All ($allCount)',
                   selected: _filter == null,
                   onTap: () => setState(() => _filter = null),
                   selectedBgColor: const Color(0xFF1E293B),
@@ -115,7 +115,7 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
                 ),
                 const SizedBox(width: 8),
                 _buildTabItem(
-                  label: 'Hiệu lực ($activeCount)',
+                  label: 'Active ($activeCount)',
                   selected: _filter == 'ACTIVE',
                   onTap: () => setState(() => _filter = 'ACTIVE'),
                   selectedBgColor: const Color(0xFFF0FDF4),
@@ -125,7 +125,7 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
                 ),
                 const SizedBox(width: 8),
                 _buildTabItem(
-                  label: 'Sắp HH ($expiringCount)',
+                  label: 'Expiring ($expiringCount)',
                   selected: _filter == 'EXPIRING',
                   onTap: () => setState(() => _filter = 'EXPIRING'),
                   selectedBgColor: const Color(0xFFFFFBEB),
@@ -135,7 +135,7 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
                 ),
                 const SizedBox(width: 8),
                 _buildTabItem(
-                  label: 'Hết hạn ($expiredCount)',
+                  label: 'Expired ($expiredCount)',
                   selected: _filter == 'EXPIRED',
                   onTap: () => setState(() => _filter = 'EXPIRED'),
                   selectedBgColor: const Color(0xFFFEF2F2),
@@ -152,8 +152,8 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
               ? Center(
                   child: Text(
                     _filter == null
-                        ? 'Chưa có hợp đồng nào.'
-                        : 'Không có hợp đồng ở nhóm này.',
+                        ? 'No contracts yet.'
+                        : 'No contracts in this group.',
                     style: const TextStyle(
                         fontSize: 13, color: AppColors.textSecondary),
                   ),
@@ -212,12 +212,12 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
 
     late final StatusBadge statusBadge;
     if (bucket == 'ACTIVE') {
-      statusBadge = StatusBadge.success('Hiệu lực');
+      statusBadge = StatusBadge.success('Active');
     } else if (bucket == 'EXPIRING') {
-      statusBadge = StatusBadge.warning('Còn ${c.remainingDays} ngày');
+      statusBadge = StatusBadge.warning('${c.remainingDays} days left');
     } else {
       statusBadge = const StatusBadge(
-        text: 'Hết hạn',
+        text: 'Expired',
         color: AppColors.error,
         backgroundColor: AppColors.errorBg,
       );
@@ -244,7 +244,7 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Căn hộ ${c.unitNumber}',
+                    'Room ${c.unitNumber}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -256,7 +256,7 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
               ),
               const SizedBox(height: 2),
               Text(
-                '${c.residentName} · Tầng ${c.floor}',
+                '${c.residentName} · Floor ${c.floor}',
                 style: const TextStyle(
                     fontSize: 12, color: AppColors.textSecondary),
               ),
@@ -264,10 +264,10 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
               // 3 cột: Bắt đầu / Kết thúc / Tiền thuê (dữ liệu thật)
               Row(
                 children: [
-                  _infoBox('Bắt đầu', _formatDate(c.startDate)),
+                  _infoBox('Start', _formatDate(c.startDate)),
                   const SizedBox(width: 8),
                   _infoBox(
-                    'Kết thúc',
+                    'End',
                     _formatDate(c.endDate),
                     valueColor: bucket == 'EXPIRING'
                         ? const Color(0xFFD97706)
@@ -277,7 +277,7 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
                   ),
                   const SizedBox(width: 8),
                   _infoBox(
-                    'Tiền thuê',
+                    'Rent',
                     _formatCompactRent(c.baseRent),
                     bg: const Color(0xFFEFF6FF),
                     labelColor: const Color(0xFF2563EB),
@@ -310,7 +310,7 @@ class _ContractListScreenState extends ConsumerState<ContractListScreen> {
                     ),
                     icon: const Icon(Icons.more_time, size: 18),
                     label: const Text(
-                      'Duyệt yêu cầu gia hạn',
+                      'Review Extension Request',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                   ),
