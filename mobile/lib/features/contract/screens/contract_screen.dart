@@ -4,16 +4,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/contract.dart';
+import '../widgets/spec_layout.dart';
 import '../providers/contract_provider.dart';
 
-/// UC06 - Màn xem hợp đồng / thời hạn lưu trú (theo màn FID-09).
-/// Mọi role xem được hợp đồng của CHÍNH MÌNH (BR-23); nút gia hạn
-/// chỉ hiện cho RESIDENT với hợp đồng ACTIVE (BR-09/BR-12).
+/// UC06 - Contract Details (bố cục theo wireframe FID-09 trong SRS).
+/// Mọi role xem hợp đồng của CHÍNH MÌNH (BR-23); nút gia hạn chỉ hiện
+/// cho RESIDENT với hợp đồng ACTIVE (BR-09/BR-12).
 class ContractScreen extends ConsumerStatefulWidget {
   const ContractScreen({super.key});
 
@@ -42,6 +42,17 @@ class _ContractScreenState extends ConsumerState<ContractScreen> {
     return '$buffer đ';
   }
 
+  /// Wireframe hiển thị tầng dạng "4th Floor"; dữ liệu số thì thêm hậu tố
+  /// thứ tự, dữ liệu chữ thì giữ nguyên.
+  String _formatFloor(String floor) {
+    final n = int.tryParse(floor.trim());
+    if (n == null) return floor;
+    final suffix = (n % 100 >= 11 && n % 100 <= 13)
+        ? 'th'
+        : switch (n % 10) { 1 => 'st', 2 => 'nd', 3 => 'rd', _ => 'th' };
+    return '$n$suffix Floor';
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(myContractProvider);
@@ -49,14 +60,10 @@ class _ContractScreenState extends ConsumerState<ContractScreen> {
     final isResident = roles.contains('RESIDENT');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
-          const GradientHeader(
-            title: 'Hợp Đồng Của Tôi',
-            subtitle: 'Thời hạn thuê & gia hạn lưu trú',
-            showBack: true,
-          ),
+          const GradientHeader(title: 'Apartment Manager', showBack: true),
           Expanded(
             child: state.when(
               loading: () => const Center(
@@ -90,7 +97,7 @@ class _ContractScreenState extends ConsumerState<ContractScreen> {
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'Tài khoản của bạn chưa gắn với căn hộ nào.',
+            'Your account is not linked to any apartment yet.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
@@ -102,153 +109,78 @@ class _ContractScreenState extends ConsumerState<ContractScreen> {
       onRefresh: () => ref.read(myContractProvider.notifier).fetch(),
       color: AppColors.primary,
       child: ListView(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
         children: [
-          // 1. Thông tin căn hộ (FID-09 field 1-3)
-          if (apartment != null)
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SectionTitle('Thông tin căn hộ'),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.infoBg,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.apartment,
-                            color: AppColors.primary),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Phòng ${apartment.unitNumber}',
-                              style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary),
-                            ),
-                            Text(
-                              'Tầng ${apartment.floor}',
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _apartmentBadge(apartment.status),
-                    ],
-                  ),
-                ],
+          // Tiêu đề trang căn giữa (theo wireframe)
+          const Center(
+            child: Text(
+              'Contract Details',
+              style: TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
               ),
-            ),
-          const SizedBox(height: 10),
-
-          // 2. Chi tiết hợp đồng (FID-09 field 4-7); AT2: chưa có hợp đồng
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(child: _SectionTitle('Chi tiết hợp đồng')),
-                    if (contract != null)
-                      contract.status == 'ACTIVE'
-                          ? (contract.remainingDays != null && contract.remainingDays! <= 30
-                              ? StatusBadge.warning('Sắp hết hạn')
-                              : StatusBadge.success(kContractStatusLabels[contract.status]!))
-                          : StatusBadge.muted(
-                              kContractStatusLabels[contract.status] ??
-                                  contract.status),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                if (contract == null)
-                  const Text(
-                    'Căn hộ này chưa có hợp đồng thuê. Vui lòng liên hệ Ban quản lý.',
-                    style: TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
-                  )
-                else ...[
-                  _InfoRow(
-                    icon: Icons.play_circle_outline,
-                    label: 'Ngày bắt đầu',
-                    value: _formatDate(contract.startDate),
-                  ),
-                  _InfoRow(
-                    icon: Icons.flag_outlined,
-                    label: 'Ngày kết thúc',
-                    value: _formatDate(contract.endDate),
-                  ),
-                  _InfoRow(
-                    icon: Icons.payments_outlined,
-                    label: 'Giá thuê',
-                    value: '${_formatMoney(contract.baseRent)}/tháng',
-                  ),
-                ],
-              ],
             ),
           ),
+          const SizedBox(height: 22),
 
-          // 3. Thời hạn còn lại - chỉ khi ACTIVE (BR-12, AT1 ẩn khi EXPIRED)
-          if (contract != null && contract.isActive) ...[
-            const SizedBox(height: 10),
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SectionTitle('Thời hạn còn lại'),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: contract.elapsedRatio,
-                      minHeight: 10,
-                      backgroundColor: AppColors.divider,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _formatDate(contract.startDate),
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textTertiary),
-                      ),
-                      Text(
-                        // BR-13: giá trị backend tính động lúc load
-                        'Còn ${contract.remainingDays} ngày',
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary),
-                      ),
-                      Text(
-                        _formatDate(contract.endDate),
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textTertiary),
-                      ),
-                    ],
-                  ),
-                ],
+          // APARTMENT INFO (FID-09 field 1-3)
+          if (apartment != null) ...[
+            const SpecSectionHeader('Apartment Info'),
+            SpecDetailRow(label: 'Unit Number', value: 'Room ${apartment.unitNumber}'),
+            SpecDetailRow(label: 'Floor', value: _formatFloor(apartment.floor)),
+            SpecDetailRow.widget(
+              label: 'Status',
+              child: _apartmentBadge(apartment.status),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // CONTRACT DETAILS (FID-09 field 4-7); AT2: chưa có hợp đồng
+          const SpecSectionHeader('Contract Details'),
+          if (contract == null)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                'This apartment has no lease contract yet. Please contact the management board.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
+            )
+          else ...[
+            SpecDetailRow.widget(
+              label: 'Contract Status',
+              child: contract.status == 'ACTIVE'
+                  ? (contract.remainingDays != null &&
+                          contract.remainingDays! <= 30
+                      ? StatusBadge.warning('Expiring Soon')
+                      : StatusBadge.success('Active'))
+                  : StatusBadge.muted(
+                      contract.status == 'EXPIRED' ? 'Expired' : 'Terminated',
+                    ),
+            ),
+            SpecDetailRow(label: 'Start Date', value: _formatDate(contract.startDate)),
+            SpecDetailRow(label: 'End Date', value: _formatDate(contract.endDate)),
+            SpecDetailRow(
+              label: 'Base Rent',
+              value: '${_formatMoney(contract.baseRent)} /month',
             ),
           ],
 
-          // Đang có yêu cầu gia hạn chờ duyệt -> báo & khóa nút gửi thêm
+          // REMAINING DURATION - chỉ khi ACTIVE (BR-12, AT1 ẩn khi EXPIRED)
+          if (contract != null && contract.isActive) ...[
+            const SizedBox(height: 22),
+            _RemainingDurationBox(
+              elapsedRatio: contract.elapsedRatio,
+              startLabel: _formatDate(contract.startDate),
+              endLabel: _formatDate(contract.endDate),
+              // BR-13: giá trị backend tính động lúc load
+              remainingDays: contract.remainingDays ?? 0,
+            ),
+          ],
+
+          // Đang có yêu cầu chờ duyệt -> báo & khóa nút gửi thêm
           if (contract != null && contract.pendingExtensionId != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -261,7 +193,7 @@ class _ContractScreenState extends ConsumerState<ContractScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Bạn có một yêu cầu gia hạn đang chờ Ban quản lý duyệt.',
+                      'You have an extension request awaiting approval.',
                       style: TextStyle(fontSize: 12, color: AppColors.warning),
                     ),
                   ),
@@ -270,26 +202,25 @@ class _ContractScreenState extends ConsumerState<ContractScreen> {
             ),
           ],
 
-          // 4. Nút yêu cầu gia hạn - chỉ RESIDENT + hợp đồng ACTIVE
-          //    (BR-09/BR-12; AT1 ẩn khi EXPIRED, AT2 ẩn khi chưa có hợp đồng)
+          // Nút gia hạn - chỉ RESIDENT + hợp đồng ACTIVE (BR-09/BR-12;
+          // AT1 ẩn khi EXPIRED, AT2 ẩn khi chưa có hợp đồng)
           if (isResident &&
               contract != null &&
               contract.isActive &&
               contract.pendingExtensionId == null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 26),
             SizedBox(
               width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
+              height: 50,
+              child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                icon: const Icon(Icons.more_time),
-                label: const Text('YÊU CẦU GIA HẠN',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
                 onPressed: () async {
                   // AT3: sang màn UC07 kèm hợp đồng hiện tại
                   final submitted = await context.push<bool>(
@@ -300,10 +231,16 @@ class _ContractScreenState extends ConsumerState<ContractScreen> {
                     ref.read(myContractProvider.notifier).fetch();
                   }
                 },
+                child: const Text(
+                  'REQUEST STAY EXTENSION',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: .5,
+                  ),
+                ),
               ),
             ),
           ],
-          const SizedBox(height: 24),
         ],
       ),
     );
@@ -312,56 +249,92 @@ class _ContractScreenState extends ConsumerState<ContractScreen> {
   Widget _apartmentBadge(String status) {
     switch (status) {
       case 'OCCUPIED':
-        return StatusBadge.success('Đang ở');
+        return StatusBadge.success('Occupied');
       case 'EMPTY':
-        return StatusBadge.muted('Trống');
+        return StatusBadge.muted('Empty');
       default:
-        return StatusBadge.muted('Ngừng dùng');
+        return StatusBadge.muted('Inactive');
     }
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+/// Khối "REMAINING DURATION" có viền: thanh tiến độ, mốc ngày và số ngày
+/// còn lại in đậm ở giữa (theo wireframe).
+class _RemainingDurationBox extends StatelessWidget {
+  const _RemainingDurationBox({
+    required this.elapsedRatio,
+    required this.startLabel,
+    required this.endLabel,
+    required this.remainingDays,
+  });
 
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-          fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.label, required this.value});
-
-  final IconData icon;
-  final String label;
-  final String value;
+  final double elapsedRatio;
+  final String startLabel;
+  final String endLabel;
+  final int remainingDays;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: AppColors.textTertiary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(label,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary)),
+          const Text(
+            'REMAINING DURATION',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+              color: AppColors.textSecondary,
+            ),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: elapsedRatio,
+              minHeight: 16,
+              backgroundColor: AppColors.divider,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                startLabel,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+              Text(
+                endLabel,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Center(
+            child: Text(
+              '$remainingDays DAYS REMAINING',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: .5,
+                color: AppColors.textPrimary,
+              ),
+            ),
           ),
         ],
       ),
@@ -383,12 +356,16 @@ class _ErrorRetry extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.textSecondary)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
             const SizedBox(height: 12),
-            OutlinedButton(onPressed: onRetry, child: const Text('Thử lại')),
+            OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         ),
       ),

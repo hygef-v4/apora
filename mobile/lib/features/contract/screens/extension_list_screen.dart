@@ -9,18 +9,19 @@ import '../../../core/widgets/status_badge.dart';
 import '../models/contract.dart';
 import '../providers/contract_provider.dart';
 
-/// UC08 - Màn danh sách yêu cầu gia hạn / hợp đồng (theo màn FID-11).
-/// Chỉ MANAGER/LANDLORD (BR-16). Tab lọc theo trạng thái, tab "Chờ duyệt"
-/// hiển thị số lượng; card bấm vào mở màn duyệt (UC09).
+/// UC08 - Extension Requests (bố cục theo wireframe FID-11 trong SRS).
+/// Chỉ MANAGER/LANDLORD (BR-16). Tab lọc theo TRẠNG THÁI ĐƠN
+/// (All / Pending / Approved / Rejected); bấm card mở màn duyệt (UC09).
 class ExtensionListScreen extends ConsumerStatefulWidget {
   const ExtensionListScreen({super.key});
 
   @override
-  ConsumerState<ExtensionListScreen> createState() => _ExtensionListScreenState();
+  ConsumerState<ExtensionListScreen> createState() =>
+      _ExtensionListScreenState();
 }
 
 class _ExtensionListScreenState extends ConsumerState<ExtensionListScreen> {
-  /// null = Tất cả; ngược lại 1 trong ACTIVE/EXPIRING/EXPIRED.
+  /// null = All; ngược lại PENDING / APPROVED / REJECTED.
   String? _filter;
 
   @override
@@ -32,29 +33,13 @@ class _ExtensionListScreenState extends ConsumerState<ExtensionListScreen> {
   String _formatDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
-  String _formatCompactCurrency(double rent) {
-    if (rent >= 1000000) {
-      final val = rent / 1000000.0;
-      return '${val.toStringAsFixed(1).replaceAll('.', ',')}M/th';
-    }
-    return '${(rent / 1000.0).toStringAsFixed(0)}k/th';
-  }
-
-  int _getRemainingDays(StayExtension ext) {
-    final rawRemaining = ext.currentEndDate.difference(DateTime.now()).inDays;
-    return rawRemaining >= 0 ? rawRemaining : 0;
-  }
-
-  /// Phân loại hợp đồng thực tế theo DB status (ACTIVE / EXPIRED) kết hợp số ngày còn lại.
-  String _getVirtualStatus(StayExtension ext) {
-    final remainingDays = _getRemainingDays(ext);
-    if (remainingDays <= 0) {
-      return 'EXPIRED'; // Hết hạn
-    }
-    if (remainingDays <= 30) {
-      return 'EXPIRING'; // Sắp HH (ACTIVE nhưng còn <= 30 ngày)
-    }
-    return 'ACTIVE'; // Hiệu lực (ACTIVE và còn > 30 ngày)
+  String _formatFloor(String floor) {
+    final n = int.tryParse(floor.trim());
+    if (n == null) return floor;
+    final suffix = (n % 100 >= 11 && n % 100 <= 13)
+        ? 'th'
+        : switch (n % 10) { 1 => 'st', 2 => 'nd', 3 => 'rd', _ => 'th' };
+    return '$n$suffix Floor';
   }
 
   @override
@@ -62,12 +47,19 @@ class _ExtensionListScreenState extends ConsumerState<ExtensionListScreen> {
     final state = ref.watch(extensionListProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
-          const GradientHeader(
-            title: 'Hợp đồng',
+          GradientHeader(
+            title: 'Extension Requests',
             showBack: true,
+            actions: [
+              HeaderIconButton(
+                icon: Icons.filter_list,
+                tooltip: 'Filter',
+                onTap: () => ref.read(extensionListProvider.notifier).fetch(),
+              ),
+            ],
           ),
           Expanded(
             child: state.when(
@@ -80,15 +72,19 @@ class _ExtensionListScreenState extends ConsumerState<ExtensionListScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(e.toString(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              fontSize: 13, color: AppColors.textSecondary)),
+                      Text(
+                        e.toString(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       OutlinedButton(
                         onPressed: () =>
                             ref.read(extensionListProvider.notifier).fetch(),
-                        child: const Text('Thử lại'),
+                        child: const Text('Retry'),
                       ),
                     ],
                   ),
@@ -103,76 +99,52 @@ class _ExtensionListScreenState extends ConsumerState<ExtensionListScreen> {
   }
 
   Widget _buildList(List<StayExtension> all) {
-    final allCount = all.length;
-    final approvedCount = all.where((e) => _getVirtualStatus(e) == 'ACTIVE').length;
-    final pendingCount = all.where((e) => _getVirtualStatus(e) == 'EXPIRING').length;
-    final rejectedCount = all.where((e) => _getVirtualStatus(e) == 'EXPIRED').length;
-
-    final filtered = _filter == null
-        ? all
-        : all.where((e) => _getVirtualStatus(e) == _filter).toList();
+    final pendingCount = all.where((e) => e.status == 'PENDING').length;
+    final filtered =
+        _filter == null ? all : all.where((e) => e.status == _filter).toList();
 
     return Column(
       children: [
-        // Tab lọc pills
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildTabItem(
-                  label: 'Tất cả ($allCount)',
-                  selected: _filter == null,
-                  onTap: () => setState(() => _filter = null),
-                  selectedBgColor: const Color(0xFF1E293B),
-                  selectedTextColor: Colors.white,
-                  unselectedTextColor: const Color(0xFF64748B),
-                  borderColor: const Color(0xFFCBD5E1),
-                ),
-                const SizedBox(width: 8),
-                _buildTabItem(
-                  label: 'Hiệu lực ($approvedCount)',
-                  selected: _filter == 'ACTIVE',
-                  onTap: () => setState(() => _filter = 'ACTIVE'),
-                  selectedBgColor: const Color(0xFFF0FDF4),
-                  selectedTextColor: const Color(0xFF16A34A),
-                  unselectedTextColor: const Color(0xFF16A34A),
-                  borderColor: const Color(0xFFBBF7D0),
-                ),
-                const SizedBox(width: 8),
-                _buildTabItem(
-                  label: 'Sắp HH ($pendingCount)',
-                  selected: _filter == 'EXPIRING',
-                  onTap: () => setState(() => _filter = 'EXPIRING'),
-                  selectedBgColor: const Color(0xFFFFFBEB),
-                  selectedTextColor: const Color(0xFFD97706),
-                  unselectedTextColor: const Color(0xFFD97706),
-                  borderColor: const Color(0xFFFEF3C7),
-                ),
-                const SizedBox(width: 8),
-                _buildTabItem(
-                  label: 'Hết hạn ($rejectedCount)',
-                  selected: _filter == 'EXPIRED',
-                  onTap: () => setState(() => _filter = 'EXPIRED'),
-                  selectedBgColor: const Color(0xFFFEF2F2),
-                  selectedTextColor: const Color(0xFFDC2626),
-                  unselectedTextColor: const Color(0xFFDC2626),
-                  borderColor: const Color(0xFFFEE2E2),
-                ),
-              ],
-            ),
+        // Thanh tab theo trạng thái đơn (wireframe: All / Pending (n) /
+        // Approved / Rejected)
+        Container(
+          color: AppColors.surface,
+          child: Row(
+            children: [
+              _TabItem(
+                label: 'All',
+                selected: _filter == null,
+                onTap: () => setState(() => _filter = null),
+              ),
+              _TabItem(
+                label: 'Pending',
+                badgeCount: pendingCount,
+                selected: _filter == 'PENDING',
+                onTap: () => setState(() => _filter = 'PENDING'),
+              ),
+              _TabItem(
+                label: 'Approved',
+                selected: _filter == 'APPROVED',
+                onTap: () => setState(() => _filter = 'APPROVED'),
+              ),
+              _TabItem(
+                label: 'Rejected',
+                selected: _filter == 'REJECTED',
+                onTap: () => setState(() => _filter = 'REJECTED'),
+              ),
+            ],
           ),
         ),
         Expanded(
           child: filtered.isEmpty
-              ? Center(
+              // AT1 (FID-11): danh sách rỗng
+              ? const Center(
                   child: Text(
-                    _filter == null
-                        ? 'Chưa có hợp đồng nào.'
-                        : 'Không có hợp đồng nào.',
-                    style: const TextStyle(
-                        fontSize: 13, color: AppColors.textSecondary),
+                    'No extension requests found.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 )
               : RefreshIndicator(
@@ -180,7 +152,7 @@ class _ExtensionListScreenState extends ConsumerState<ExtensionListScreen> {
                       ref.read(extensionListProvider.notifier).fetch(),
                   color: AppColors.primary,
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
                     itemCount: filtered.length,
                     itemBuilder: (context, index) =>
                         _buildCard(filtered[index]),
@@ -191,240 +163,218 @@ class _ExtensionListScreenState extends ConsumerState<ExtensionListScreen> {
     );
   }
 
-  Widget _buildTabItem({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-    required Color selectedBgColor,
-    required Color selectedTextColor,
-    required Color unselectedTextColor,
-    required Color borderColor,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected ? selectedBgColor : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? selectedBgColor : borderColor,
-            width: 1.2,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: selected ? selectedTextColor : unselectedTextColor,
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 1 card yêu cầu / hợp đồng
   Widget _buildCard(StayExtension ext) {
-    // Thu tiền thuê mock dựa trên id để đồng bộ giao diện
-    final mockRent = 6000000.0 + (ext.id % 4) * 500000.0;
+    final badge = switch (ext.status) {
+      'APPROVED' => StatusBadge.success('APPROVED'),
+      'REJECTED' => const StatusBadge(
+          text: 'REJECTED',
+          color: AppColors.error,
+          backgroundColor: AppColors.errorBg,
+        ),
+      _ => StatusBadge.warning('PENDING'),
+    };
 
-    // Thời hạn hợp đồng: Bắt đầu = (End Date - 1 năm), Kết thúc = End Date hiện tại
-    final contractStartDate = ext.currentEndDate.subtract(const Duration(days: 365));
-
-    // Phân loại trạng thái ảo
-    final remainingDays = _getRemainingDays(ext);
-    final virtualStatus = _getVirtualStatus(ext);
-
-    late final StatusBadge statusBadge;
-    if (virtualStatus == 'ACTIVE') {
-      statusBadge = StatusBadge.success('Hiệu lực');
-    } else if (virtualStatus == 'EXPIRING') {
-      statusBadge = StatusBadge.warning('Còn $remainingDays ngày');
-    } else {
-      statusBadge = const StatusBadge(
-        text: 'Hết hạn',
-        color: AppColors.error,
-        backgroundColor: AppColors.errorBg,
-      );
-    }
+    // Dòng chân card: đơn chờ duyệt hiện ngày gửi, đơn đã xử lý hiện ngày duyệt
+    final footer = ext.reviewedAt != null
+        ? 'Reviewed: ${_formatDate(ext.reviewedAt!)}'
+        : 'Submitted: ${_formatDate(ext.createdAt)}';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
           boxShadow: AppColors.cardShadow,
-          border: virtualStatus == 'EXPIRING'
-              ? const Border(
-                  left: BorderSide(color: Color(0xFFF59E0B), width: 4),
-                )
-              : null,
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () async {
-            final reviewed = await context
-                .push<bool>(AppRoutes.extensionDetailPath(ext.id));
+            final reviewed =
+                await context.push<bool>(AppRoutes.extensionDetailPath(ext.id));
             if (reviewed == true && mounted) {
               ref.read(extensionListProvider.notifier).fetch();
             }
           },
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Căn hộ ${ext.unitNumber}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
+                    _Avatar(name: ext.residentName, seed: ext.id),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ext.residentName,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Room ${ext.unitNumber} — ${_formatFloor(ext.floor)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    statusBadge,
+                    badge,
                   ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  ext.residentName,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
                 const SizedBox(height: 12),
-                // 3 cột thông tin: Bắt đầu, Kết thúc, Tiền thuê
+                // FID-11 field 5-6: mốc ngày và số ngày cộng thêm
                 Row(
                   children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 13,
+                      color: AppColors.textTertiary,
+                    ),
+                    const SizedBox(width: 6),
                     Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          children: [
-                            const Text(
-                              'Bắt đầu',
-                              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _formatDate(contractStartDate),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
+                      child: Text(
+                        '${_formatDate(ext.currentEndDate)} → '
+                        '${_formatDate(ext.requestedEndDate)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          children: [
-                            const Text(
-                              'Kết thúc',
-                              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _formatDate(ext.currentEndDate),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: virtualStatus == 'EXPIRING'
-                                    ? const Color(0xFFD97706)
-                                    : AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          children: [
-                            const Text(
-                              'Tiền thuê',
-                              style: TextStyle(fontSize: 10, color: Color(0xFF2563EB)),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _formatCompactCurrency(mockRent),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF2563EB),
-                              ),
-                            ),
-                          ],
-                        ),
+                    Text(
+                      '(+${ext.extensionDays} days)',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                // Nút thao tác: nếu có yêu cầu gia hạn (PENDING) thì hiện cả Xem HĐ và Gia hạn ngay, ngược lại chỉ hiện Xem HĐ full width
-                if (ext.status == 'PENDING')
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            final reviewed = await context.push<bool>(
-                              AppRoutes.extensionDetailPath(ext.id),
-                            );
-                            if (reviewed == true && mounted) {
-                              ref.read(extensionListProvider.notifier).fetch();
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB), // Xanh nước biển
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size.fromHeight(36),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: const Text(
-                            'Gia hạn ngay',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
+                const SizedBox(height: 8),
+                Text(
+                  footer,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Tab chữ có gạch chân khi đang chọn (theo wireframe).
+class _TabItem extends StatelessWidget {
+  const _TabItem({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.badgeCount,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final int? badgeCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: selected ? AppColors.primary : AppColors.border,
+                width: selected ? 2.5 : 1,
+              ),
+            ),
+          ),
+          child: Column(
+            children: [
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                  color:
+                      selected ? AppColors.primary : AppColors.textSecondary,
+                ),
+              ),
+              if (badgeCount != null)
+                Text(
+                  '($badgeCount)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: selected
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Ô vuông chữ cái đầu của tên cư dân, gradient xoay vòng theo thiết kế.
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.name, required this.seed});
+
+  final String name;
+  final int seed;
+
+  String get _initials {
+    final parts =
+        name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return (parts.first[0] + parts.last[0]).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gradient =
+        AppColors.avatarGradients[seed % AppColors.avatarGradients.length];
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: gradient),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        _initials,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
         ),
       ),
     );

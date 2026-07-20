@@ -74,11 +74,11 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio));
       await tester.pumpAndSettle();
 
-      expect(find.text('Yêu Cầu Gia Hạn'), findsOneWidget);
+      expect(find.text('Request Stay Extension'), findsOneWidget);
       expect(find.text('31/12/2026'), findsOneWidget);
       
-      await tester.scrollUntilVisible(find.text('GỬI YÊU CẦU'), 100, scrollable: find.byType(Scrollable).first);
-      expect(find.text('GỬI YÊU CẦU'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('SUBMIT REQUEST'), 100, scrollable: find.byType(Scrollable).first);
+      expect(find.text('SUBMIT REQUEST'), findsOneWidget);
     });
 
     testWidgets('2. Validation Tests: Chặn submit khi chưa nhập lý do hợp lệ (BR-15 & AT2)', (tester) async {
@@ -90,13 +90,13 @@ void main() {
       await tester.ensureVisible(reasonField);
       await tester.enterText(reasonField, 'Ngắn');
       
-      final submitBtn = find.text('GỬI YÊU CẦU');
+      final submitBtn = find.text('SUBMIT REQUEST');
       await tester.ensureVisible(submitBtn);
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 
       // Verify inline error for reason
-      expect(find.text('(!) Lý do phải có ít nhất 10 ký tự.'), findsOneWidget);
+      expect(find.text('Reason must be at least 10 characters.'), findsOneWidget);
     });
 
     testWidgets('3. Success Flow: Gửi yêu cầu gia hạn thành công (POS-01)', (tester) async {
@@ -143,10 +143,11 @@ void main() {
       await tester.ensureVisible(reasonField);
       await tester.enterText(reasonField, 'Tôi muốn gia hạn thêm hợp đồng 6 tháng nữa.');
 
-      // Tap to pick date button
-      final calendarBtn = find.byIcon(Icons.calendar_month);
-      await tester.ensureVisible(calendarBtn);
-      await tester.tap(calendarBtn);
+      // Tap the date field to open the picker (wireframe: ô "Select date...",
+      // không có icon lịch)
+      final dateField = find.text('Select date...');
+      await tester.ensureVisible(dateField);
+      await tester.tap(dateField);
       await tester.pumpAndSettle();
 
       // Select OK in date picker dialog
@@ -154,7 +155,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Submit form
-      final submitBtn = find.text('GỬI YÊU CẦU');
+      final submitBtn = find.text('SUBMIT REQUEST');
       await tester.ensureVisible(submitBtn);
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();

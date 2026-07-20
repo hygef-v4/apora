@@ -101,12 +101,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Screen Header
-      expect(find.text('Hợp đồng'), findsOneWidget);
+      expect(find.text('Extension Requests'), findsOneWidget);
       expect(find.text('Nguyen Van A'), findsOneWidget);
       expect(find.text('Tran Van B'), findsOneWidget);
 
-      // Lọc "Hiệu lực (1)" -> chỉ còn hợp đồng còn hiệu lực dài hạn (P.502)
-      final activeFilterChip = find.textContaining('Hiệu lực (1)');
+      // Lọc tab "Pending" -> chỉ còn đơn đang chờ duyệt (Nguyen Van A)
+      final activeFilterChip = find.text('Pending');
       await tester.tap(activeFilterChip);
       await tester.pumpAndSettle();
 
@@ -126,7 +126,7 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio));
       await tester.pumpAndSettle();
 
-      expect(find.text('Chưa có hợp đồng nào.'), findsOneWidget);
+      expect(find.text('No extension requests found.'), findsOneWidget);
     });
 
     testWidgets('3. Error Handling: Tải danh sách thất bại hiển thị nút Thử lại', (tester) async {
@@ -140,7 +140,7 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio));
       await tester.pumpAndSettle();
 
-      expect(find.text('Thử lại'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
     });
   });
 }

@@ -90,13 +90,13 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio));
       await tester.pumpAndSettle();
 
-      expect(find.text('Duyệt Yêu Cầu Gia Hạn'), findsOneWidget);
-      expect(find.text('Nguyen Van A'), findsOneWidget);
-      expect(find.text('Lý do xin gia hạn'), findsOneWidget);
+      expect(find.text('Extension Request Detail'), findsOneWidget);
+      expect(find.textContaining('Nguyen Van A'), findsOneWidget);
+      expect(find.textContaining('Lý do xin gia hạn'), findsOneWidget);
 
-      final approveBtn = find.text('DUYỆT');
+      final approveBtn = find.text('APPROVE');
       expect(approveBtn, findsOneWidget);
-      expect(find.text('TỪ CHỐI'), findsOneWidget);
+      expect(find.text('REJECT'), findsOneWidget);
     });
 
     testWidgets('2. Validation Tests: Từ chối yêu cầu bắt buộc phải nhập lý do (AT2)', (tester) async {
@@ -138,12 +138,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap TỪ CHỐI without entering reason
-      final rejectBtn = find.text('TỪ CHỐI');
+      final rejectBtn = find.text('REJECT');
       await tester.tap(rejectBtn);
       await tester.pumpAndSettle();
 
       // Confirm dialog should NOT appear, reject error message shown
-      expect(find.text('(!) Cần nhập lý do từ chối.'), findsOneWidget);
+      expect(find.text('A rejection reason is required.'), findsOneWidget);
     });
 
     testWidgets('3. Success Flow: Duyệt gia hạn thành công (BR-17 & POS-01)', (tester) async {
@@ -193,13 +193,13 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap DUYỆT button
-      final approveBtn = find.text('DUYỆT');
+      final approveBtn = find.text('APPROVE');
       await tester.tap(approveBtn);
       await tester.pumpAndSettle();
 
       // Confirm dialog
-      expect(find.text('Duyệt yêu cầu?'), findsOneWidget);
-      await tester.tap(find.text('Duyệt'));
+      expect(find.text('Approve request?'), findsOneWidget);
+      await tester.tap(find.text('Approve'));
       await tester.pumpAndSettle();
 
       verify(() => mockDio.patch(any(), data: any(named: 'data'))).called(1);
