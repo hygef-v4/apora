@@ -122,7 +122,7 @@ class ExtensionDetailNotifier extends AsyncNotifier<StayExtensionDetail?> {
     try {
       final dio = ref.read(dioProvider);
       final reason = rejectReason?.trim();
-      final res = await dio.put(
+      final res = await dio.patch(
         ApiConstants.stayExtensionReview(extensionId),
         data: {
           'action': action,

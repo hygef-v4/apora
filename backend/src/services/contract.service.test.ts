@@ -69,7 +69,7 @@ describe('reviewExtension - UC09 duyệt/từ chối gia hạn', () => {
         makeDetailRow({ status: 'APPROVED', reviewed_by: 2, reviewed_by_name: 'Manager' }),
       ); // sau duyệt
     vi.mocked(extensionRepo.markReviewed).mockResolvedValue(true);
-    vi.mocked(contractRepo.extendContractEndDate).mockResolvedValue(true);
+    vi.mocked(contractRepo.updateContractEndDate).mockResolvedValue(true);
 
     const result = await contractService.reviewExtension(2, 1, { action: 'APPROVE' });
 
@@ -81,7 +81,7 @@ describe('reviewExtension - UC09 duyệt/từ chối gia hạn', () => {
       null,
     );
     // BR-14/BR-17: dời end_date đúng ngày cư dân yêu cầu (định dạng YYYY-MM-DD local)
-    expect(contractRepo.extendContractEndDate).toHaveBeenCalledWith(
+    expect(contractRepo.updateContractEndDate).toHaveBeenCalledWith(
       expect.anything(),
       10,
       '2027-06-30',
@@ -92,7 +92,7 @@ describe('reviewExtension - UC09 duyệt/từ chối gia hạn', () => {
   it('BR-17: nếu dời end_date thất bại thì cả transaction ném lỗi (không chốt nửa vời)', async () => {
     vi.mocked(extensionRepo.findExtensionDetailById).mockResolvedValue(makeDetailRow());
     vi.mocked(extensionRepo.markReviewed).mockResolvedValue(true);
-    vi.mocked(contractRepo.extendContractEndDate).mockResolvedValue(false);
+    vi.mocked(contractRepo.updateContractEndDate).mockResolvedValue(false);
 
     await expect(
       contractService.reviewExtension(2, 1, { action: 'APPROVE' }),
@@ -108,7 +108,7 @@ describe('reviewExtension - UC09 duyệt/từ chối gia hạn', () => {
       contractService.reviewExtension(2, 1, { action: 'APPROVE' }),
     ).rejects.toMatchObject({ status: 409 });
     expect(extensionRepo.markReviewed).not.toHaveBeenCalled();
-    expect(contractRepo.extendContractEndDate).not.toHaveBeenCalled();
+    expect(contractRepo.updateContractEndDate).not.toHaveBeenCalled();
   });
 
   it('Chống duyệt trùng: yêu cầu đã xử lý -> 409', async () => {
@@ -149,7 +149,7 @@ describe('reviewExtension - UC09 duyệt/từ chối gia hạn', () => {
       2,
       'Không đủ điều kiện',
     );
-    expect(contractRepo.extendContractEndDate).not.toHaveBeenCalled();
+    expect(contractRepo.updateContractEndDate).not.toHaveBeenCalled();
     expect(result.status).toBe('REJECTED');
   });
 

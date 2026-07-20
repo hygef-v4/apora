@@ -320,7 +320,7 @@ export async function reviewExtension(
       if (!marked) {
         throw new HttpError(409, 'Yêu cầu này vừa được người khác xử lý.');
       }
-      const extended = await contractRepo.extendContractEndDate(
+      const extended = await contractRepo.updateContractEndDate(
         client,
         extension.contract_id,
         requestedDate,

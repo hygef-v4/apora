@@ -1,5 +1,5 @@
 /**
- * GET /api/stay-extensions/:id - UC09: Chi tiết yêu cầu gia hạn (màn duyệt)
+ * GET /api/contracts/extensions/:id - UC09: Chi tiết yêu cầu gia hạn (màn duyệt)
  *   Chỉ MANAGER / LANDLORD (BR-16).
  */
 

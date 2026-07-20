@@ -181,7 +181,7 @@ void main() {
         ),
       );
 
-      when(() => mockDio.put(any(), data: any(named: 'data'))).thenAnswer(
+      when(() => mockDio.patch(any(), data: any(named: 'data'))).thenAnswer(
         (_) async => Response(
           data: {'status': 'success', 'data': {}},
           statusCode: 200,
@@ -202,7 +202,7 @@ void main() {
       await tester.tap(find.text('Duyệt'));
       await tester.pumpAndSettle();
 
-      verify(() => mockDio.put(any(), data: any(named: 'data'))).called(1);
+      verify(() => mockDio.patch(any(), data: any(named: 'data'))).called(1);
     });
   });
 }

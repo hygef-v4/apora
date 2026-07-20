@@ -181,7 +181,7 @@ export async function findApartmentByOwner(
  * Chỉ áp dụng cho hợp đồng còn ACTIVE (AT3: hợp đồng đã bị kết thúc
  * bởi Manager khác thì trả false để service báo lỗi 409).
  */
-export async function extendContractEndDate(
+export async function updateContractEndDate(
   client: PoolClient,
   contractId: number,
   newEndDate: string,

@@ -1,5 +1,5 @@
 /**
- * PUT /api/stay-extensions/:id/review - UC09: Duyệt / từ chối yêu cầu gia hạn
+ * PATCH /api/contracts/extensions/:id/review - UC09: Duyệt / từ chối yêu cầu gia hạn
  *   Body JSON: { action: 'APPROVE' | 'REJECT', rejectReason? }
  *   Chỉ MANAGER / LANDLORD (BR-16). APPROVE dời contracts.end_date trong
  *   1 transaction (BR-17); cư dân nhận thông báo kết quả (BR-18).
@@ -17,7 +17,7 @@ function parseExtensionId(raw: string): number {
   return id;
 }
 
-export async function PUT(
+export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {

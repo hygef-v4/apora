@@ -1,5 +1,5 @@
 /**
- * /api/stay-extensions - Module 2: Stay Extension
+ * /api/contracts/extensions - Module 2: Stay Extension
  *   GET  - UC08: danh sách yêu cầu gia hạn (?status=PENDING|APPROVED|REJECTED)
  *          Chỉ MANAGER / LANDLORD (BR-16).
  *   POST - UC07: cư dân gửi yêu cầu gia hạn { requestedEndDate, reason }
