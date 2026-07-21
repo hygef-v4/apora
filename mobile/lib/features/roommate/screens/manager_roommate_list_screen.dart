@@ -29,16 +29,8 @@ class _RoommateApprovalListScreenState extends ConsumerState<RoommateApprovalLis
       body: Column(
         children: [
           GradientHeader(
-            title: 'Duyệt Thành Viên',
-            subtitle: 'Phê duyệt yêu cầu tạm trú mới',
+            title: 'Roommate Approval',
             showBack: true,
-            actions: [
-              HeaderIconButton(
-                icon: Icons.refresh,
-                tooltip: 'Làm mới',
-                onTap: () => ref.read(roommateProvider.notifier).fetchPendingRequests(),
-              ),
-            ],
           ),
           Expanded(
             child: state.isLoading && state.pendingRequests.isEmpty
@@ -51,7 +43,7 @@ class _RoommateApprovalListScreenState extends ConsumerState<RoommateApprovalLis
                             const Icon(Icons.mark_email_read, size: 48, color: AppColors.textTertiary),
                             const SizedBox(height: 8),
                             const Text(
-                              'Không có yêu cầu tạm trú nào đang chờ duyệt.',
+                              'No pending roommate approval requests.',
                               style: TextStyle(color: AppColors.textSecondary),
                             ),
                           ],
@@ -93,12 +85,12 @@ class _RoommateApprovalListScreenState extends ConsumerState<RoommateApprovalLis
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          'Căn hộ: Căn ${roommate.unitNumber ?? "N/A"}',
+                                          'Apartment: ${roommate.unitNumber ?? "N/A"}',
                                           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          'Ngày gửi: $formattedDate',
+                                          'Submitted Date: $formattedDate',
                                           style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
                                         ),
                                       ],

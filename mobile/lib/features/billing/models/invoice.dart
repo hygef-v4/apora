@@ -57,33 +57,39 @@ class Invoice {
     }
   }
 
+  static double _parseDouble(dynamic val) {
+    if (val == null) return 0.0;
+    if (val is num) return val.toDouble();
+    return double.tryParse(val.toString()) ?? 0.0;
+  }
+
   factory Invoice.fromJson(Map<String, dynamic> json) {
-    final mYear = json['month_year'] as String;
-    final cAt = json['created_at'] as String?;
+    final mYear = (json['month_year'] ?? json['monthYear'] ?? '').toString();
+    final cAt = json['created_at']?.toString();
     
     return Invoice(
       id: json['id'] as int,
-      contractId: json['contract_id'] as int,
-      apartmentId: json['apartment_id'] as int,
+      contractId: json['contract_id'] ?? json['contractId'] ?? 0,
+      apartmentId: json['apartment_id'] ?? json['apartmentId'] ?? 0,
       monthYear: mYear,
-      prevElectricityIndex: (json['prev_electricity_index'] as num).toDouble(),
-      currElectricityIndex: (json['curr_electricity_index'] as num).toDouble(),
-      electricityConsumption: (json['electricity_consumption'] as num).toDouble(),
-      prevWaterIndex: (json['prev_water_index'] as num).toDouble(),
-      currWaterIndex: (json['curr_water_index'] as num).toDouble(),
-      waterConsumption: (json['water_consumption'] as num).toDouble(),
-      roomRentSnapshot: double.parse(json['room_rent_snapshot'].toString()),
-      mgmtFeeSnapshot: double.parse(json['mgmt_fee_snapshot'].toString()),
-      electricityRateSnapshot: double.parse(json['electricity_rate_snapshot'].toString()),
-      waterRateSnapshot: double.parse(json['water_rate_snapshot'].toString()),
-      extraFee: double.parse(json['extra_fee'].toString()),
-      extraFeeDescription: json['extra_fee_description'] as String?,
-      totalAmount: double.parse(json['total_amount'].toString()),
-      status: json['status'] as String,
+      prevElectricityIndex: _parseDouble(json['prev_electricity_index'] ?? json['prevElectricityIndex']),
+      currElectricityIndex: _parseDouble(json['curr_electricity_index'] ?? json['currElectricityIndex']),
+      electricityConsumption: _parseDouble(json['electricity_consumption'] ?? json['electricityConsumption']),
+      prevWaterIndex: _parseDouble(json['prev_water_index'] ?? json['prevWaterIndex']),
+      currWaterIndex: _parseDouble(json['curr_water_index'] ?? json['currWaterIndex']),
+      waterConsumption: _parseDouble(json['water_consumption'] ?? json['waterConsumption']),
+      roomRentSnapshot: _parseDouble(json['room_rent_snapshot'] ?? json['roomRentSnapshot']),
+      mgmtFeeSnapshot: _parseDouble(json['mgmt_fee_snapshot'] ?? json['mgmtFeeSnapshot']),
+      electricityRateSnapshot: _parseDouble(json['electricity_rate_snapshot'] ?? json['electricityRateSnapshot']),
+      waterRateSnapshot: _parseDouble(json['water_rate_snapshot'] ?? json['waterRateSnapshot']),
+      extraFee: _parseDouble(json['extra_fee'] ?? json['extraFee']),
+      extraFeeDescription: json['extra_fee_description']?.toString(),
+      totalAmount: _parseDouble(json['total_amount'] ?? json['totalAmount']),
+      status: (json['status']?.toString() ?? 'UNPAID').toUpperCase().trim(),
       dueDate: json['due_date'] != null
           ? DateTime.parse(json['due_date'] as String)
           : _parseDueDate(mYear, cAt),
-      unitNumber: json['unit_number'] as String?,
+      unitNumber: json['unit_number']?.toString(),
     );
   }
 

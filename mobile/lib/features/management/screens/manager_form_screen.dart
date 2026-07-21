@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
+import '../../../core/widgets/status_badge.dart';
 import '../models/manager_member.dart';
 import '../providers/manager_notifier.dart';
 
@@ -59,16 +60,16 @@ class _ManagerFormScreenState extends ConsumerState<ManagerFormScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Hủy tạo tài khoản?'),
-        content: const Text(AppStrings.msgUnsavedChanges),
+        title: const Text('Discard changes?'),
+        content: const Text('You have unsaved changes. Are you sure you want to discard them?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Ở lại'),
+            child: const Text('Stay'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Thoát'),
+            child: const Text('Discard'),
           ),
         ],
       ),
@@ -97,12 +98,12 @@ class _ManagerFormScreenState extends ConsumerState<ManagerFormScreen> {
       setState(() => _isSuccess = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(_isEditMode
-                ? 'Cập nhật tài khoản quản lý thành công.'
-                : 'Tạo tài khoản quản lý thành công.')),
+          content: Text(_isEditMode
+              ? 'Manager profile updated successfully.'
+              : 'Manager account created successfully.'),
+        ),
       );
       
-      // Chờ PopScope cập nhật canPop = true rồi mới pop
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.pop();
       });
@@ -129,10 +130,15 @@ class _ManagerFormScreenState extends ConsumerState<ManagerFormScreen> {
         body: Column(
           children: [
             GradientHeader(
-              title: _isEditMode ? 'Cập nhật quản lý' : 'Thêm quản lý',
-              subtitle: _isEditMode
-                  ? 'Chỉnh sửa thông tin tài khoản'
-                  : 'Cấp tài khoản cho ban quản lý',
+              title: _isEditMode ? 'Edit Manager Profile' : 'Create Manager',
+              actions: _isEditMode
+                  ? const []
+                  : [
+                      IconButton(
+                        icon: const Icon(Icons.account_circle_outlined, color: Colors.white),
+                        onPressed: () {},
+                      ),
+                    ],
               showBack: true,
             ),
             Expanded(
@@ -145,17 +151,41 @@ class _ManagerFormScreenState extends ConsumerState<ManagerFormScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (_isEditMode) ...[
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Account Status',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              widget.manager!.isActive
+                                  ? StatusBadge.success('ACTIVE')
+                                  : const StatusBadge(
+                                      text: 'INACTIVE',
+                                      color: AppColors.error,
+                                      backgroundColor: AppColors.errorBg,
+                                    ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                         TextFormField(
                           controller: _fullNameController,
                           maxLength: 100,
                           decoration: const InputDecoration(
-                            labelText: 'Họ và tên',
+                            labelText: 'Full Name',
+                            hintText: 'e.g. John Smith',
                             prefixIcon: Icon(Icons.badge, size: 20),
                             counterText: '',
                           ),
                           validator: (value) =>
                               (value == null || value.trim().isEmpty)
-                                  ? AppStrings.msgFieldRequired
+                                  ? 'Full Name is required'
                                   : null,
                         ),
                         const SizedBox(height: 16),
@@ -164,29 +194,58 @@ class _ManagerFormScreenState extends ConsumerState<ManagerFormScreen> {
                           keyboardType: TextInputType.phone,
                           maxLength: 15,
                           decoration: const InputDecoration(
-                            labelText: 'Số điện thoại (dùng để đăng nhập)',
+                            labelText: 'Phone Number',
+                            hintText: 'e.g. +1 (555) 012-3456',
                             prefixIcon: Icon(Icons.phone, size: 20),
                             counterText: '',
                           ),
                           validator: (value) =>
                               (value == null || value.trim().isEmpty)
-                                  ? AppStrings.msgPhoneRequired
+                                  ? 'Phone Number is required'
                                   : null,
                         ),
                         const SizedBox(height: 24),
-                        if (!_isEditMode)
-                          const Text(
-                            'Tài khoản sẽ được tạo với mật khẩu mặc định là Apora@123',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                              fontStyle: FontStyle.italic,
+                        if (!_isEditMode) ...[
+                          Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              border: Border.all(color: AppColors.border),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            textAlign: TextAlign.center,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 18,
+                                  color: AppColors.primary,
+                                ),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    'A default password will be generated and sent to this user.',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        const SizedBox(height: 20),
+                          const SizedBox(height: 24),
+                        ] else ...[
+                          const Divider(height: 32, thickness: 1, color: AppColors.border),
+                          const SizedBox(height: 12),
+                        ],
                         FilledButton(
                           onPressed: _isSubmitting ? null : _submit,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                           child: _isSubmitting
                               ? const SizedBox(
                                   width: 22,
@@ -196,16 +255,51 @@ class _ManagerFormScreenState extends ConsumerState<ManagerFormScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : Text(_isEditMode ? 'Lưu thay đổi' : 'Tạo tài khoản'),
+                              : Text(_isEditMode ? 'Save Changes' : 'CREATE ADMIN'),
                         ),
-                        TextButton(
-                          onPressed: () async {
-                            if (await _confirmDiscard() && context.mounted) {
-                              context.pop();
-                            }
-                          },
-                          child: const Text('Hủy'),
-                        ),
+                        const SizedBox(height: 16),
+                        if (_isEditMode)
+                          Center(
+                            child: InkWell(
+                              onTap: () async {
+                                if (await _confirmDiscard() && context.mounted) {
+                                  context.pop();
+                                }
+                              },
+                              child: const Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          OutlinedButton(
+                            onPressed: () async {
+                              if (await _confirmDiscard() && context.mounted) {
+                                context.pop();
+                              }
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textSecondary,
+                              side: const BorderSide(color: AppColors.border),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),

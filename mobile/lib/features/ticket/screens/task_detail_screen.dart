@@ -6,16 +6,16 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/image_util.dart';
+import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
-import '../../../core/widgets/spec_layout.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../models/task.dart';
+import '../models/ticket.dart';
 import '../providers/task_provider.dart';
-import '../widgets/ticket_category.dart';
 
-/// UC23 - Task Detail (bố cục theo wireframe FID-23 trong SRS).
+/// UC23 - Chi tiết công việc + cập nhật tiến độ (theo màn FID-23).
 /// Nhân viên được giao: bắt đầu làm (IN_PROGRESS) hoặc nghiệm thu
-/// (COMPLETED - bắt buộc >= 1 ảnh theo BR-43, tối đa 3 theo BR-37).
+/// (COMPLETED - bắt buộc ≥1 ảnh theo BR-43, tối đa 3 theo BR-37).
 class TaskDetailScreen extends ConsumerStatefulWidget {
   const TaskDetailScreen({super.key, required this.taskId});
 
@@ -32,10 +32,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   final List<Uint8List> _images = [];
   bool _isSubmitting = false;
   bool _isPicking = false;
-
   /// AT1: tô đỏ khối ảnh khi bấm hoàn thành mà chưa có ảnh nghiệm thu.
   bool _highlightPhotoError = false;
-
   /// Ghi chú từ server lần gần nhất - chỉ đồng bộ vào ô khi server đổi.
   String _serverNotes = '';
 
@@ -60,26 +58,27 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  String _formatDateTime(DateTime dt) {
+  String _formatDate(DateTime dt) {
     final l = dt.toLocal();
     String two(int n) => n.toString().padLeft(2, '0');
     return '${two(l.day)}/${two(l.month)}/${l.year} ${two(l.hour)}:${two(l.minute)}';
   }
 
-  Widget _statusBadge(String status) {
+  StatusBadge _statusBadge(String status) {
+    final label = kTaskStatusLabels[status] ?? status;
     switch (status) {
       case 'COMPLETED':
-        return StatusBadge.success('COMPLETED');
+        return StatusBadge.success(label);
       case 'IN_PROGRESS':
-        return StatusBadge.warning('IN_PROGRESS');
+        return StatusBadge.warning(label);
       case 'CANCELLED':
-        return StatusBadge.muted('CANCELLED');
-      default:
-        return const StatusBadge(
-          text: 'ASSIGNED',
-          color: AppColors.primary,
-          backgroundColor: AppColors.infoBg,
+        return StatusBadge(
+          text: label,
+          color: AppColors.error,
+          backgroundColor: AppColors.errorBg,
         );
+      default:
+        return StatusBadge.info(label);
     }
   }
 
@@ -93,7 +92,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       // BR-10: nén < 500KB trước khi giữ để upload
       final compressed = await ImageUtil.compressUnder500Kb(picked.path);
       if (compressed == null) {
-        _showSnack('Could not compress the image. Please pick another.');
+        _showSnack('Không thể nén ảnh. Vui lòng chọn ảnh khác.');
         return;
       }
       setState(() {
@@ -101,7 +100,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         _highlightPhotoError = false;
       });
     } catch (e) {
-      _showSnack('Image pick error: $e');
+      _showSnack('Lỗi chọn ảnh: $e');
     } finally {
       if (mounted) setState(() => _isPicking = false);
     }
@@ -110,11 +109,11 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   /// Bắt đầu làm: ASSIGNED -> IN_PROGRESS (ticket cha -> PROCESSING).
   Future<void> _start() => _update('IN_PROGRESS');
 
-  /// Nghiệm thu: -> COMPLETED. AT1/BR-43: bắt buộc >= 1 ảnh.
+  /// Nghiệm thu: -> COMPLETED. AT1/BR-43: bắt buộc ≥1 ảnh.
   Future<void> _complete() async {
     if (_images.isEmpty) {
       setState(() => _highlightPhotoError = true);
-      _showSnack('At least 1 completion photo is required to finish the task.');
+      _showSnack('Cần ít nhất 1 ảnh nghiệm thu để hoàn thành công việc.');
       return;
     }
     await _update('COMPLETED');
@@ -130,8 +129,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             imageBytes: status == 'COMPLETED' ? _images : const [],
           );
       _showSnack(status == 'COMPLETED'
-          ? 'Task completed. The ticket is now marked resolved.'
-          : 'Task started.');
+          ? 'Đã hoàn thành công việc. Sự cố chuyển sang "Đã xong".'
+          : 'Đã bắt đầu xử lý công việc.');
       if (status == 'COMPLETED') {
         setState(_images.clear);
         // FID-23 field 13: hoàn thành xong quay về danh sách công việc
@@ -153,7 +152,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          const GradientHeader(title: 'Task Detail', showBack: true),
+          const GradientHeader(title: 'Chi Tiết Công Việc', showBack: true),
           Expanded(
             child: state.when(
               loading: () => const Center(
@@ -186,280 +185,293 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+      padding: const EdgeInsets.all(14),
       children: [
-        // Badge trạng thái
-        Align(
-          alignment: Alignment.centerRight,
-          child: _statusBadge(task.status),
-        ),
-        const SizedBox(height: 12),
-
-        // Task ID + tiêu đề + mô tả
-        Text(
-          'Task ID: TASK-${task.id.toString().padLeft(3, '0')}',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          task.title,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        if (task.description != null &&
-            task.description!.trim().isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Text(
-            task.description!,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              height: 1.4,
-            ),
-          ),
-        ],
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _MetaField(
-                label: 'Assigned by',
-                value: task.assignedByName,
-              ),
-            ),
-            Expanded(
-              child: _MetaField(
-                label: 'Assigned on',
-                value: _formatDateTime(task.assignedAt),
-              ),
-            ),
-          ],
-        ),
-        if (task.completedAt != null) ...[
-          const SizedBox(height: 10),
-          _MetaField(
-            label: 'Completed on',
-            value: _formatDateTime(task.completedAt!),
-          ),
-        ],
-        const SizedBox(height: 14),
-
-        // Khối tham chiếu sự cố gốc (FID-23 field 7)
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.divider,
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(12),
-          ),
+        // 1. Thông tin công việc
+        AppCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Text(
-                    '#TK-${task.ticketId.toString().padLeft(3, '0')}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                  Expanded(
+                    child: Text(
+                      'TASK-${task.id}',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textTertiary),
                     ),
                   ),
+                  _statusBadge(task.status),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                task.title,
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary),
+              ),
+              if (task.description != null &&
+                  task.description!.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  task.description!,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                      height: 1.4),
+                ),
+              ],
+              const SizedBox(height: 10),
+              _InfoRow(
+                icon: Icons.person_outline,
+                label: 'Người giao',
+                value: task.assignedByName,
+              ),
+              _InfoRow(
+                icon: Icons.schedule,
+                label: 'Giao lúc',
+                value: _formatDate(task.assignedAt),
+              ),
+              if (task.completedAt != null)
+                _InfoRow(
+                  icon: Icons.check_circle_outline,
+                  label: 'Hoàn thành',
+                  value: _formatDate(task.completedAt!),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // 2. Thẻ tham chiếu sự cố gốc (FID-23 field 7)
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _SectionTitle('Sự cố liên quan'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    '#TK-${task.ticketId}',
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary),
+                  ),
                   const SizedBox(width: 8),
-                  _CategoryChip(category: task.category),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.infoBg,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      task.category,
+                      style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                'Apartment: Room ${task.unitNumber}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
+              _InfoRow(
+                icon: Icons.location_on_outlined,
+                label: 'Căn hộ',
+                value: 'Phòng ${task.unitNumber}',
               ),
-              const SizedBox(height: 2),
-              Text(
-                'Reported by: ${task.residentName}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
+              _InfoRow(
+                icon: Icons.person_outline,
+                label: 'Người báo',
+                value: task.residentName,
               ),
-              const SizedBox(height: 8),
-              Text(
-                task.ticketDescription,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
+              const SizedBox(height: 6),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.infoBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  task.ticketDescription,
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textPrimary, height: 1.4),
                 ),
               ),
             ],
           ),
         ),
 
-        // BEFORE PHOTOS (ảnh cư dân báo - read only)
+        // 3. Ảnh hiện trạng từ cư dân (read-only - FID-23 field 8/9)
         if (task.ticketBeforeImages.isNotEmpty) ...[
-          const SizedBox(height: 18),
-          const SpecSectionHeader('Before Photos'),
-          const SizedBox(height: 4),
-          const Text(
-            'Photos reported by resident',
-            style: TextStyle(
-              fontSize: 11,
-              fontStyle: FontStyle.italic,
-              color: AppColors.textSecondary,
-            ),
-          ),
           const SizedBox(height: 10),
-          _imageWrap(task.ticketBeforeImages),
-        ],
-
-        // COMPLETION PHOTOS đã lưu (task xong)
-        if (task.completionImages.isNotEmpty) ...[
-          const SizedBox(height: 18),
-          const SpecSectionHeader('Completion Photos'),
-          const SizedBox(height: 10),
-          _imageWrap(task.completionImages),
-        ],
-
-        // Khối cập nhật tiến độ - chỉ khi task còn mở (PRE-02)
-        if (task.isOpen) ...[
-          const SizedBox(height: 18),
-          const SpecSectionHeader('Progress Notes'),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _notesController,
-            maxLines: 3,
-            maxLength: 500,
-            enabled: !_isSubmitting,
-            style: const TextStyle(fontSize: 13),
-            decoration: InputDecoration(
-              hintText: 'Describe what was done, parts replaced, etc...',
-              hintStyle: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textTertiary,
-              ),
-              filled: true,
-              fillColor: AppColors.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          const SpecFieldLabel('Completion Photos', required: true),
-          const Text(
-            'min 1 required',
-            style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            // AT1: viền đỏ khi thiếu ảnh nghiệm thu
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _highlightPhotoError
-                    ? AppColors.error
-                    : Colors.transparent,
-              ),
-            ),
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ..._images
-                    .asMap()
-                    .entries
-                    .map((e) => _pickedThumbnail(e.key, e.value)),
-                if (_images.length < _maxImages) _addImageButton(),
+                _SectionTitle(
+                    'Ảnh hiện trạng (${task.ticketBeforeImages.length})'),
+                const SizedBox(height: 4),
+                const Text(
+                  'Ảnh do cư dân cung cấp khi báo sự cố.',
+                  style:
+                      TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 10),
+                _imageWrap(task.ticketBeforeImages),
               ],
             ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'JPG/PNG, max 5MB each. At least 1 photo required.',
-            style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
-          ),
-          const SizedBox(height: 18),
-          if (task.status == 'ASSIGNED') ...[
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.play_arrow),
-                label: const Text(
-                  'START TASK',
-                  style:
-                      TextStyle(fontWeight: FontWeight.bold, letterSpacing: .5),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.primary),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: _isSubmitting ? null : _start,
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton.icon(
-              icon: _isSubmitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.check_circle_outline),
-              label: const Text(
-                'MARK AS COMPLETE',
-                style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: .5),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: _isSubmitting ? null : _complete,
+        ],
+
+        // 4. Ảnh nghiệm thu đã lưu (task xong)
+        if (task.completionImages.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SectionTitle('Ảnh nghiệm thu (${task.completionImages.length})'),
+                const SizedBox(height: 10),
+                _imageWrap(task.completionImages),
+              ],
             ),
           ),
         ],
 
-        // Ghi chú tiến độ đã lưu (task đã đóng - read-only)
-        if (!task.isOpen &&
-            task.progressNotes != null &&
-            task.progressNotes!.trim().isNotEmpty) ...[
-          const SizedBox(height: 18),
-          const SpecSectionHeader('Progress Notes'),
-          const SizedBox(height: 8),
-          Text(
-            task.progressNotes!,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textPrimary,
-              height: 1.4,
+        // 5. Khối cập nhật tiến độ - chỉ khi task còn mở (PRE-02)
+        if (task.isOpen) ...[
+          const SizedBox(height: 10),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionTitle('Cập nhật tiến độ'),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _notesController,
+                  maxLines: 3,
+                  maxLength: 500,
+                  enabled: !_isSubmitting,
+                  decoration: InputDecoration(
+                    labelText: 'Ghi chú tiến độ (tùy chọn)',
+                    hintText: 'Đã làm gì, thay vật tư nào...',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text('Ảnh nghiệm thu (bắt buộc ≥1 khi hoàn thành, tối đa $_maxImages)',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: AppColors.textPrimary)),
+                const SizedBox(height: 4),
+                const Text(
+                  'Ảnh JPG/PNG, tự động nén trước khi gửi.',
+                  style:
+                      TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  // AT1: viền đỏ khi thiếu ảnh nghiệm thu
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _highlightPhotoError
+                          ? AppColors.error
+                          : Colors.transparent,
+                    ),
+                  ),
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      ..._images.asMap().entries.map(
+                            (e) => _pickedThumbnail(e.key, e.value),
+                          ),
+                      if (_images.length < _maxImages) _addImageButton(),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                if (task.status == 'ASSIGNED') ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('BẮT ĐẦU',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: _isSubmitting ? null : _start,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton.icon(
+                    icon: _isSubmitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.check_circle_outline),
+                    label: const Text('HOÀN THÀNH',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: _isSubmitting ? null : _complete,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
+
+        // 6. Ghi chú tiến độ đã lưu (task đã đóng - read-only)
+        if (!task.isOpen &&
+            task.progressNotes != null &&
+            task.progressNotes!.trim().isNotEmpty) ...[
+          const SizedBox(height: 10),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionTitle('Ghi chú tiến độ'),
+                const SizedBox(height: 8),
+                Text(
+                  task.progressNotes!,
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textPrimary, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -523,7 +535,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     );
   }
 
-  /// Ô "+" thêm ảnh nghiệm thu (FID-23 field 11).
+  /// Ô "+" thêm ảnh nghiệm thu (viền đứt - FID-23 field 11).
   Widget _addImageButton() {
     return GestureDetector(
       onTap: _pickImage,
@@ -532,8 +544,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         height: 84,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
-          color: AppColors.surface,
+          border: Border.all(color: AppColors.inactive),
+          color: AppColors.divider,
         ),
         child: _isPicking
             ? const Center(
@@ -544,21 +556,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                       strokeWidth: 2, color: AppColors.primary),
                 ),
               )
-            : const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add, color: AppColors.textTertiary, size: 24),
-                  SizedBox(height: 2),
-                  Text(
-                    'ADD PHOTO',
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
+            : const Icon(Icons.add_a_photo_outlined,
+                color: AppColors.textTertiary),
       ),
     );
   }
@@ -587,65 +586,56 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   }
 }
 
-/// Cặp "nhãn nhỏ trên - giá trị đậm dưới" (2 cột meta theo wireframe).
-class _MetaField extends StatelessWidget {
-  const _MetaField({required this.label, required this.value});
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
 
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        color: AppColors.primary,
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  const _CategoryChip({required this.category});
-
-  final String category;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(6),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(ticketCategoryIcon(category),
-              size: 13, color: AppColors.textSecondary),
-          const SizedBox(width: 5),
-          Text(
-            ticketCategoryLabel(category),
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+          Icon(icon, size: 15, color: AppColors.textTertiary),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 84,
+            child: Text(
+              label,
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],
@@ -678,7 +668,7 @@ class _ErrorRetry extends StatelessWidget {
                   const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 14),
-            OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
+            OutlinedButton(onPressed: onRetry, child: const Text('Thử lại')),
           ],
         ),
       ),

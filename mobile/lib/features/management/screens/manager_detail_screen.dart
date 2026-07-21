@@ -94,23 +94,16 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
                           ],
                         ),
                       ),
-                      StatusBadge(
-                        text: member.isActive ? 'Đang hoạt động' : 'Đã vô hiệu',
-                        color: Colors.white,
-                        backgroundColor: member.isActive
-                            ? Colors.white.withValues(alpha: .2)
-                            : Colors.black.withValues(alpha: .2),
-                      ),
+                      member.isActive
+                          ? StatusBadge.success('Hoạt động')
+                          : const StatusBadge(
+                              text: 'Vô hiệu hóa',
+                              color: AppColors.error,
+                              backgroundColor: AppColors.errorBg,
+                            ),
                     ],
                   ),
-            actions: [
-              if (member != null)
-                HeaderIconButton(
-                  icon: Icons.edit,
-                  tooltip: 'Chỉnh sửa',
-                  onTap: () => context.push('/managers/${member.id}/edit', extra: member),
-                ),
-            ],
+            actions: const [],
           ),
 
           // Body content
@@ -143,37 +136,11 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
                 return ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    // Contact Information section
-                    _SectionTitle(title: 'Thông tin liên hệ'),
-                    const SizedBox(height: 8),
+                    // 1. Account Information (leaving only "Ngày tạo" card, no section title)
                     AppCard(
                       padding: EdgeInsets.zero,
                       child: Column(
                         children: [
-                          _InfoRow(
-                            icon: Icons.phone,
-                            label: 'Số điện thoại',
-                            value: m.phoneNumber,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Account Information section
-                    _SectionTitle(title: 'Thông tin tài khoản'),
-                    const SizedBox(height: 8),
-                    AppCard(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          _InfoRow(
-                            icon: Icons.badge,
-                            label: 'Mã tài khoản',
-                            value: '#${m.id}',
-                          ),
-                          const Divider(height: 1, indent: 56),
                           _InfoRow(
                             icon: Icons.calendar_today,
                             label: 'Ngày tạo',
@@ -181,40 +148,13 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
                                 ? DateFormat('dd/MM/yyyy').format(m.createdAt!)
                                 : '—',
                           ),
-                          const Divider(height: 1, indent: 56),
-                          _InfoRow(
-                            icon: Icons.circle,
-                            label: 'Trạng thái',
-                            value: m.isActive ? 'Đang hoạt động' : 'Đã vô hiệu',
-                            valueColor: m.isActive
-                                ? AppColors.success
-                                : AppColors.warning,
-                          ),
                         ],
                       ),
                     ),
 
                     const SizedBox(height: 20),
 
-                    // Permissions section
-                    _SectionTitle(title: 'Quyền hạn'),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: const [
-                        _PermissionChip(label: 'Quản lý nhân viên'),
-                        _PermissionChip(label: 'Quản lý hóa đơn'),
-                        _PermissionChip(label: 'Phân công sự cố'),
-                        _PermissionChip(label: 'Duyệt yêu cầu'),
-                        _PermissionChip(label: 'Đăng tin'),
-                        _PermissionChip(label: 'Trò chuyện'),
-                      ],
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Management History section
+                    // 2. Management History section
                     _SectionTitle(title: 'Lịch sử quản lý'),
                     const SizedBox(height: 8),
                     if (data.managementHistory.isEmpty)
@@ -240,8 +180,21 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
 
                     const SizedBox(height: 24),
 
-                    // UC45: Toggle Status Button
-                    // BR-58: Prevent self-deactivation. Hide button if looking at own profile.
+                    // 3. Action Buttons (Edit and Toggle Status)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        icon: const Icon(Icons.edit, size: 18),
+                        label: const Text('Chỉnh sửa hồ sơ'),
+                        onPressed: m.isActive
+                            ? () => context.push('/managers/${m.id}/edit', extra: m)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     if (currentUser?.id != m.id) ...[
                       SizedBox(
                         width: double.infinity,
@@ -269,29 +222,63 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
   }
 
   Future<void> _onToggleStatus(BuildContext context, bool isActive) async {
-    final title = isActive ? 'Vô hiệu hóa tài khoản' : 'Khôi phục tài khoản';
-    final content = isActive 
-      ? 'Bạn có chắc chắn muốn vô hiệu hóa tài khoản Quản lý này? Họ sẽ mất toàn bộ quyền truy cập vào hệ thống.'
-      : 'Bạn có chắc chắn muốn khôi phục hoạt động cho tài khoản Quản lý này?';
+    final member = ref.read(managerDetailProvider).value?.member;
 
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        content: Text(content),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: isActive ? AppColors.error : AppColors.primary,
+      builder: (context) => PremiumActionDialog(
+        title: isActive ? 'Deactivate Account?' : 'Restore Account?',
+        targetName: member?.fullName ?? 'Unknown',
+        targetIdentifier: member?.phoneNumber ?? 'No Phone Number',
+        avatarUrl: member?.avatarUrl,
+        description: RichText(
+          text: TextSpan(
+            style: const TextStyle(
+              fontSize: 13.5,
+              color: Color(0xFF374151),
+              height: 1.45,
             ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Xác nhận'),
+            children: isActive
+                ? const [
+                    TextSpan(
+                      text: 'Are you sure you want to deactivate this admin account? They will be ',
+                    ),
+                    TextSpan(
+                      text: 'instantly logged out',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.error),
+                    ),
+                    TextSpan(
+                      text: ' and lose all access to the system. Their historical data will be preserved.',
+                    ),
+                  ]
+                : const [
+                    TextSpan(
+                      text: 'Are you sure you want to restore this admin account? They will ',
+                    ),
+                    TextSpan(
+                      text: 'regain access',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.success),
+                    ),
+                    TextSpan(
+                      text: ' to the system immediately.',
+                    ),
+                  ],
           ),
-        ],
+        ),
+        confirmLabel: isActive ? 'Deactivate' : 'Restore',
+        confirmGradient: isActive
+            ? const LinearGradient(
+                colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : const LinearGradient(
+                colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        icon: isActive ? Icons.block_outlined : Icons.check_circle_outline,
+        isDestructive: isActive,
       ),
     );
 
@@ -313,7 +300,7 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(isActive ? 'Đã vô hiệu hóa tài khoản.' : 'Đã khôi phục tài khoản.'),
+          content: Text(isActive ? 'Account deactivated successfully.' : 'Account restored successfully.'),
           backgroundColor: AppColors.success,
         ),
       );
@@ -324,6 +311,265 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
         SnackBar(content: Text(mapDioError(e))),
       );
     }
+  }
+}
+
+/// A premium, highly polished modern dialog for critical actions.
+class PremiumActionDialog extends StatelessWidget {
+  const PremiumActionDialog({
+    super.key,
+    required this.title,
+    required this.targetName,
+    required this.targetIdentifier,
+    required this.avatarUrl,
+    required this.description,
+    required this.confirmLabel,
+    required this.confirmGradient,
+    required this.icon,
+    required this.isDestructive,
+  });
+
+  final String title;
+  final String targetName;
+  final String targetIdentifier;
+  final String? avatarUrl;
+  final Widget description;
+  final String confirmLabel;
+  final LinearGradient confirmGradient;
+  final IconData icon;
+  final bool isDestructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = isDestructive ? AppColors.error : AppColors.primary;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 340),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title Row with Warning Icon next to it
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: statusColor,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Target Account premium card
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        InitialsAvatar(
+                          name: targetName,
+                          imageUrl: avatarUrl,
+                          size: 40,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'TARGET ACCOUNT',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textTertiary,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                targetName,
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.phone_outlined,
+                                    size: 12,
+                                    color: AppColors.textTertiary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    targetIdentifier,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Warning/Info Description Banner
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: isDestructive
+                          ? const Color(0xFFFFF5F5)
+                          : const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDestructive
+                            ? const Color(0xFFFEE2E2)
+                            : const Color(0xFFDCFCE7),
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          isDestructive ? Icons.warning_amber_rounded : Icons.info_outline_rounded,
+                          color: statusColor,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(child: description),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Confirm button
+                  InkWell(
+                    onTap: () => Navigator.of(context).pop(true),
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      width: double.infinity,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: confirmGradient,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: statusColor.withValues(alpha: 0.25),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isDestructive ? Icons.delete_outline_rounded : Icons.check_circle_outline_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            confirmLabel,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Cancel button
+                  InkWell(
+                    onTap: () => Navigator.of(context).pop(false),
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      width: double.infinity,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.close_rounded,
+                            color: AppColors.textSecondary,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -352,13 +598,11 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    this.valueColor,
   });
 
   final IconData icon;
   final String label;
   final String value;
-  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -390,43 +634,16 @@ class _InfoRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: valueColor ?? AppColors.textPrimary,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Permission chip displaying an assigned module/capability.
-class _PermissionChip extends StatelessWidget {
-  const _PermissionChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.infoBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withValues(alpha: .2)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: AppColors.primary,
-        ),
       ),
     );
   }

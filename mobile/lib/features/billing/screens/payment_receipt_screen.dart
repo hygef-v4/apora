@@ -8,7 +8,6 @@ import 'package:open_file/open_file.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../models/invoice.dart';
 import '../models/payment.dart';
@@ -36,63 +35,70 @@ class PaymentReceiptScreen extends StatelessWidget {
   }
 
   String _formatDateTime(DateTime dt) {
-    final day = dt.day.toString().padLeft(2, '0');
-    final month = dt.month.toString().padLeft(2, '0');
-    final hour = dt.hour.toString().padLeft(2, '0');
-    final minute = dt.minute.toString().padLeft(2, '0');
-    return '$day/$month/${dt.year} $hour:$minute';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final monthStr = months[dt.month - 1];
+    final dayStr = dt.day.toString().padLeft(2, '0');
+    final hourStr = dt.hour.toString().padLeft(2, '0');
+    final minuteStr = dt.minute.toString().padLeft(2, '0');
+    return '$monthStr $dayStr, ${dt.year} • $hourStr:$minuteStr';
   }
 
   @override
   Widget build(BuildContext context) {
+    final payDate = payment.paidAt ?? payment.createdAt;
+    final formattedDate = _formatDateTime(payDate);
+    final refId = payment.transactionCode ?? '#MH-${payment.id.toString().padLeft(5, '0')}-UC24';
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
           const GradientHeader(
-            title: 'Biên lai giao dịch',
-            subtitle: 'Xác nhận thanh toán hóa đơn',
+            title: 'PAYMENT RECEIPT',
+            showBack: true,
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               children: [
-                // Icon trạng thái và tiêu đề thành công
+                // 1. TOP SUCCESS ICON & HEADER
                 Center(
                   child: Column(
                     children: [
-                      const SizedBox(height: 16),
-                      Container(
-                        width: 76,
-                        height: 76,
-                        decoration: const BoxDecoration(
-                          color: AppColors.successBg,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.check_circle, size: 48, color: AppColors.success),
-                      ),
                       const SizedBox(height: 12),
+                      Container(
+                        width: 68,
+                        height: 68,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF16A34A), width: 2.0),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF16A34A).withValues(alpha: 0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.check_rounded, size: 40, color: Color(0xFF16A34A)),
+                      ),
+                      const SizedBox(height: 16),
                       const Text(
-                        'Thanh Toán Thành Công',
+                        'Payment Successful',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 22,
                           fontWeight: FontWeight.w900,
-                          color: AppColors.success,
-                          letterSpacing: 0.2,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        'Hóa đơn Tháng ${invoice.monthYear}',
-                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _formatMoney(invoice.totalAmount),
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
+                      const Text(
+                        'Transaction completed successfully',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -100,68 +106,157 @@ class PaymentReceiptScreen extends StatelessWidget {
                   ),
                 ),
 
-                // Card thông tin chi tiết biên lai
-                AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Thông tin hóa đơn',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textPrimary),
-                      ),
-                      const Divider(height: 20, color: AppColors.divider),
-                      _buildReceiptRow('Mã giao dịch', payment.transactionCode ?? '#N/A'),
-                      _buildReceiptRow('Thời gian', payment.paidAt != null ? _formatDateTime(payment.paidAt!) : _formatDateTime(DateTime.now())),
-                      _buildReceiptRow('Hình thức', payment.paymentMethod),
-                      _buildReceiptRow('Căn hộ', invoice.unitNumber != null ? 'Căn hộ ${invoice.unitNumber}' : 'Căn hộ 502 (Tầng 5)'),
-                      _buildReceiptRow('Phí dịch vụ cổng', '0 đ'),
-                      const Divider(height: 20, color: AppColors.divider),
-                      _buildReceiptRow('Số tiền thanh toán', _formatMoney(payment.amount), isBoldValue: true),
-                    ],
+                // 2. RECEIPT CARD (Paper bill layout)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border, width: 1.2),
+                    boxShadow: AppColors.cardShadow,
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                // Card vẽ mã vạch (Barcode) giả lập cực kì premium
-                AppCard(
                   child: Column(
                     children: [
-                      const Text(
-                        'MÃ VẠCH XÁC THỰC GIAO DỊCH',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.textTertiary, letterSpacing: 1),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            // TOTAL AMOUNT
+                            const Text(
+                              'TOTAL AMOUNT',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textTertiary,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '- ${_formatMoney(payment.amount)}',
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF16A34A),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Dashed Divider
+                            Row(
+                              children: List.generate(
+                                30,
+                                (i) => Expanded(
+                                  child: Container(
+                                    height: 1.5,
+                                    color: i % 2 == 0 ? const Color(0xFFCBD5E1) : Colors.transparent,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // RECEIPT DETAILS
+                            _buildReceiptRow('Reference ID', refId, isBoldValue: true, isPrimary: true),
+                            _buildReceiptRow('Timestamp', formattedDate),
+                            _buildReceiptRow(
+                              'Payment Method',
+                              payment.paymentMethod.contains('VietQR') || payment.paymentMethod.contains('PayOS')
+                                  ? '💳 Direct Bank Transfer'
+                                  : payment.paymentMethod,
+                            ),
+                            _buildReceiptRow(
+                              'Apartment',
+                              invoice.unitNumber != null ? 'Apartment ${invoice.unitNumber}' : 'Apartment 101',
+                            ),
+                            _buildReceiptRow('Service Fee', '0 đ'),
+
+                            const SizedBox(height: 16),
+                            // Dotted Divider
+                            Row(
+                              children: List.generate(
+                                36,
+                                (i) => Expanded(
+                                  child: Container(
+                                    height: 1.5,
+                                    color: i % 2 == 0 ? AppColors.textTertiary.withValues(alpha: 0.4) : Colors.transparent,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // BARCODE VERIFICATION BOX
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.03),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 1),
+                              ),
+                              child: Column(
+                                children: [
+                                  // Barcode bars illustration
+                                  SizedBox(
+                                    height: 38,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: List.generate(42, (index) {
+                                        final isBlack = index % 2 == 0;
+                                        double width = 2;
+                                        if (index % 3 == 0) width = 3;
+                                        if (index % 5 == 0) width = 1;
+                                        if (index % 7 == 0) width = 4;
+                                        return Container(
+                                          width: width,
+                                          height: double.infinity,
+                                          color: isBlack ? AppColors.textPrimary : Colors.transparent,
+                                        );
+                                      }),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'ELECTRONIC RECEIPT - VALID UNTIL NEXT BILLING CYCLE',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      // Vẽ barcode bằng Container
+                      // Zigzag receipt bottom edge design
                       SizedBox(
-                        height: 50,
+                        height: 12,
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(35, (index) {
-                            // Tạo các vạch đen trắng độ rộng ngẫu nhiên nhưng cố định
-                            final isBlack = index % 2 == 0;
-                            double width = 2;
-                            if (index % 3 == 0) width = 3;
-                            if (index % 5 == 0) width = 1;
-                            if (index % 7 == 0) width = 4;
-                            return Container(
-                              width: width,
-                              height: double.infinity,
-                              color: isBlack ? AppColors.textPrimary : Colors.transparent,
+                          children: List.generate(24, (index) {
+                            return Expanded(
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(6),
+                                    topRight: Radius.circular(6),
+                                  ),
+                                ),
+                              ),
                             );
                           }),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        payment.payosOrderId,
-                        style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: AppColors.textSecondary),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // Action buttons: Tải PDF, Chia sẻ
+                // 3. ACTION BUTTONS
+                // Row 1: Download PDF & Share
                 Row(
                   children: [
                     Expanded(
@@ -169,12 +264,12 @@ class PaymentReceiptScreen extends StatelessWidget {
                         height: 48,
                         child: OutlinedButton.icon(
                           onPressed: () => _generateAndSavePDF(context),
-                          icon: const Icon(Icons.picture_as_pdf),
-                          label: const Text('Tải PDF', style: TextStyle(fontWeight: FontWeight.bold)),
+                          icon: const Icon(Icons.download_outlined, size: 18),
+                          label: const Text('Download PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.primary),
+                            side: const BorderSide(color: AppColors.primary, width: 1.5),
                             foregroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                         ),
                       ),
@@ -185,45 +280,57 @@ class PaymentReceiptScreen extends StatelessWidget {
                         height: 48,
                         child: OutlinedButton.icon(
                           onPressed: () {
-                            // Giả lập share
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Đang mở bảng chia sẻ hệ thống...'),
+                                content: Text('Opening system share sheet...'),
                                 duration: Duration(seconds: 2),
                               ),
                             );
                           },
-                          icon: const Icon(Icons.share),
-                          label: const Text('Chia sẻ', style: TextStyle(fontWeight: FontWeight.bold)),
+                          icon: const Icon(Icons.share_outlined, size: 18),
+                          label: const Text('Share', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.primary),
+                            side: const BorderSide(color: AppColors.primary, width: 1.5),
                             foregroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                // Về trang chủ button
-                SizedBox(
+                const SizedBox(height: 12),
+
+                // Row 2: Back to Home Button
+                Container(
                   width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
+                  height: 52,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton.icon(
                     onPressed: () => context.go(AppRoutes.residentHome),
+                    icon: const Icon(Icons.home_outlined, size: 20),
+                    label: const Text(
+                      'Back to Home',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: 0.3),
+                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.navy,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: const Text(
-                      'QUAY VỀ TRANG CHỦ',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5),
+                      elevation: 0,
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -232,19 +339,19 @@ class PaymentReceiptScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildReceiptRow(String label, String value, {bool isBoldValue = false}) {
+  Widget _buildReceiptRow(String label, String value, {bool isBoldValue = false, bool isPrimary = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
           Text(
             value,
             style: TextStyle(
               fontSize: 13,
               fontWeight: isBoldValue ? FontWeight.w900 : FontWeight.w700,
-              color: isBoldValue ? AppColors.primary : AppColors.textPrimary,
+              color: isPrimary ? AppColors.primary : AppColors.textPrimary,
             ),
           ),
         ],

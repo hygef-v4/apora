@@ -2,12 +2,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/chat_message_model.dart';
 import '../providers/chat_provider.dart';
 import '../../../core/network/dio_client.dart';
-import '../../../core/widgets/gradient_header.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final int? partnerId; // null means chatting with general management
@@ -96,40 +98,113 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  Widget _buildHeader() {
+    final user = ref.watch(authNotifierProvider).user;
+    final isAdminOrOwner = user != null &&
+        (user.roles.contains('MANAGER') || user.roles.contains('LANDLORD'));
+
+    return Container(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 12,
+        bottom: 12,
+        left: 8,
+        right: 16,
+      ),
+      decoration: isAdminOrOwner
+          ? const BoxDecoration(gradient: AppColors.headerGradient)
+          : const BoxDecoration(gradient: AppColors.residentGradient),
+      child: Row(
+        children: [
+          if (widget.showBack)
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => context.pop(),
+            ),
+          const SizedBox(width: 4),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(
+              color: Colors.white24,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.home, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF4ADE80),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      'Đang hoạt động',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMessageBubble(ChatMessageModel message, bool isMe) {
+    final timeStr = DateFormat('HH:mm').format(message.createdAt.toLocal());
+    
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-        padding: message.isImage ? const EdgeInsets.all(4) : const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+        padding: message.isImage 
+            ? const EdgeInsets.all(4) 
+            : const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: isMe ? AppColors.primary : Colors.grey[200],
-          borderRadius: BorderRadius.circular(16).copyWith(
-            bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(16),
-            bottomLeft: !isMe ? const Radius.circular(0) : const Radius.circular(16),
+          color: isMe ? const Color(0xFF149EE7) : Colors.white,
+          borderRadius: BorderRadius.circular(20).copyWith(
+            bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(20),
+            bottomLeft: !isMe ? const Radius.circular(4) : const Radius.circular(20),
           ),
+          boxShadow: isMe ? [] : [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            )
+          ],
         ),
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            if (!isMe && message.senderName != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  message.senderName!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ),
             if (message.isImage)
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 child: message.content.startsWith('http')
                     ? Image.network(
                         message.content,
@@ -151,10 +226,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               Text(
                 message.content,
                 style: TextStyle(
-                  color: isMe ? Colors.white : Colors.black87,
-                  fontSize: 16,
+                  color: isMe ? Colors.white : AppColors.textPrimary,
+                  fontSize: 15,
+                  height: 1.4,
                 ),
               ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  timeStr,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isMe ? Colors.white70 : AppColors.textTertiary,
+                  ),
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 4),
+                  const Icon(Icons.done_all, size: 14, color: Colors.white70),
+                ]
+              ],
+            ),
           ],
         ),
       ),
@@ -167,14 +260,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final currentUser = ref.watch(authNotifierProvider).user;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF0F4F8), // Light blue-gray background
       body: Column(
         children: [
-          GradientHeader(
-            title: widget.title,
-            subtitle: widget.subtitle,
-            showBack: widget.showBack,
-          ),
+          _buildHeader(),
           Expanded(
             child: messagesAsync.when(
               data: (messages) {
@@ -184,8 +273,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 return ListView.builder(
                   controller: _scrollController,
                   reverse: true, // Show latest messages at the bottom
-                  itemCount: messages.length,
+                  padding: const EdgeInsets.only(top: 16, bottom: 8),
+                  itemCount: messages.length + 1, // +1 for "Hôm nay" label
                   itemBuilder: (context, index) {
+                    if (index == messages.length) {
+                      return Center(
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Hôm nay',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ),
+                      );
+                    }
                     final message = messages[index];
                     final isMe = message.senderId == currentUser?.id;
                     return _buildMessageBubble(message, isMe);
@@ -216,42 +322,61 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           
           // Input Area
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            decoration: BoxDecoration(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
               color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 5,
-                  offset: const Offset(0, -2),
-                ),
-              ],
             ),
             child: SafeArea(
               top: false,
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.image, color: AppColors.primary),
-                    onPressed: _isSending ? null : _pickImage,
+                  GestureDetector(
+                    onTap: _isSending ? null : _pickImage,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F4F8),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(Icons.add, color: AppColors.textSecondary),
+                    ),
                   ),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      maxLength: 1000,
-                      maxLines: null,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _handleSend(),
-                      decoration: const InputDecoration(
-                        hintText: 'Type a message...',
-                        border: InputBorder.none,
-                        counterText: '',
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F4F8),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: TextField(
+                        controller: _textController,
+                        maxLength: 1000,
+                        maxLines: null,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _handleSend(),
+                        decoration: const InputDecoration(
+                          hintText: 'Nhập tin nhắn...',
+                          hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 14),
+                          border: InputBorder.none,
+                          counterText: '',
+                        ),
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.send, color: AppColors.primary),
-                    onPressed: _isSending ? null : () => _handleSend(),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: _isSending ? null : () => _handleSend(),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF149EE7),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.send, color: Colors.white, size: 18),
+                    ),
                   ),
                 ],
               ),

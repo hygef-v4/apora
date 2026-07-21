@@ -296,6 +296,7 @@ export interface TaskSummary {
   id: number;
   assignedTo: number;
   assigneeName: string;
+  assigneePhone: string | null;
   title: string;
   status: TaskStatus;
   assignedAt: Date;

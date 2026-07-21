@@ -8,7 +8,6 @@ import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
-import '../../../core/widgets/status_badge.dart';
 import '../providers/profile_notifier.dart';
 import '../widgets/logout_confirm.dart';
 
@@ -33,17 +32,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   String _roleLabel(String role) {
     switch (role) {
       case 'LANDLORD':
-        return 'Chủ tòa nhà';
+        return 'Landlord';
       case 'MANAGER':
-        return 'Ban quản lý';
+        return 'Manager';
       case 'RESIDENT':
-        return 'Cư dân';
+        return 'Resident';
       case 'SECURITY_GUARD':
-        return 'Bảo vệ';
+        return 'Security Guard';
       case 'JANITOR':
-        return 'Lao công';
+        return 'Janitor';
       case 'TECHNICIAN':
-        return 'Kỹ thuật viên';
+        return 'Technician';
       default:
         return role;
     }
@@ -52,73 +51,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(profileNotifierProvider);
-    final user = profile.value;
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
-          GradientHeader(
-            showBack: true,
-            titleWidget: user == null
-                ? const Text(
-                    'Hồ sơ cá nhân',
+          // Header: back trái + tiêu đề căn giữa (layout wireframe)
+          Container(
+            decoration: const BoxDecoration(
+              gradient: AppColors.residentGradient,
+            ),
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 12,
+              left: 16,
+              right: 16,
+              bottom: 16,
+            ),
+            child: Row(
+              children: [
+                HeaderIconButton(
+                  icon: Icons.arrow_back,
+                  onTap: () => Navigator.of(context).maybePop(),
+                ),
+                const Expanded(
+                  child: Text(
+                    'Profile',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 17,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
                     ),
-                  )
-                : Row(
-                    children: [
-                      InitialsAvatar(
-                        name: user.fullName,
-                        imageUrl: user.avatarUrl,
-                        size: 56,
-                        square: true,
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user.fullName,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Wrap(
-                              spacing: 6,
-                              children: user.roles
-                                  .map((r) => StatusBadge(
-                                        text: _roleLabel(r),
-                                        color: Colors.white,
-                                        backgroundColor:
-                                            Colors.white.withValues(alpha: .2),
-                                      ))
-                                  .toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ),
-            actions: [
-              HeaderIconButton(
-                icon: Icons.edit,
-                tooltip: 'Chỉnh sửa hồ sơ',
-                onTap: () => context.push(AppRoutes.profileEdit),
-              ),
-              HeaderIconButton(
-                icon: Icons.logout,
-                tooltip: 'Đăng xuất',
-                // UC02: hỏi xác nhận trước khi đăng xuất (FID-02)
-                onTap: () => confirmAndLogout(context, ref),
-              ),
-            ],
+                ),
+                // Giữ tiêu đề cân giữa so với nút back
+                const SizedBox(width: 36),
+              ],
+            ),
           ),
           Expanded(
             child: profile.when(
@@ -135,7 +104,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         onPressed: () => ref
                             .read(profileNotifierProvider.notifier)
                             .fetchProfile(),
-                        child: const Text('Thử lại'),
+                        child: const Text('Retry'),
                       ),
                     ],
                   ),
@@ -146,8 +115,37 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 return ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
                   children: [
+                    // Avatar tròn + tên + vai trò, căn giữa (layout wireframe)
+                    Center(
+                      child: InitialsAvatar(
+                        name: data.fullName,
+                        imageUrl: data.avatarUrl,
+                        size: 96,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      data.fullName,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      data.roles.map(_roleLabel).join(' · '),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
                     // Các trường read-only theo BR trong SRS (sửa phải qua UC05)
                     AppCard(
                       padding: EdgeInsets.zero,
@@ -155,77 +153,103 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         children: [
                           _InfoRow(
                             icon: Icons.badge,
-                            label: 'Họ và tên',
+                            label: 'Full Name',
                             value: data.fullName,
                           ),
                           const Divider(height: 1, indent: 56),
                           _InfoRow(
                             icon: Icons.phone,
-                            label: 'Số điện thoại (đăng nhập)',
+                            label: 'Phone Number (login)',
                             value: data.phoneNumber,
                           ),
                           const Divider(height: 1, indent: 56),
                           _InfoRow(
                             icon: Icons.verified_user,
-                            label: 'Vai trò',
+                            label: 'Role',
                             value: data.roles.map(_roleLabel).join(', '),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 16),
+
+                    // Nhóm điều hướng dạng hàng có mũi tên (layout wireframe)
                     if (data.roles.contains('RESIDENT')) ...[
-                      const SizedBox(height: 12),
-                      AppCard(
+                      _NavRow(
+                        icon: Icons.people,
+                        label: 'My Roommates',
                         onTap: () => context.push(AppRoutes.roommates),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.people,
-                                size: 20, color: AppColors.primary),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Thành viên phòng',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ),
-                            Icon(Icons.chevron_right,
-                                color: AppColors.textTertiary),
-                          ],
-                        ),
                       ),
+                      const SizedBox(height: 12),
+                      _NavRow(
+                        icon: Icons.description,
+                        label: 'My Contract',
+                        onTap: () => context.push(AppRoutes.myContract),
+                      ),
+                      const SizedBox(height: 12),
                     ],
-                    const SizedBox(height: 12),
-                    AppCard(
+                    _NavRow(
+                      icon: Icons.lock_reset,
+                      label: 'Change Password',
                       onTap: () => context.push(AppRoutes.changePassword),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.lock_reset,
-                              size: 20, color: AppColors.primary),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Đổi mật khẩu',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          Icon(Icons.chevron_right,
-                              color: AppColors.textTertiary),
-                        ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Hành động chính / phụ ở cuối màn (layout wireframe)
+                    FilledButton.icon(
+                      onPressed: () => context.push(AppRoutes.profileEdit),
+                      icon: const Icon(Icons.edit, size: 18),
+                      label: const Text('Edit Profile'),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      // UC02: hỏi xác nhận trước khi đăng xuất (FID-02)
+                      onPressed: () => confirmAndLogout(context, ref),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: const BorderSide(color: AppColors.error),
                       ),
+                      icon: const Icon(Icons.logout, size: 18),
+                      label: const Text('Logout'),
                     ),
                   ],
                 );
               },
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Hàng điều hướng: icon + nhãn + mũi tên (theo wireframe).
+class _NavRow extends StatelessWidget {
+  const _NavRow({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: AppColors.textTertiary),
         ],
       ),
     );

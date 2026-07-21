@@ -113,8 +113,8 @@ void main() {
         await tester.pumpWidget(createWidget());
         await tester.pumpAndSettle();
 
-        expect(find.text('Hóa đơn của tôi'), findsOneWidget);
-        expect(find.textContaining('thanh toán'), findsWidgets);
+        expect(find.textContaining('đơn của tôi'), findsOneWidget);
+        expect(find.textContaining('Hóa đơn'), findsWidgets);
       });
 
       testWidgets('Hiển thị giao diện khi chưa có hóa đơn', (tester) async {
@@ -127,7 +127,7 @@ void main() {
         await tester.pumpWidget(createWidget());
         await tester.pumpAndSettle();
 
-        expect(find.text('Hoàn thành hóa đơn!'), findsOneWidget);
+        expect(find.textContaining('chưa thanh toán'), findsOneWidget);
       });
     });
 

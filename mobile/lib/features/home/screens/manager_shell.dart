@@ -26,10 +26,10 @@ class _ManagerShellState extends State<ManagerShell> {
   int _index = 0;
 
   static const _tabs = [
-    AppBottomNavItem(icon: Icons.home, label: 'Trang chủ'),
-    AppBottomNavItem(icon: Icons.groups, label: 'Quản lý'),
-    AppBottomNavItem(icon: Icons.bar_chart, label: 'Báo cáo'),
-    AppBottomNavItem(icon: Icons.chat, label: 'Hỗ trợ'),
+    AppBottomNavItem(icon: Icons.home, label: 'Home'),
+    AppBottomNavItem(icon: Icons.groups, label: 'Management'),
+    AppBottomNavItem(icon: Icons.bar_chart, label: 'Reports'),
+    AppBottomNavItem(icon: Icons.chat, label: 'Support'),
   ];
 
   @override
@@ -62,8 +62,8 @@ class _ManagementHubTab extends ConsumerWidget {
     return Column(
       children: [
         const GradientHeader(
-          title: 'Quản lý',
-          subtitle: 'Nhân sự & cư dân của tòa nhà',
+          title: 'Management',
+          subtitle: 'Building Staff & Resident Hub',
         ),
         Expanded(
           child: ListView(
@@ -82,8 +82,8 @@ class _ManagementHubTab extends ConsumerWidget {
                     icon: Icons.admin_panel_settings,
                     iconBg: Color(0xFFEEF2FF),
                     iconColor: Color(0xFF4F46E5),
-                    title: 'Quản lý',
-                    subtitle: 'Danh sách quản lý viên',
+                    title: 'Managers',
+                    subtitle: 'List of property managers',
                     trailing: Icon(
                       Icons.chevron_right,
                       color: AppColors.textTertiary,
@@ -99,8 +99,8 @@ class _ManagementHubTab extends ConsumerWidget {
                   icon: Icons.apartment,
                   iconBg: Color(0xFFECFEFF),
                   iconColor: Color(0xFF0891B2),
-                  title: 'Căn hộ',
-                  subtitle: 'Quản lý căn hộ, check-in, check-out',
+                  title: 'Apartments',
+                  subtitle: 'Apartment list, check-in, check-out',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -115,8 +115,8 @@ class _ManagementHubTab extends ConsumerWidget {
                   icon: Icons.notifications,
                   iconBg: Color(0xFFFFF7ED),
                   iconColor: Color(0xFFF97316),
-                  title: 'Thông báo',
-                  subtitle: 'Gửi và quản lý thông báo tòa nhà',
+                  title: 'Announcements',
+                  subtitle: 'Send & manage building announcements',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -131,8 +131,8 @@ class _ManagementHubTab extends ConsumerWidget {
                   icon: Icons.people,
                   iconBg: Color(0xFFFDF2F8),
                   iconColor: Color(0xFFEC4899),
-                  title: 'Duyệt thành viên',
-                  subtitle: 'Phê duyệt yêu cầu tạm trú & người ở ghép',
+                  title: 'Roommate Approvals',
+                  subtitle: 'Approve temporary residence & roommate requests',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -148,24 +148,7 @@ class _ManagementHubTab extends ConsumerWidget {
                   iconBg: Color(0xFFFEFCE8),
                   iconColor: Color(0xFFCA8A04),
                   title: 'Contracts',
-                  subtitle: 'All lease contracts of residents',
-                  trailing: Icon(
-                    Icons.chevron_right,
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              // 5b. UC08 - danh sách yêu cầu gia hạn (luồng theo SRS:
-              // danh sách đơn -> bấm đơn -> màn duyệt UC09)
-              AppCard(
-                onTap: () => context.push(AppRoutes.extensionList),
-                child: const _HubRow(
-                  icon: Icons.more_time,
-                  iconBg: Color(0xFFDBEAFE),
-                  iconColor: AppColors.primary,
-                  title: 'Extension Requests',
-                  subtitle: 'Review stay extension requests',
+                  subtitle: 'Contract list & extension approvals',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -180,8 +163,8 @@ class _ManagementHubTab extends ConsumerWidget {
                   icon: Icons.engineering,
                   iconBg: Color(0xFFF0FDF4),
                   iconColor: Color(0xFF22C55E),
-                  title: 'Nhân viên',
-                  subtitle: 'Bảo vệ, lao công, kỹ thuật viên',
+                  title: 'Staff',
+                  subtitle: 'Security, cleaners, technicians',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -196,8 +179,8 @@ class _ManagementHubTab extends ConsumerWidget {
                   icon: Icons.build_circle,
                   iconBg: Color(0xFFEFF6FF),
                   iconColor: Color(0xFF3B82F6),
-                  title: 'Bảo trì',
-                  subtitle: 'Theo dõi yêu cầu sửa chữa của cư dân',
+                  title: 'Maintenance',
+                  subtitle: 'Track resident repair requests',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -205,15 +188,31 @@ class _ManagementHubTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              // 8. hoá đơn
+              // 8. Transaction History
               AppCard(
                 onTap: () => context.push(AppRoutes.managerInvoiceList),
                 child: const _HubRow(
-                  icon: Icons.receipt_long,
+                  icon: Icons.history,
                   iconBg: AppColors.purpleBg,
                   iconColor: AppColors.purple,
-                  title: 'Hóa đơn',
-                  subtitle: 'Chỉ số điện nước, thanh toán & thiết lập đơn giá',
+                  title: 'Transaction History',
+                  subtitle: 'Payment records & verification log',
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // 9. Input Monthly Bills
+              AppCard(
+                onTap: () => context.push(AppRoutes.generateBill),
+                child: const _HubRow(
+                  icon: Icons.post_add,
+                  iconBg: Color(0xFFFEF2F2),
+                  iconColor: Color(0xFFEF4444),
+                  title: 'Input Monthly Bills.',
+                  subtitle: 'Enter utility meter readings & generate bills',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,

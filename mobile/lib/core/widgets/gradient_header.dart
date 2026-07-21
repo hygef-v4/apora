@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/auth_profile/providers/auth_notifier.dart';
 import '../constants/app_colors.dart';
 
 /// Header gradient navy -> blue (chuẩn mọi màn hình trong thiết kế).
 /// Slot: [title]/[subtitle] hoặc [titleWidget] tự do, [actions] là các nút
 /// 36x36 nền mờ, [bottom] cho search bar/nội dung thêm, [leading] nút back.
-class GradientHeader extends StatelessWidget {
+class GradientHeader extends ConsumerWidget {
   const GradientHeader({
     super.key,
     this.title,
@@ -24,9 +25,21 @@ class GradientHeader extends StatelessWidget {
   final bool showBack;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).user;
+    final isAdminOrOwner = user != null &&
+        (user.roles.contains('MANAGER') || user.roles.contains('LANDLORD'));
+    final isStaff = user != null &&
+        (user.roles.contains('SECURITY_GUARD') ||
+            user.roles.contains('JANITOR') ||
+            user.roles.contains('TECHNICIAN'));
+
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.headerGradient),
+      decoration: isAdminOrOwner
+          ? const BoxDecoration(gradient: AppColors.headerGradient)
+          : isStaff
+              ? const BoxDecoration(gradient: AppColors.staffGradient)
+              : const BoxDecoration(gradient: AppColors.residentGradient),
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 12,
         left: 20,

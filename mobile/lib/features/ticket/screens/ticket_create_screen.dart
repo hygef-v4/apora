@@ -5,16 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/image_util.dart';
-import '../../../core/widgets/gradient_header.dart';
-import '../../../core/widgets/spec_layout.dart';
-import '../../contract/providers/contract_provider.dart';
-import '../widgets/ticket_category.dart';
+import '../../auth_profile/providers/auth_notifier.dart';
 import '../providers/ticket_provider.dart';
 
-/// UC19 - Report Issue (bố cục theo wireframe FID-19 trong SRS). Chỉ RESIDENT.
-/// Chọn danh mục, nhập mô tả (>= 10 ký tự), đính kèm tối đa 3 ảnh (BR-37,
-/// nén < 500KB theo BR-10). Danh mục lưu tiếng Việt (khớp enum backend),
-/// chỉ hiển thị nhãn tiếng Anh.
+/// UC19 - Màn hình tạo sự cố (Resident) với giao diện mới.
 class TicketCreateScreen extends ConsumerStatefulWidget {
   const TicketCreateScreen({super.key});
 
@@ -27,28 +21,10 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final _descController = TextEditingController();
-  String? _category;
+  String? _category = 'Điện'; // Thêm lại biến _category bị xoá nhầm
   final List<Uint8List> _images = [];
   bool _isSubmitting = false;
   bool _isPicking = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Cập nhật khối Summary khi mô tả đổi (số ký tự / ảnh)
-    _descController.addListener(() => setState(() {}));
-    // Nạp căn hộ của cư dân để hiển thị khối Apartment Info (chỉ đọc)
-    Future.microtask(() => ref.read(myContractProvider.notifier).fetch());
-  }
-
-  String _formatFloor(String floor) {
-    final n = int.tryParse(floor.trim());
-    if (n == null) return floor;
-    final suffix = (n % 100 >= 11 && n % 100 <= 13)
-        ? 'th'
-        : switch (n % 10) { 1 => 'st', 2 => 'nd', 3 => 'rd', _ => 'th' };
-    return '$n$suffix Floor';
-  }
 
   @override
   void dispose() {
@@ -69,15 +45,14 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
     try {
       final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
       if (picked == null) return;
-      // BR-10: nén < 500KB trước khi giữ để upload
       final compressed = await ImageUtil.compressUnder500Kb(picked.path);
       if (compressed == null) {
-        _showMessage('Could not compress the image. Please pick another.');
+        _showMessage('Không thể nén ảnh. Vui lòng chọn ảnh khác.');
         return;
       }
       setState(() => _images.add(compressed));
     } catch (e) {
-      _showMessage('Image pick error: $e');
+      _showMessage('Lỗi chọn ảnh: $e');
     } finally {
       if (mounted) setState(() => _isPicking = false);
     }
@@ -85,7 +60,7 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
 
   Future<void> _submit() async {
     if (_category == null) {
-      _showMessage('Please select an issue category.');
+      _showMessage('Vui lòng chọn danh mục sự cố.');
       return;
     }
     if (!_formKey.currentState!.validate()) return;
@@ -97,7 +72,7 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
             description: _descController.text.trim(),
             imageBytes: _images,
           );
-      _showMessage('Issue reported successfully.');
+      _showMessage('Gửi yêu cầu sửa chữa thành công.');
       if (mounted) context.pop();
     } catch (e) {
       _showMessage(e.toString());
@@ -106,180 +81,207 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
     }
   }
 
+  Widget _buildCategoryItem(String name, IconData icon) {
+    final isSelected = _category == name;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _category = name),
+        child: Container(
+          height: 72,
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFEFF6FF) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF149EE7) : const Color(0xFFE2E8F0),
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? const Color(0xFF149EE7) : const Color(0xFF64748B),
+                size: 24,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                name,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? const Color(0xFF149EE7) : const Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final apt = ref.watch(myContractProvider).value?.apartment;
-    final apartment = apt == null
-        ? '—'
-        : 'Room ${apt.unitNumber} — ${_formatFloor(apt.floor)}';
-    final selectedLabel =
-        _category == null ? '—' : ticketCategoryLabel(_category!);
+    final user = ref.watch(authNotifierProvider).user;
+    final isAdminOrOwner = user != null &&
+        (user.roles.contains('MANAGER') || user.roles.contains('LANDLORD'));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
-          const GradientHeader(title: 'Report Issue', showBack: true),
+          // Custom Header
+          Container(
+            decoration: isAdminOrOwner
+                ? const BoxDecoration(gradient: AppColors.headerGradient)
+                : const BoxDecoration(gradient: AppColors.residentGradient),
+            width: double.infinity,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                    const Text(
+                      'Gửi yêu cầu bảo trì',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
           Expanded(
             child: Form(
               key: _formKey,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 children: [
-                  // APARTMENT INFO
-                  const SpecSectionHeader('Apartment Info'),
-                  SpecDetailRow(label: 'Apartment', value: apartment),
+                  // 1. Loại sự cố
+                  const Text(
+                    'Loại sự cố',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _buildCategoryItem('Điện', Icons.lightbulb),
+                      const SizedBox(width: 12),
+                      _buildCategoryItem('Nước', Icons.water_drop),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _buildCategoryItem('Nội thất', Icons.chair),
+                      const SizedBox(width: 12),
+                      _buildCategoryItem('Khác', Icons.build),
+                    ],
+                  ),
                   const SizedBox(height: 20),
 
-                  // TICKET DETAILS
-                  const SpecSectionHeader('Ticket Details'),
-                  const SizedBox(height: 8),
-                  const SpecFieldLabel('Category', required: true),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: kTicketCategories.map((c) {
-                      final selected = _category == c.value;
-                      return ChoiceChip(
-                        avatar: Icon(
-                          c.icon,
-                          size: 18,
-                          color: selected
-                              ? Colors.white
-                              : AppColors.textSecondary,
-                        ),
-                        label: Text(c.label),
-                        selected: selected,
-                        onSelected: _isSubmitting
-                            ? null
-                            : (_) => setState(() => _category = c.value),
-                        selectedColor: AppColors.primary,
-                        backgroundColor: AppColors.surface,
-                        showCheckmark: false,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: const BorderSide(color: AppColors.border),
-                        ),
-                        labelStyle: TextStyle(
-                          color: selected
-                              ? Colors.white
-                              : AppColors.textPrimary,
-                          fontWeight:
-                              selected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      );
-                    }).toList(),
+                  // 2. Mô tả chi tiết
+                  const Text(
+                    'Mô tả chi tiết',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                  const SizedBox(height: 18),
-
-                  const SpecFieldLabel('Description', required: true),
+                  const SizedBox(height: 12),
                   TextFormField(
                     controller: _descController,
                     maxLines: 4,
                     maxLength: 500,
-                    enabled: !_isSubmitting,
-                    style: const TextStyle(fontSize: 13),
+                    style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                     decoration: InputDecoration(
-                      hintText:
-                          'Describe the issue in detail... (min 10 characters)',
-                      hintStyle: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textTertiary,
-                      ),
+                      hintText: 'Mô tả vấn đề cụ thể...',
+                      hintStyle: const TextStyle(fontSize: 14, color: AppColors.textTertiary),
                       filled: true,
-                      fillColor: AppColors.surface,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.all(16),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Color(0xFF149EE7)),
                       ),
                     ),
                     validator: (val) {
                       final v = val?.trim() ?? '';
-                      if (v.isEmpty) return 'Please enter an issue description.';
+                      if (v.isEmpty) return 'Vui lòng nhập mô tả sự cố.';
                       if (v.length < 10) {
-                        return 'Description must be at least 10 characters.';
+                        return 'Mô tả phải có ít nhất 10 ký tự.';
                       }
                       return null;
                     },
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 20),
 
-                  const SpecFieldLabel('Attach Photos (max 3)'),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
+                  // 3. Hình ảnh đính kèm
+                  const Text(
+                    'Hình ảnh đính kèm',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
                     children: [
-                      ..._images
-                          .asMap()
-                          .entries
-                          .map((e) => _thumbnail(e.key, e.value)),
+                      ..._images.asMap().entries.map((e) => Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: _thumbnail(e.key, e.value),
+                      )),
                       if (_images.length < _maxImages) _addImageButton(),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'JPG/PNG, max 5MB each',
-                    style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
-                  ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 32),
 
-                  // SUMMARY
-                  const SpecSectionHeader('Summary'),
-                  SpecDetailRow(label: 'Category', value: selectedLabel),
-                  SpecDetailRow(
-                    label: 'Photos Attached',
-                    value: '${_images.length} / $_maxImages',
-                  ),
-                  const SizedBox(height: 24),
-
+                  // 5. Nút gửi yêu cầu
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height: 52,
                     child: ElevatedButton(
                       onPressed: _isSubmitting ? null : _submit,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: const Color(0xFF149EE7),
                         foregroundColor: Colors.white,
-                        elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                        elevation: 0,
                       ),
                       child: _isSubmitting
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                             )
                           : const Text(
-                              'SUBMIT TICKET',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: .5,
-                              ),
+                              'Gửi yêu cầu',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: _isSubmitting ? null : () => context.pop(),
-                      child: const Text(
-                        'CANCEL',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: .5,
-                        ),
-                      ),
                     ),
                   ),
                 ],
@@ -295,8 +297,8 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
     return Stack(
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.memory(bytes, width: 90, height: 90, fit: BoxFit.cover),
+          borderRadius: BorderRadius.circular(16),
+          child: Image.memory(bytes, width: 72, height: 72, fit: BoxFit.cover),
         ),
         Positioned(
           top: 2,
@@ -304,12 +306,9 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
           child: GestureDetector(
             onTap: () => setState(() => _images.removeAt(index)),
             child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.black54,
-                shape: BoxShape.circle,
-              ),
+              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
               padding: const EdgeInsets.all(2),
-              child: const Icon(Icons.close, color: Colors.white, size: 16),
+              child: const Icon(Icons.close, color: Colors.white, size: 14),
             ),
           ),
         ),
@@ -321,12 +320,12 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
     return GestureDetector(
       onTap: _isPicking ? null : _pickImage,
       child: Container(
-        width: 90,
-        height: 90,
+        width: 72,
+        height: 72,
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
+          color: const Color(0xFFEFF6FF), // Màu nền light blue cho nút thêm ảnh
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFCBD5E1)),
         ),
         child: _isPicking
             ? const Center(
@@ -336,20 +335,8 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               )
-            : const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add, color: AppColors.textTertiary, size: 26),
-                  SizedBox(height: 4),
-                  Text(
-                    'ADD PHOTO',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
+            : const Center(
+                child: Icon(Icons.add, color: Color(0xFF94A3B8), size: 28),
               ),
       ),
     );

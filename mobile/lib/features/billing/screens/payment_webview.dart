@@ -62,14 +62,33 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
                 _checkRedirect(change.url!);
               }
             },
+            onNavigationRequest: (NavigationRequest request) {
+              final uri = Uri.tryParse(request.url);
+              if (uri != null) {
+                final path = uri.path;
+                final isSuccessPath = path.contains('/api/payments/payos/success');
+                final isCancelPath = path.contains('/api/payments/payos/cancel');
+                final isPayOsSuccess = uri.queryParameters['code'] == '00' && uri.queryParameters['cancel'] == 'false';
+                final isPayOsCancel = uri.queryParameters['cancel'] == 'true';
+
+                if (isSuccessPath || isPayOsSuccess || isCancelPath || isPayOsCancel) {
+                  _checkRedirect(request.url);
+                  return NavigationDecision.prevent;
+                }
+              }
+              return NavigationDecision.navigate;
+            },
           ),
         )
-        ..loadRequest(Uri.parse(widget.paymentUrl));
+        ..loadRequest(
+          Uri.parse(widget.paymentUrl),
+          headers: const {'Accept-Language': 'en-US,en;q=0.9'},
+        );
     }
   }
 
   void _checkRedirect(String url) {
-    debugPrint('[WebView] URL thay đổi: $url');
+    debugPrint('[WebView] URL changed: $url');
     final uri = Uri.tryParse(url);
     if (uri == null) return;
 
@@ -96,10 +115,7 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
       dynamic invoice;
       dynamic payment;
 
-      // 1. Poll trạng thái hóa đơn, chờ webhook PayOS server-to-server đánh dấu
-      // PAID (BR-32: webhook là nguồn chân lý duy nhất). Cửa sổ ~12s để đủ cho
-      // độ trễ mạng + thời gian PayOS gọi webhook thực tế (không chỉ 3s).
-      for (int attempt = 0; attempt < 10; attempt++) {
+      for (int attempt = 0; attempt < 3; attempt++) {
         await ref.read(billingProvider.notifier).fetchData();
         final billingState = ref.read(billingProvider);
         for (final inv in billingState.invoices) {
@@ -110,12 +126,9 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
         }
 
         if (invoice != null) break;
-        await Future.delayed(const Duration(milliseconds: 1200));
+        await Future.delayed(const Duration(milliseconds: 600));
       }
 
-      // 2. CHỈ môi trường DEV: chưa có PayOS/webhook thật -> giả lập thành công
-      // để test end-to-end. TUYỆT ĐỐI KHÔNG giả lập trên release build (backend
-      // cũng chặn 403 - BR-33), tránh hiển thị biên lai giả khi backend UNPAID.
       if (invoice == null && kDebugMode) {
         try {
           payment = await ref.read(billingProvider.notifier).simulateSuccessPayment(widget.invoiceId);
@@ -127,14 +140,22 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
             }
           }
         } catch (e) {
-          debugPrint('[WebView] Fallback simulate (dev) lỗi: $e');
+          debugPrint('[WebView] Fallback simulate error: $e');
         }
       }
 
       if (!mounted) return;
 
+      if (_isRealPayment) {
+        try {
+          _webViewController.loadRequest(Uri.parse('about:blank'));
+        } catch (_) {}
+      }
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      if (!mounted) return;
+
       if (invoice != null) {
-        // Điều hướng tới màn biên lai
         context.pushReplacement(
           '/invoices/receipt',
           extra: {
@@ -143,15 +164,12 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
           },
         );
       } else {
-        // Webhook về chậm: KHÔNG bịa trạng thái PAID trên UI. Báo rõ và quay lại
-        // danh sách hóa đơn - hóa đơn sẽ tự cập nhật khi webhook tới.
         setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(const SnackBar(
             content: Text(
-              'Đã ghi nhận giao dịch. Hệ thống đang chờ ngân hàng xác nhận, '
-              'hóa đơn sẽ tự cập nhật trong giây lát. Vui lòng kiểm tra lại sau.',
+              'Transaction recorded. Waiting for bank verification.',
             ),
             duration: Duration(seconds: 5),
           ));
@@ -167,6 +185,11 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
   @override
   void dispose() {
     _pulseController.dispose();
+    if (_isRealPayment) {
+      try {
+        _webViewController.loadRequest(Uri.parse('about:blank'));
+      } catch (_) {}
+    }
     super.dispose();
   }
 
@@ -179,25 +202,32 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
       }
       buffer.write(str[i]);
     }
-    return '${buffer.toString()} đ';
+    return '${buffer.toString()}đ';
   }
 
   @override
   Widget build(BuildContext context) {
-    // 1. GIAO DIỆN WEBVIEW THẬT (Khi kết nối cổng thanh toán trực tuyến thật)
+    // 1. GIAO DIỆN WEBVIEW THẬT (PayOS Checkout)
     if (_isRealPayment) {
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: AppColors.navy,
+          elevation: 0,
           title: const Text(
-            'Thanh toán hóa đơn',
+            'PayOS Checkout',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
           ),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => context.pop(),
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () => context.pop(),
+            ),
+          ],
           bottom: _loadingProgress < 100
               ? PreferredSize(
                   preferredSize: const Size.fromHeight(3),
@@ -228,12 +258,12 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
                           const CircularProgressIndicator(color: AppColors.primary),
                           const SizedBox(height: 16),
                           const Text(
-                            'Đang nhận tín hiệu từ PayOS...',
+                            'Processing PayOS Payment...',
                             style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                           ),
                           const SizedBox(height: 6),
-                          Text(
-                            'Hệ thống đang xác thực giao dịch an toàn.',
+                          const Text(
+                            'Verifying secure transaction with bank.',
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                           ),
@@ -248,7 +278,7 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
       );
     }
 
-    // 2. GIAO DIỆN GIẢ LẬP (MOCK SANDBOX - Khi test offline)
+    // 2. GIAO DIỆN MOCK SANDBOX (Thanh toán giả lập khi test)
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
       body: Stack(
@@ -256,13 +286,13 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
           Column(
             children: [
               GradientHeader(
-                title: 'Cổng Thanh Toán',
-                subtitle: 'Giao dịch qua VietQR / PayOS',
+                title: 'PayOS Checkout',
+                subtitle: 'Scan QR Code or Transfer exactly',
                 showBack: true,
                 actions: [
                   HeaderIconButton(
                     icon: Icons.close,
-                    tooltip: 'Hủy giao dịch',
+                    tooltip: 'Cancel',
                     onTap: () => context.pop(),
                   ),
                 ],
@@ -306,7 +336,7 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
                             ],
                           ),
                           const Text(
-                            'Đơn hàng hết hạn sau 15:00',
+                            'Order expires in 15:00',
                             style: TextStyle(fontSize: 11, color: AppColors.textTertiary, fontWeight: FontWeight.w500),
                           ),
                         ],
@@ -319,7 +349,7 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
                       child: Column(
                         children: [
                           const Text(
-                            'Quét mã VietQR để thanh toán',
+                            'Scan QR Code or Transfer exactly',
                             style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                           ),
                           const SizedBox(height: 16),
@@ -371,13 +401,13 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Đã tải và lưu ảnh VietQR thành công vào thư viện của thiết bị!'),
+                                  content: Text('VietQR image saved successfully to device gallery!'),
                                   duration: Duration(seconds: 2),
                                 ),
                               );
                             },
                             icon: const Icon(Icons.download_rounded, size: 16),
-                            label: const Text('Lưu ảnh QR về máy', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            label: const Text('Save QR Image', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: AppColors.primary),
                               foregroundColor: AppColors.primary,
@@ -400,7 +430,7 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
                                     ),
                                     const SizedBox(width: 8),
                                     const Text(
-                                      'Đang chờ giao dịch từ ngân hàng...',
+                                      'Waiting for bank transaction...',
                                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
                                     ),
                                   ],
@@ -412,7 +442,7 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
                           const Divider(height: 1, color: AppColors.divider),
                           const SizedBox(height: 12),
                           const Text(
-                            '⚠️ Đây là màn hình giả lập UI. Để quét mã VietQR thật từ PayOS:',
+                            '⚠️ Test Mode UI. To open official PayOS checkout:',
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 11, color: AppColors.error, fontWeight: FontWeight.w600),
                           ),
@@ -430,13 +460,13 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
                                   }
                                 } catch (e) {
                                   messenger.showSnackBar(
-                                    SnackBar(content: Text('Không thể mở link: $e')),
+                                    SnackBar(content: Text('Cannot open link: $e')),
                                   );
                                 }
                               },
                               icon: const Icon(Icons.open_in_browser, size: 18),
                               label: const Text(
-                                'MỞ CỔNG THANH TOÁN VietQR THẬT',
+                                'OPEN REAL PayOS CHECKOUT',
                                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
                               ),
                               style: ElevatedButton.styleFrom(
@@ -451,83 +481,56 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
                     ),
                     const SizedBox(height: 16),
 
-                    // Thông tin chuyển khoản chi tiết
+                    // Transfer Information Details
                     AppCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Thông tin chuyển khoản',
+                            'Transfer Details',
                             style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary),
                           ),
                           const Divider(height: 20, color: AppColors.divider),
-                          _buildInfoRow('Ngân hàng', 'MB Bank (Quân Đội)'),
-                          _buildInfoRow('Số tài khoản', '113115118'),
-                          _buildInfoRow('Tên tài khoản', 'CONG TY APORA VIET NAM'),
-                          _buildInfoRow('Số tiền chuyển', _formatMoney(widget.totalAmount), isBold: true, isError: true),
-                          _buildInfoRow('Nội dung chuyển', 'APORA BILL ${widget.invoiceId}', isCopy: true),
+                          _buildInfoRow('Bank', 'MB Bank'),
+                          _buildInfoRow('Account Name', 'KHUAT QUANG HUNG'),
+                          _buildInfoRow('Account Number', '606911911', isCopy: true),
+                          _buildInfoRow('Amount', _formatMoney(widget.totalAmount), isBold: true, isError: true, isCopy: true),
+                          _buildInfoRow('Message', 'CSIJ23TT6B3 APORA BILL ${widget.invoiceId}', isCopy: true),
                         ],
                       ),
                     ),
                     const SizedBox(height: 24),
 
-                    // Khung giả lập thanh toán
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.successBg.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
-                      ),
-                      child: Column(
-                        children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.terminal, color: AppColors.success, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Bảng giả lập hệ thống (Sandbox)',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.success),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SizedBox(
-                                  height: 44,
-                                  child: OutlinedButton(
-                                    onPressed: _isProcessing ? null : () => context.pop(),
-                                    style: OutlinedButton.styleFrom(
-                                      side: const BorderSide(color: AppColors.error),
-                                      foregroundColor: AppColors.error,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
-                                    child: const Text('Hủy thanh toán', style: TextStyle(fontWeight: FontWeight.w700)),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: SizedBox(
-                                  height: 44,
-                                  child: ElevatedButton(
-                                    onPressed: _isProcessing ? null : _simulateSuccess,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.success,
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
-                                    child: const Text('Thanh Toán Thành Công', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                    // CANCEL Button matching mockup
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: OutlinedButton(
+                        onPressed: _isProcessing ? null : () => context.pop(),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF0F172A), width: 1.5),
+                          foregroundColor: const Color(0xFF0F172A),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text(
+                          'CANCEL',
+                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, letterSpacing: 0.5),
+                        ),
                       ),
                     ),
+                    if (kDebugMode) ...[
+                      const SizedBox(height: 8),
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: _isProcessing ? null : _simulateSuccess,
+                          icon: const Icon(Icons.bug_report, size: 16, color: AppColors.textTertiary),
+                          label: const Text(
+                            'Simulate Payment Success (Dev Test)',
+                            style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -2,21 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:intl/intl.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
+import '../../auth_profile/widgets/logout_confirm.dart';
+import '../../billing/providers/billing_provider.dart';
 import '../../billing/screens/invoice_list_screen.dart';
 import '../../ticket/screens/ticket_list_screen.dart';
 import '../../chat/screens/chat_screen.dart';
 
-
-/// Khung trang chủ Cư dân — theo màn 10 trong thiết kế.
+/// Khung trang chủ Cư dân — theo thiết kế mới.
 /// Bottom nav: Trang chủ · Hóa đơn · Yêu cầu · Tin nhắn · Cá nhân.
-/// Nội dung thật sẽ nối khi làm Module 3 (Billing), 4 (Ticket), 5 (Chat).
 class ResidentHomeScreen extends ConsumerStatefulWidget {
   const ResidentHomeScreen({super.key});
 
@@ -28,259 +29,388 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
   int _index = 0;
 
   static const _tabs = [
-    AppBottomNavItem(icon: Icons.home, label: 'Trang chủ'),
-    AppBottomNavItem(icon: Icons.receipt_long, label: 'Hóa đơn'),
-    AppBottomNavItem(icon: Icons.build, label: 'Yêu cầu'),
-    AppBottomNavItem(icon: Icons.chat_bubble, label: 'Hỗ trợ'),
-    AppBottomNavItem(icon: Icons.person, label: 'Cá nhân'),
+    AppBottomNavItem(icon: Icons.home, label: 'Home'),
+    AppBottomNavItem(icon: Icons.receipt_long, label: 'Bills'),
+    AppBottomNavItem(icon: Icons.build, label: 'Tickets'),
+    AppBottomNavItem(icon: Icons.chat_bubble, label: 'Messages'),
   ];
+
+  void _switchTab(int index) {
+    setState(() => _index = index);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authNotifierProvider).user;
-
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _index,
         children: [
           // Tab Trang chủ
-          Column(
-            children: [
-              GradientHeader(
-                titleWidget: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => context.push(AppRoutes.profile),
-                      child: InitialsAvatar(
-                        name: user?.fullName ?? 'N A',
-                        size: 40,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Xin chào,',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: .7),
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            user?.fullName ?? 'Cư dân',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                actions: [
-                  HeaderIconButton(
-                    icon: Icons.notifications_none,
-                    onTap: () => context.push(AppRoutes.notifications),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(14),
-                  children: [
-                    // UC06: hợp đồng & thời hạn lưu trú của cư dân
-                    AppCard(
-                      onTap: () => context.push(AppRoutes.myContract),
-                      child: const _SectionPreview(
-                        icon: Icons.description,
-                        iconBg: AppColors.warningBg,
-                        iconColor: AppColors.warning,
-                        title: 'Hợp đồng của tôi',
-                        note: 'Thời hạn lưu trú & yêu cầu gia hạn',
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const AppCard(
-                      child: _SectionPreview(
-                        icon: Icons.receipt_long,
-                        iconBg: AppColors.infoBg,
-                        iconColor: AppColors.primary,
-                        title: 'Hóa đơn tháng này',
-                        note: 'Xem & thanh toán VietQR — sẽ có ở Module 3',
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const AppCard(
-                      child: _SectionPreview(
-                        icon: Icons.build,
-                        iconBg: AppColors.warningBg,
-                        iconColor: AppColors.warning,
-                        title: 'Yêu cầu sửa chữa',
-                        note: 'Báo sự cố kèm ảnh — mở ở tab "Yêu cầu"',
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const AppCard(
-                      child: _SectionPreview(
-                        icon: Icons.campaign,
-                        iconBg: AppColors.successBg,
-                        iconColor: AppColors.success,
-                        title: 'Bảng tin tòa nhà',
-                        note: 'Thông báo từ Ban quản lý — sẽ có ở Module 5',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          // Các tab module sau
+          _HomeTab(onSwitchTab: _switchTab),
+          
+          // Tab Hóa đơn
           const InvoiceListScreen(),
 
-          // Tab Yêu cầu -> danh sách sự cố của cư dân (UC18/UC19, nhúng nên không back)
+          // Tab Bảo trì (Yêu cầu)
           const TicketListScreen(),
           
-          // Tab Hỗ trợ (Live Chat - UC28)
+          // Tab Tin nhắn (Hỗ trợ)
           const ChatScreen(
             title: 'Hỗ trợ',
             subtitle: 'Trò chuyện và nhận hỗ trợ từ BQL',
             showBack: false,
-          ),
-          
-          // Tab Cá nhân
-          Column(
-            children: [
-              GradientHeader(
-                title: 'Cá nhân',
-                actions: [
-                  HeaderIconButton(
-                    icon: Icons.logout,
-                    tooltip: 'Đăng xuất',
-                    onTap: () =>
-                        ref.read(authNotifierProvider.notifier).logout(),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(14),
-                  children: [
-                    AppCard(
-                      onTap: () => context.push(AppRoutes.profile),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.person, color: AppColors.primary),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Hồ sơ cá nhân',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          Icon(Icons.chevron_right,
-                              color: AppColors.textTertiary),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    AppCard(
-                      onTap: () => context.push(AppRoutes.changePassword),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.lock_reset, color: AppColors.primary),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Đổi mật khẩu',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          Icon(Icons.chevron_right,
-                              color: AppColors.textTertiary),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ),
         ],
       ),
       bottomNavigationBar: AppBottomNav(
         items: _tabs,
         currentIndex: _index,
-        onTap: (i) => setState(() => _index = i),
+        onTap: _switchTab,
       ),
     );
   }
 }
 
-class _SectionPreview extends StatelessWidget {
-  const _SectionPreview({
-    required this.icon,
-    required this.iconBg,
-    required this.iconColor,
-    required this.title,
-    required this.note,
-  });
-
-  final IconData icon;
-  final Color iconBg;
-  final Color iconColor;
-  final String title;
-  final String note;
+class _HomeTab extends ConsumerWidget {
+  const _HomeTab({required this.onSwitchTab});
+  
+  final void Function(int) onSwitchTab;
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).user;
+    final firstName = user?.fullName.split(' ').last ?? 'Resident';
+    
+    final billingState = ref.watch(billingProvider);
+    final unpaidInvoices = billingState.invoices.where((inv) => inv.status == 'UNPAID' || inv.status == 'PARTIAL').toList();
+    // Sắp xếp tăng dần theo MonthYear (định dạng MM/yyyy) để lấy hoá đơn cũ nhất
+    unpaidInvoices.sort((a, b) {
+      try {
+        final aParts = a.monthYear.split('/');
+        final bParts = b.monthYear.split('/');
+        final aMonth = int.parse(aParts[0]);
+        final aYear = int.parse(aParts[1]);
+        final bMonth = int.parse(bParts[0]);
+        final bYear = int.parse(bParts[1]);
+        
+        if (aYear != bYear) {
+          return aYear.compareTo(bYear);
+        }
+        return aMonth.compareTo(bMonth);
+      } catch (_) {
+        return a.id.compareTo(b.id);
+      }
+    });
+    final hasUnpaid = unpaidInvoices.isNotEmpty;
+    final currentInvoice = hasUnpaid ? unpaidInvoices.first : null;
+
+    String formatCurrency(double amount) {
+      final format = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+      return format.format(amount);
+    }
+
+    final isAdminOrOwner = user != null &&
+        (user.roles.contains('MANAGER') || user.roles.contains('LANDLORD'));
+
+    return Stack(
       children: [
+        // Header Background
         Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: iconBg,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Icon(icon, size: 22, color: iconColor),
+          height: 240,
+          width: double.infinity,
+          decoration: isAdminOrOwner
+              ? const BoxDecoration(gradient: AppColors.headerGradient)
+              : const BoxDecoration(gradient: AppColors.residentGradient),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        // Scrollable content overlapping the header
+        SafeArea(
+          bottom: false,
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 20),
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 10, 20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Resident · Apora Apartment',
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Welcome, $firstName 👋',
+                            style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => context.push(AppRoutes.profile),
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: InitialsAvatar(
+                            name: user?.fullName ?? '?',
+                            imageUrl: user?.avatarUrl,
+                            size: 40,
+                            square: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.logout, color: Colors.white),
+                      tooltip: 'Logout',
+                      onPressed: () => confirmAndLogout(context, ref),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                note,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
+              // 1. Billing Card
+              if (hasUnpaid && currentInvoice != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B2336), // Dark navy from image
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x2A000000), blurRadius: 12, offset: Offset(0, 6)),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Bill for Month ${currentInvoice.monthYear}',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14, fontWeight: FontWeight.w500),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFBE6A1), // Yellow badge
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'Unpaid',
+                                style: TextStyle(color: Color(0xFF8B6400), fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          formatCurrency(currentInvoice.totalAmount),
+                          style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Due Date: ${DateFormat('dd/MM/yyyy').format(currentInvoice.dueDate)}',
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                        ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                              try {
+                                final paymentUrl = await ref
+                                    .read(billingProvider.notifier)
+                                    .getPaymentLink(currentInvoice.id);
+                                if (context.mounted) {
+                                  Navigator.of(context).pop(); // Đóng loading dialog
+                                  context.push(
+                                    '/invoices/pay',
+                                    extra: {
+                                      'invoiceId': currentInvoice.id,
+                                      'paymentUrl': paymentUrl,
+                                      'totalAmount': currentInvoice.totalAmount,
+                                    },
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  Navigator.of(context).pop(); // Đóng loading dialog
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error loading payment link: $e')),
+                                  );
+                                }
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF12A8F1), // Bright blue button
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                            child: const Text('PAY NOW', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 6)),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: const BoxDecoration(
+                            color: AppColors.successBg,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.check_circle, color: AppColors.success),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Text(
+                            'No pending bills',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              
+              // 3. Notifications Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AppCard(
+                  padding: EdgeInsets.zero,
+                  radius: 20,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Building Announcements', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                            GestureDetector(
+                              onTap: () => context.push(AppRoutes.notifications),
+                              child: const Text('View All', style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const _NotificationItem(
+                        icon: Icons.water_drop, iconColor: Color(0xFF3B82F6), iconBg: Color(0xFFEFF6FF),
+                        title: 'Water maintenance shutdown', time: 'Saturday, Jun 28 from 8AM - 11AM', duration: '1 hour ago'
+                      ),
+                      const Divider(height: 1, indent: 64, endIndent: 20, color: AppColors.divider),
+                      const _NotificationItem(
+                        icon: Icons.celebration, iconColor: Color(0xFF10B981), iconBg: Color(0xFFECFDF5),
+                        title: 'July Resident Party', time: 'Ground Lobby - Jul 6th, 7 PM', duration: '2 days ago'
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _NotificationItem extends StatelessWidget {
+  const _NotificationItem({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.title,
+    required this.time,
+    required this.duration,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+  final String title;
+  final String time;
+  final String duration;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: iconColor, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  time,
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            duration,
+            style: const TextStyle(fontSize: 13, color: AppColors.textTertiary),
+          ),
+        ],
+      ),
     );
   }
 }

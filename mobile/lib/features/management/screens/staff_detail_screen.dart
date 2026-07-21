@@ -142,25 +142,16 @@ class _StaffDetailScreenState extends ConsumerState<StaffDetailScreen> {
                           ],
                         ),
                       ),
-                      StatusBadge(
-                        text: member.isActive ? 'Đang làm việc' : 'Đã nghỉ',
-                        color: Colors.white,
-                        backgroundColor: member.isActive
-                            ? Colors.white.withValues(alpha: .2)
-                            : Colors.black.withValues(alpha: .2),
-                      ),
+                      member.isActive
+                          ? StatusBadge.success('Hoạt động')
+                          : const StatusBadge(
+                              text: 'Nghỉ việc',
+                              color: AppColors.error,
+                              backgroundColor: AppColors.errorBg,
+                            ),
                     ],
                   ),
-            actions: member != null && member.isActive
-                ? [
-                    HeaderIconButton(
-                      icon: Icons.edit,
-                      tooltip: 'Chỉnh sửa hồ sơ',
-                      onTap: () =>
-                          context.push(AppRoutes.staffEditPath(member.id)),
-                    ),
-                  ]
-                : const [],
+            actions: const [],
           ),
           Expanded(
             child: detail.when(
@@ -270,7 +261,7 @@ class _StaffDetailScreenState extends ConsumerState<StaffDetailScreen> {
                                   ),
                                 ),
                                 task.status == 'ASSIGNED'
-                                    ? StatusBadge.info('Đã giao')
+                                    ? StatusBadge.info('Đã phân công')
                                     : StatusBadge.warning('Đang xử lý'),
                               ],
                             ),

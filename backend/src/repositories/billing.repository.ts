@@ -34,9 +34,10 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'created_at'>): 
       contract_id, apartment_id, month_year,
       prev_electricity_index, curr_electricity_index, electricity_consumption,
       prev_water_index, curr_water_index, water_consumption,
-      room_rent_snapshot, mgmt_fee_snapshot, extra_fee, extra_fee_description,
+      room_rent_snapshot, mgmt_fee_snapshot, electricity_rate_snapshot, water_rate_snapshot,
+      extra_fee, extra_fee_description,
       total_amount, status
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
     RETURNING *`,
     [
       invoice.contract_id,
@@ -50,6 +51,8 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'created_at'>): 
       invoice.water_consumption,
       invoice.room_rent_snapshot,
       invoice.mgmt_fee_snapshot,
+      invoice.electricity_rate_snapshot,
+      invoice.water_rate_snapshot,
       invoice.extra_fee,
       invoice.extra_fee_description,
       invoice.total_amount,
@@ -62,11 +65,12 @@ export async function saveInvoice(invoice: Omit<Invoice, 'id' | 'created_at'>): 
 /** Fetch invoices belonging to a specific resident. (BR-31 data isolation) */
 export async function findInvoicesByResidentId(residentId: number): Promise<Invoice[]> {
   const res = await query(
-    `SELECT i.*, a.unit_number
+    `SELECT DISTINCT i.*, a.unit_number
      FROM invoices i
      JOIN contracts c ON i.contract_id = c.id
      JOIN apartments a ON i.apartment_id = a.id
      WHERE c.resident_id = $1
+        OR i.apartment_id IN (SELECT apartment_id FROM contracts WHERE resident_id = $1)
      ORDER BY i.created_at DESC`,
     [residentId],
   );

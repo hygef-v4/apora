@@ -17,6 +17,20 @@ class AppColors {
     colors: [navy, primary],
   );
 
+  /// Gradient header cho cư dân: xanh dương sẫm -> xanh dương sáng.
+  static const LinearGradient residentGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0D7BB4), Color(0xFF149EE7)],
+  );
+
+  /// Gradient header cho nhân viên: xanh mòng két sẫm -> xanh mòng két sáng.
+  static const LinearGradient staffGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF115E59), Color(0xFF0D9488)],
+  );
+
   // Chữ
   static const Color textPrimary = Color(0xFF0F172A);
   static const Color textSecondary = Color(0xFF64748B);

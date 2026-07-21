@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/dio_client.dart';
-import '../../../core/widgets/app_card.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/widgets/gradient_header.dart';
 
 class ManagerGenerateBillScreen extends ConsumerStatefulWidget {
@@ -21,10 +22,6 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
   bool _isSubmitting = false;
   List<dynamic> _contracts = [];
   Map<String, dynamic>? _selectedContract;
-
-  double _electricityRate = 0.0;
-  double _waterRate = 0.0;
-  double _mgmtFee = 0.0;
 
   final _monthYearController = TextEditingController(text: '07/2026');
   final _electricityController = TextEditingController();
@@ -67,12 +64,6 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
     return double.tryParse(val.toString()) ?? 0.0;
   }
 
-  double get _rent {
-    if (_selectedContract == null) return 0.0;
-    final val = _selectedContract!['base_rent_snapshot'] ?? _selectedContract!['base_rent'] ?? _selectedContract!['baseRent'];
-    return _parseDouble(val);
-  }
-
   double get _lastElec {
     if (_selectedContract == null) return 0.0;
     final val = _selectedContract!['last_electricity_index'] ?? _selectedContract!['lastElectricityIndex'];
@@ -85,43 +76,14 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
     return _parseDouble(val);
   }
 
-  double get _currElec => double.tryParse(_electricityController.text.trim()) ?? 0.0;
-  double get _currWater => double.tryParse(_waterController.text.trim()) ?? 0.0;
-  double get _extraFee => double.tryParse(_extraFeeController.text.trim()) ?? 0.0;
-
-  double get _usedElec {
-    if (_currElec <= 0) return 0.0;
-    if (_currElec > _lastElec) return _currElec - _lastElec;
-    return _currElec;
-  }
-
-  double get _usedWater {
-    if (_currWater <= 0) return 0.0;
-    if (_currWater > _lastWater) return _currWater - _lastWater;
-    return _currWater;
-  }
-
-  double get _elecTotal => _usedElec * _electricityRate;
-  double get _waterTotal => _usedWater * _waterRate;
-  double get _grandTotal => _rent + _elecTotal + _waterTotal + _mgmtFee + _extraFee;
-
   Future<void> _loadActiveContracts() async {
     try {
       final dio = ref.read(dioProvider);
-      final results = await Future.wait([
-        dio.get('/bills/active-contracts'),
-        dio.get('/bills/active-pricing'),
-      ]);
+      final res = await dio.get('/bills/active-contracts');
       
       if (mounted) {
         setState(() {
-          _contracts = results[0].data['data'] as List;
-          
-          final pricingData = results[1].data['data'];
-          _electricityRate = double.parse(pricingData['electricity_rate'].toString());
-          _waterRate = double.parse(pricingData['water_rate'].toString());
-          _mgmtFee = double.parse(pricingData['mgmt_fee'].toString());
-
+          _contracts = res.data['data'] as List;
           _isLoadingContracts = false;
         });
       }
@@ -129,7 +91,7 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
       if (mounted) {
         setState(() => _isLoadingContracts = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải thông tin khởi tạo: $e')),
+          SnackBar(content: Text('Failed to load initialization data: $e')),
         );
       }
     }
@@ -138,7 +100,7 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
   Future<void> _submit() async {
     if (_selectedContract == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn căn hộ cần lập hóa đơn.')),
+        const SnackBar(content: Text('Please select a room / apartment.')),
       );
       return;
     }
@@ -164,21 +126,21 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
 
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('🚀 Sinh hóa đơn căn hộ thành công!'),
+          content: Text('🚀 Monthly bill generated successfully!'),
           backgroundColor: AppColors.success,
         ),
       );
       router.pop();
     } catch (e) {
       setState(() => _isSubmitting = false);
-      String errMsg = 'Lập hóa đơn thất bại';
+      String errMsg = 'Failed to generate bill';
       if (e is DioException && e.response != null && e.response!.data != null) {
         errMsg = e.response!.data['message'] ?? errMsg;
       } else {
         errMsg = e.toString();
       }
       messenger.showSnackBar(
-        SnackBar(content: Text('❌ Lỗi: $errMsg')),
+        SnackBar(content: Text('❌ Error: $errMsg')),
       );
     }
   }
@@ -189,10 +151,16 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
       backgroundColor: const Color(0xFFF1F5F9),
       body: Column(
         children: [
-          const GradientHeader(
-            title: 'Lập Hóa Đơn',
-            subtitle: 'Nhập chỉ số điện nước định kỳ',
+          GradientHeader(
+            title: 'Input Monthly Bills.',
             showBack: true,
+            actions: [
+              HeaderIconButton(
+                icon: Icons.settings,
+                tooltip: 'Pricing Settings',
+                onTap: () => context.push(AppRoutes.pricingSettings),
+              ),
+            ],
           ),
           Expanded(
             child: _isLoadingContracts
@@ -200,7 +168,7 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                 : _contracts.isEmpty
                     ? const Center(
                         child: Text(
-                          'Không có căn hộ nào có hợp đồng thuê hoạt động.',
+                          'No active rented apartments found.',
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                       )
@@ -209,27 +177,55 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                         child: ListView(
                           padding: const EdgeInsets.all(16),
                           children: [
-                            // CARD 1: Chọn Căn Hộ
-                            AppCard(
+                            // SINGLE MAIN CARD: Utility Meter Input (Matching Mockup)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.border, width: 1.0),
+                                boxShadow: AppColors.cardShadow,
+                              ),
+                              padding: const EdgeInsets.all(20),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // Card Title (Matching Mockup: Utility Meter Input)
                                   const Text(
-                                    '1. Chọn Căn Hộ',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+                                    'Utility Meter Input',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textPrimary,
+                                    ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 16),
+
+                                  // FIELD 1: ROOM / APARTMENT
+                                  const Text(
+                                    'ROOM / APARTMENT',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textSecondary,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
                                   DropdownButtonFormField<Map<String, dynamic>>(
+                                    isExpanded: true,
                                     decoration: InputDecoration(
-                                      labelText: 'Căn hộ - Cư dân',
+                                      hintText: 'Select Room / Apartment',
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     ),
                                     initialValue: _selectedContract,
                                     items: _contracts.map<DropdownMenuItem<Map<String, dynamic>>>((contract) {
                                       return DropdownMenuItem<Map<String, dynamic>>(
                                         value: contract as Map<String, dynamic>,
-                                        child: Text('Căn ${contract['unit_number']} - ${contract['resident_name']}'),
+                                        child: Text(
+                                          'Unit ${contract['unit_number']} - ${contract['resident_name']}',
+                                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                        ),
                                       );
                                     }).toList(),
                                     onChanged: (value) {
@@ -238,335 +234,198 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                                       });
                                     },
                                   ),
-                                  if (_selectedContract != null) ...[
-                                    const SizedBox(height: 12),
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(alpha: 0.05),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            'Chỉ số ghi nhận kỳ trước:',
-                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Row(
-                                            children: [
-                                              const Icon(Icons.bolt, color: Colors.orange, size: 16),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                'Điện: ${_lastElec.toInt()} kWh',
-                                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                                              ),
-                                              const SizedBox(width: 24),
-                                              const Icon(Icons.water_drop, color: Colors.blue, size: 16),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                'Nước: ${_lastWater.toInt()} m³',
-                                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // CARD 2: Thông Tin Kỳ Thanh Toán
-                            AppCard(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                                  const SizedBox(height: 16),
+
+                                  // FIELD 2: MONTH / YEAR
                                   const Text(
-                                    '2. Thông Tin Kỳ Thanh Toán',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+                                    'MONTH / YEAR',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textSecondary,
+                                      letterSpacing: 0.5,
+                                    ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 6),
                                   TextFormField(
                                     controller: _monthYearController,
                                     decoration: InputDecoration(
-                                      labelText: 'Kỳ hóa đơn (Tháng/Năm)',
-                                      hintText: 'MM/YYYY',
-                                      prefixIcon: const Icon(Icons.calendar_month),
+                                      hintText: '07/2026',
+                                      prefixIcon: const Icon(Icons.calendar_month, color: AppColors.textSecondary),
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     ),
                                     validator: (val) {
-                                      if (val == null || val.trim().isEmpty) return 'Vui lòng nhập kỳ hóa đơn.';
-                                      if (!RegExp(r'^\d{2}/\d{4}$').hasMatch(val)) return 'Định dạng hợp lệ: MM/YYYY';
+                                      if (val == null || val.trim().isEmpty) return 'Please enter billing month.';
+                                      if (!RegExp(r'^\d{2}/\d{4}$').hasMatch(val)) return 'Valid format: MM/YYYY';
                                       return null;
                                     },
                                   ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // CARD 3: Chỉ Số Tiêu Thụ
-                            AppCard(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    '3. Chỉ Số Tiêu Thụ',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+
+                                  // Dotted Line Separator
+                                  const SizedBox(height: 18),
+                                  const Divider(height: 1, color: AppColors.border, thickness: 1),
+                                  const SizedBox(height: 18),
+
+                                  // FIELD 3: Previous Electricity Index & Current Reading Input
+                                  Text(
+                                    _selectedContract != null
+                                        ? 'Previous Electricity Index: ${_lastElec.toInt()} kWh'
+                                        : 'Previous Electricity Index: -- kWh',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
+                                    ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 6),
                                   TextFormField(
                                     controller: _electricityController,
                                     keyboardType: TextInputType.number,
                                     onChanged: (_) => setState(() {}),
                                     decoration: InputDecoration(
-                                      labelText: 'Chỉ số điện mới (kWh)',
+                                      hintText: 'Enter current index',
                                       prefixIcon: const Icon(Icons.bolt, color: Colors.orange),
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     ),
                                     validator: (val) {
-                                      if (val == null || val.trim().isEmpty) return 'Vui lòng nhập chỉ số điện.';
+                                      if (val == null || val.trim().isEmpty) return 'Please enter electricity reading.';
                                       final current = double.tryParse(val);
-                                      if (current == null) return 'Phải là số hợp lệ.';
-                                      if (_selectedContract != null) {
-                                        if (current < _lastElec) return 'Không được nhỏ hơn chỉ số cũ (${_lastElec.toInt()}).';
+                                      if (current == null) return 'Must be a valid number.';
+                                      if (_selectedContract != null && current < _lastElec) {
+                                        return 'Cannot be lower than previous index (${_lastElec.toInt()}).';
                                       }
                                       return null;
                                     },
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 16),
+
+                                  // FIELD 4: Previous Water Index & Current Reading Input
+                                  Text(
+                                    _selectedContract != null
+                                        ? 'Previous Water Index: ${_lastWater.toInt()} m³'
+                                        : 'Previous Water Index: -- m³',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
                                   TextFormField(
                                     controller: _waterController,
                                     keyboardType: TextInputType.number,
                                     onChanged: (_) => setState(() {}),
                                     decoration: InputDecoration(
-                                      labelText: 'Chỉ số nước mới (m³)',
+                                      hintText: 'Enter current index',
                                       prefixIcon: const Icon(Icons.water_drop, color: Colors.blue),
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     ),
                                     validator: (val) {
-                                      if (val == null || val.trim().isEmpty) return 'Vui lòng nhập chỉ số nước.';
+                                      if (val == null || val.trim().isEmpty) return 'Please enter water reading.';
                                       final current = double.tryParse(val);
-                                      if (current == null) return 'Phải là số hợp lệ.';
-                                      if (_selectedContract != null) {
-                                        if (current < _lastWater) return 'Không được nhỏ hơn chỉ số cũ (${_lastWater.toInt()}).';
+                                      if (current == null) return 'Must be a valid number.';
+                                      if (_selectedContract != null && current < _lastWater) {
+                                        return 'Cannot be lower than previous index (${_lastWater.toInt()}).';
                                       }
                                       return null;
                                     },
                                   ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // CARD 4: Chi Phí Khác (Tùy chọn)
-                            AppCard(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+
+                                  // Dotted Line Separator
+                                  const SizedBox(height: 18),
+                                  const Divider(height: 1, color: AppColors.border, thickness: 1),
+                                  const SizedBox(height: 18),
+
+                                  // FIELD 5: Extra Fee (Optional)
                                   const Text(
-                                    '4. Chi Phí Khác (Tùy chọn)',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+                                    'Extra Fee (Optional)',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textSecondary,
+                                      letterSpacing: 0.5,
+                                    ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 6),
                                   TextFormField(
                                     controller: _extraFeeController,
                                     keyboardType: TextInputType.number,
                                     onChanged: (_) => setState(() {}),
                                     decoration: InputDecoration(
-                                      labelText: 'Số tiền phát sinh (đ)',
+                                      hintText: 'e.g., 50,000 VND',
                                       prefixIcon: const Icon(Icons.add_card),
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     ),
                                     validator: (val) {
                                       if (val != null && val.trim().isNotEmpty && double.tryParse(val) == null) {
-                                        return 'Phải là số hợp lệ.';
+                                        return 'Must be a valid number.';
                                       }
                                       return null;
                                     },
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 16),
+
+                                  // FIELD 6: Fee Description (Optional)
+                                  const Text(
+                                    'Fee Description (Optional)',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textSecondary,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
                                   TextFormField(
                                     controller: _extraDescController,
                                     maxLines: 2,
                                     decoration: InputDecoration(
-                                      labelText: 'Lý do phát sinh',
-                                      hintText: 'Ví dụ: Thay vòi nước hỏng, sửa bóng đèn...',
+                                      hintText: 'e.g., Replacement light bulb',
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // CARD 5: Thông Tin Đơn Giá & Dịch Vụ
-                            AppCard(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Thông Tin Đơn Giá & Dịch Vụ',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      _buildPriceInfoItem('Đơn giá Điện', '${_formatRate(_electricityRate)} đ/kWh', Icons.bolt, Colors.orange),
-                                      _buildPriceInfoItem('Đơn giá Nước', '${_formatRate(_waterRate)} đ/m³', Icons.water_drop, Colors.blue),
-                                      _buildPriceInfoItem('Phí quản lý', '${_formatRate(_mgmtFee)} đ/tháng', Icons.admin_panel_settings, AppColors.success),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // CARD 6: BẢNG XEM TRƯỚC TÍNH TOÁN TỰ ĐỘNG (PREVIEW CARD)
-                            AppCard(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.calculate_outlined, color: AppColors.primary, size: 20),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        'Ước Tính Hóa Đơn (Xem Trước)',
-                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
-                                      ),
-                                      const Spacer(),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: const Text(
-                                          'Tự động tính',
-                                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.success),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Divider(height: 1),
-                                  const SizedBox(height: 10),
-                                  _buildPreviewRow('Tiền thuê phòng', _rent),
-                                  _buildPreviewRow(
-                                    'Tiền điện (${_usedElec.toInt()} kWh × ${_formatRate(_electricityRate)}đ)',
-                                    _elecTotal,
-                                  ),
-                                  _buildPreviewRow(
-                                    'Tiền nước (${_usedWater.toInt()} m³ × ${_formatRate(_waterRate)}đ)',
-                                    _waterTotal,
-                                  ),
-                                  _buildPreviewRow('Phí quản lý & Dịch vụ', _mgmtFee),
-                                  if (_extraFee > 0)
-                                    _buildPreviewRow('Chi phí phát sinh', _extraFee, color: Colors.orange),
-                                  const Divider(height: 16),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text(
-                                        'TỔNG TIỀN DỰ KIẾN',
-                                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.navy),
-                                      ),
-                                      Text(
-                                        '${_formatRate(_grandTotal)} đ',
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w900,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 ],
                               ),
                             ),
                             const SizedBox(height: 24),
+
+                            // SUBMIT BUTTON (ISSUE BILL 📄 - Matching Mockup)
                             SizedBox(
                               width: double.infinity,
-                              height: 48,
-                              child: ElevatedButton(
+                              height: 52,
+                              child: ElevatedButton.icon(
                                 onPressed: _isSubmitting ? null : _submit,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                                child: _isSubmitting
+                                icon: _isSubmitting
+                                    ? const SizedBox.shrink()
+                                    : const Icon(Icons.receipt_long, color: Colors.white, size: 20),
+                                label: _isSubmitting
                                     ? const SizedBox(
                                         width: 20,
                                         height: 20,
-                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                                       )
                                     : const Text(
-                                        'TẠO VÀ SINH HÓA ĐƠN',
-                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                        'ISSUE BILL',
+                                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 1.2),
                                       ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  elevation: 3,
+                                  shadowColor: AppColors.primary.withValues(alpha: 0.4),
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPreviewRow(String label, double amount, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: color ?? AppColors.textSecondary,
-              ),
-            ),
-          ),
-          Text(
-            '${_formatRate(amount)} đ',
-            style: TextStyle(
-              fontSize: 12,
-              color: color ?? AppColors.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatRate(double val) {
-    final intVal = val.toInt();
-    if (intVal >= 1000) {
-      return intVal.toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-        (Match m) => '${m[1]}.',
-      );
-    }
-    return intVal.toString();
-  }
-
-  Widget _buildPriceInfoItem(String title, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(height: 4),
-          Text(title, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 2),
-          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.navy)),
         ],
       ),
     );
