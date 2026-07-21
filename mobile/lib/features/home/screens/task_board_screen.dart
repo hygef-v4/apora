@@ -10,6 +10,7 @@ import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
+import '../../auth_profile/widgets/logout_confirm.dart';
 import '../../ticket/models/task.dart';
 import '../../ticket/providers/task_provider.dart';
 import '../../ticket/screens/task_list_screen.dart';
@@ -201,7 +202,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
             HeaderIconButton(
               icon: Icons.logout,
               tooltip: 'Đăng xuất',
-              onTap: () => ref.read(authNotifierProvider.notifier).logout(),
+              onTap: () => confirmAndLogout(context, ref),
             ),
           ],
         ),

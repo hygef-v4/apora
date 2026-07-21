@@ -1,4 +1,3 @@
-import 'package:apartment_management/core/constants/app_strings.dart';
 import 'package:apartment_management/core/network/token_storage.dart';
 import 'package:apartment_management/features/auth_profile/models/user.dart';
 import 'package:apartment_management/features/auth_profile/repositories/auth_api_service.dart';
@@ -65,11 +64,11 @@ void main() {
         (tester) async {
       await tester.pumpWidget(buildTestApp());
 
-      await tester.tap(find.text('Đăng nhập'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Login'));
       await tester.pump();
 
-      expect(find.text(AppStrings.msgPhoneRequired), findsOneWidget);
-      expect(find.text(AppStrings.msgPasswordRequired), findsOneWidget);
+      expect(find.text('Please enter your phone number.'), findsOneWidget);
+      expect(find.text('Please enter your password.'), findsOneWidget);
       verifyNever(() => mockApi.signIn(any(), any()));
     });
 
@@ -90,14 +89,14 @@ void main() {
       await tester.pumpWidget(buildTestApp());
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Số điện thoại'),
+        find.byType(TextFormField).at(0),
         '0900000003',
       );
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Mật khẩu'),
+        find.byType(TextFormField).at(1),
         'Apora@123',
       );
-      await tester.tap(find.text('Đăng nhập'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Login'));
       await tester.pumpAndSettle();
 
       verify(() => mockApi.signIn('0900000003', 'Apora@123', fcmToken: any(named: 'fcmToken'))).called(1);

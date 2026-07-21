@@ -7,6 +7,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
+import '../../auth_profile/widgets/logout_confirm.dart';
 
 /// Màn chọn workspace khi user giữ nhiều nhóm role
 /// (vd: vừa Landlord vừa Resident - theo Software Design 1.1.2.A).
@@ -28,7 +29,7 @@ class WorkspaceSelectScreen extends ConsumerWidget {
               HeaderIconButton(
                 icon: Icons.logout,
                 tooltip: 'Đăng xuất',
-                onTap: () => ref.read(authNotifierProvider.notifier).logout(),
+                onTap: () => confirmAndLogout(context, ref),
               ),
             ],
           ),

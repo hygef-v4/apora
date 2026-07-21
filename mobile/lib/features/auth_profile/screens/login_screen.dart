@@ -7,7 +7,9 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/router/app_router.dart';
 import '../providers/auth_notifier.dart';
 
-/// UC01: Màn hình đăng nhập (FID-01) — style theo design system Apora:
+/// UC01: Màn hình đăng nhập (FID-01) — layout theo wireframe (AppBar có back +
+/// tiêu đề "Login", label nằm trên ô nhập, "Forgot Password?" cùng hàng label
+/// Password, nút Login full-width) nhưng giữ style design system Apora:
 /// nền gradient navy, logo ô vuông gradient, form trong card trắng bo lớn.
 /// Validate rỗng inline (MSG01), lỗi đăng nhập hiển thị SnackBar (MSG02).
 class LoginScreen extends ConsumerStatefulWidget {
@@ -55,6 +57,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isLoading = auth.status == AuthStatus.loading;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => context.canPop() ? context.pop() : null,
+        ),
+        title: const Text(
+          'Login',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -102,7 +123,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   Text(
-                    'Ứng dụng quản lý chung cư cho thuê',
+                    'Modern Apartment Management',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -111,7 +132,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 28),
 
-                  // Form card
+                  // Form card — thứ tự các thành phần bám theo wireframe
                   Container(
                     constraints: const BoxConstraints(maxWidth: 400),
                     decoration: BoxDecoration(
@@ -131,45 +152,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
-                            'Đăng nhập tài khoản',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Tài khoản do Ban quản lý cấp phát.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
+                          const _FieldLabel('Phone Number'),
+                          const SizedBox(height: 8),
                           TextFormField(
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
                             maxLength: 15,
                             decoration: const InputDecoration(
-                              labelText: 'Số điện thoại',
+                              hintText: 'Enter your phone number',
                               prefixIcon: Icon(Icons.phone,
                                   size: 20, color: AppColors.textTertiary),
                               counterText: '',
                             ),
                             validator: (value) =>
                                 (value == null || value.trim().isEmpty)
-                                    ? AppStrings.msgPhoneRequired
+                                    ? 'Please enter your phone number.'
                                     : null,
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 18),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const _FieldLabel('Password'),
+                              GestureDetector(
+                                onTap: () =>
+                                    context.push(AppRoutes.forgotPassword),
+                                child: const Text(
+                                  'Forgot Password?',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
                           TextFormField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
                             maxLength: 50,
                             decoration: InputDecoration(
-                              labelText: 'Mật khẩu',
+                              hintText: 'Enter your password',
                               prefixIcon: const Icon(Icons.lock,
                                   size: 20, color: AppColors.textTertiary),
                               counterText: '',
@@ -186,10 +211,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ),
                             validator: (value) => (value == null || value.isEmpty)
-                                ? AppStrings.msgPasswordRequired
+                                ? 'Please enter your password.'
                                 : null,
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 24),
                           FilledButton(
                             onPressed: isLoading ? null : _submit,
                             child: isLoading
@@ -201,13 +226,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Text('Đăng nhập'),
-                          ),
-                          const SizedBox(height: 6),
-                          TextButton(
-                            onPressed: () =>
-                                context.push(AppRoutes.forgotPassword),
-                            child: const Text('Quên mật khẩu?'),
+                                : const Text('Login'),
                           ),
                         ],
                       ),
@@ -218,6 +237,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Nhãn phía trên ô nhập (theo wireframe).
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
       ),
     );
   }

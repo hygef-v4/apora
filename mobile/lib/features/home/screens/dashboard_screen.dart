@@ -10,6 +10,7 @@ import '../../../core/widgets/initials_avatar.dart';
 import '../../../core/widgets/quick_action_button.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
+import '../../auth_profile/widgets/logout_confirm.dart';
 import '../../management/providers/apartment_notifier.dart';
 import '../../billing/providers/billing_provider.dart';
 import '../../ticket/providers/ticket_provider.dart';
@@ -201,7 +202,7 @@ class DashboardTab extends ConsumerWidget {
             HeaderIconButton(
               icon: Icons.logout,
               tooltip: 'Đăng xuất',
-              onTap: () => ref.read(authNotifierProvider.notifier).logout(),
+              onTap: () => confirmAndLogout(context, ref),
             ),
           ],
           bottom: const SizedBox(height: 12),

@@ -10,6 +10,7 @@ import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/initials_avatar.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
+import '../../auth_profile/widgets/logout_confirm.dart';
 import '../../billing/providers/billing_provider.dart';
 import '../../billing/screens/invoice_list_screen.dart';
 import '../../ticket/screens/ticket_list_screen.dart';
@@ -175,7 +176,7 @@ class _HomeTab extends ConsumerWidget {
                     IconButton(
                       icon: const Icon(Icons.logout, color: Colors.white),
                       tooltip: 'Đăng xuất',
-                      onPressed: () => ref.read(authNotifierProvider.notifier).logout(),
+                      onPressed: () => confirmAndLogout(context, ref),
                     ),
                   ],
                 ),
