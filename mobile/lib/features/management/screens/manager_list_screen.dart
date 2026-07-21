@@ -415,7 +415,7 @@ class _ManagerCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '${member.id * 7 + 12} managed records',
+                      '${member.managedRecordsCount} managed records',
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.textTertiary,

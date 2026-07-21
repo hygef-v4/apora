@@ -25,7 +25,7 @@ const MANAGER_ROLE_SQL = `'MANAGER'`;
 export async function findManagersByRole(
   statusFilter?: UserStatus,
   search?: string,
-): Promise<User[]> {
+): Promise<(User & { managed_records_count: number })[]> {
   const conditions: string[] = [`${MANAGER_ROLE_SQL} = ANY(u.roles)`];
   const params: unknown[] = [];
 
@@ -43,7 +43,8 @@ export async function findManagersByRole(
   }
 
   const result = await query(
-    `SELECT u.*
+    `SELECT u.*,
+       (SELECT COUNT(*)::int FROM audit_logs al WHERE al.actor_id = u.id) AS managed_records_count
      FROM users u
      WHERE ${conditions.join(' AND ')}
      ORDER BY u.full_name ASC`,

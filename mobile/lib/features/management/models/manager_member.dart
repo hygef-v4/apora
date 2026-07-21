@@ -10,6 +10,7 @@ class ManagerMember {
     required this.status,
     this.avatarUrl,
     this.createdAt,
+    this.managedRecordsCount = 0,
   });
 
   final int id;
@@ -20,6 +21,7 @@ class ManagerMember {
   /// Account status: 'ACTIVE' | 'INACTIVE'.
   final String status;
   final DateTime? createdAt;
+  final int managedRecordsCount;
 
   bool get isActive => status == 'ACTIVE';
 
@@ -34,6 +36,7 @@ class ManagerMember {
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String)
           : null,
+      managedRecordsCount: json['managedRecordsCount'] as int? ?? 0,
     );
   }
 
@@ -44,5 +47,6 @@ class ManagerMember {
         'avatarUrl': avatarUrl,
         'status': status,
         'createdAt': createdAt?.toIso8601String(),
+        'managedRecordsCount': managedRecordsCount,
       };
 }
