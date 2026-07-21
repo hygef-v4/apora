@@ -102,10 +102,10 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio));
       await tester.pumpAndSettle();
 
-      expect(find.text('Phân Công Công Việc'), findsOneWidget);
+      expect(find.text('Assign Task'), findsOneWidget);
       expect(find.text('Nguyen Van Tech'), findsOneWidget);
       expect(find.text('Tran Van Janitor'), findsOneWidget);
-      expect(find.text('PHÂN CÔNG'), findsOneWidget);
+      expect(find.text('ASSIGN TASK'), findsOneWidget);
     });
 
     testWidgets('2. Validation Tests: Chặn submit khi chưa chọn nhân viên (AT2)', (tester) async {
@@ -137,11 +137,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap PHÂN CÔNG without selecting staff
-      final submitBtn = find.text('PHÂN CÔNG');
+      final submitBtn = find.text('ASSIGN TASK');
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 
-      expect(find.text('Vui lòng chọn nhân viên để phân công.'), findsOneWidget);
+      expect(find.text('Please select a staff member to assign.'), findsOneWidget);
     });
 
     testWidgets('3. Success Flow: Phân công sự cố thành công (POS-01)', (tester) async {
@@ -203,7 +203,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Submit
-      final submitBtn = find.text('PHÂN CÔNG');
+      final submitBtn = find.text('ASSIGN TASK');
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 

@@ -6,7 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../models/contract.dart';
 import '../providers/contract_provider.dart';
-import '../widgets/spec_layout.dart';
+import '../../../core/widgets/spec_layout.dart';
 
 /// UC07 - Request Stay Extension (bố cục theo wireframe FID-10 trong SRS).
 /// Chỉ RESIDENT. Nhận MyContract (hợp đồng ACTIVE) từ màn UC06; validate

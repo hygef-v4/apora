@@ -94,12 +94,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Header and List Items
-      expect(find.text('Bảo trì'), findsOneWidget);
+      expect(find.text('Ticket Management'), findsOneWidget);
       expect(find.textContaining('Rò rỉ nước'), findsOneWidget);
       expect(find.textContaining('Hỏng ổ cắm'), findsOneWidget);
 
       // UC19: nút "Báo sự cố" chỉ hiển thị cho RESIDENT
-      expect(find.byTooltip('Báo sự cố'), findsOneWidget);
+      expect(find.byTooltip('Report Issue'), findsOneWidget);
     });
 
     testWidgets('2. UI & Widget Tests: Ẩn FAB Tạo Báo Cáo đối với Quản lý / MANAGER', (tester) async {
@@ -117,7 +117,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // UC19: MANAGER không được thấy nút "Báo sự cố"
-      expect(find.byTooltip('Báo sự cố'), findsNothing);
+      expect(find.byTooltip('Report Issue'), findsNothing);
     });
 
     testWidgets('3. Alternative Flow (AT1): Màn hình hiển thị khi danh sách sự cố trống', (tester) async {
@@ -132,7 +132,7 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio, role: 'RESIDENT'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Không có sự cố nào.'), findsOneWidget);
+      expect(find.text('No tickets found.'), findsOneWidget);
     });
 
     testWidgets('4. Error Handling: Tải danh sách thất bại hiển thị nút Thử lại', (tester) async {
@@ -146,7 +146,7 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio, role: 'RESIDENT'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Thử lại'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
     });
   });
 }

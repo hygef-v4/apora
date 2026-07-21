@@ -61,11 +61,11 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio));
       await tester.pumpAndSettle();
 
-      expect(find.text('Báo Sự Cố'), findsOneWidget);
-      expect(find.text('Điện'), findsOneWidget);
-      expect(find.text('Nước'), findsOneWidget);
+      expect(find.text('Report Issue'), findsOneWidget);
+      expect(find.text('Electricity'), findsOneWidget);
+      expect(find.text('Water'), findsOneWidget);
 
-      final submitBtn = find.text('GỬI YÊU CẦU');
+      final submitBtn = find.text('SUBMIT TICKET');
       expect(submitBtn, findsOneWidget);
     });
 
@@ -79,15 +79,15 @@ void main() {
       await tester.pumpAndSettle();
 
       // Submit without selecting category
-      final submitBtn = find.text('GỬI YÊU CẦU');
+      final submitBtn = find.text('SUBMIT TICKET');
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 
       // Expect snackbar for missing category
-      expect(find.text('Vui lòng chọn danh mục sự cố.'), findsOneWidget);
+      expect(find.text('Please select an issue category.'), findsOneWidget);
 
       // Select category 'Điện'
-      await tester.tap(find.text('Điện'));
+      await tester.tap(find.text('Electricity'));
       await tester.pumpAndSettle();
 
       // Enter short description
@@ -97,7 +97,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Expect inline error for short description
-      expect(find.text('Mô tả phải có ít nhất 10 ký tự.'), findsOneWidget);
+      expect(find.text('Description must be at least 10 characters.'), findsOneWidget);
     });
 
     testWidgets('3. Success Flow: Gửi báo cáo sự cố thành công (POS-01)', (tester) async {
@@ -126,7 +126,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Select category 'Nước'
-      await tester.tap(find.text('Nước'));
+      await tester.tap(find.text('Water'));
       await tester.pumpAndSettle();
 
       // Enter valid description
@@ -135,7 +135,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Submit form
-      final submitBtn = find.text('GỬI YÊU CẦU');
+      final submitBtn = find.text('SUBMIT TICKET');
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 

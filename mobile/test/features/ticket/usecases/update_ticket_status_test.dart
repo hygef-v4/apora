@@ -88,10 +88,10 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio));
       await tester.pumpAndSettle();
 
-      expect(find.text('Chi Tiết Sự Cố'), findsOneWidget);
+      expect(find.text('Ticket Detail'), findsOneWidget);
       expect(find.text('Nguyen Van A'), findsOneWidget);
       expect(find.textContaining('Rò rỉ nước'), findsOneWidget);
-      expect(find.text('LƯU THAY ĐỔI'), findsOneWidget);
+      expect(find.text('SAVE CHANGES'), findsOneWidget);
     });
 
     testWidgets('2. Validation Tests: Chặn lưu khi không có thay đổi (AT4)', (tester) async {
@@ -130,11 +130,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap LƯU THAY ĐỔI without changing anything
-      final saveBtn = find.text('LƯU THAY ĐỔI');
+      final saveBtn = find.text('SAVE CHANGES');
       await tester.tap(saveBtn);
       await tester.pumpAndSettle();
 
-      expect(find.text('Không có thay đổi để lưu.'), findsOneWidget);
+      expect(find.text('No changes to save.'), findsOneWidget);
     });
 
     testWidgets('3. Success Flow: Cập nhật ghi chú nội bộ thành công (POS-01)', (tester) async {
@@ -186,7 +186,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap LƯU THAY ĐỔI
-      final saveBtn = find.text('LƯU THAY ĐỔI');
+      final saveBtn = find.text('SAVE CHANGES');
       await tester.tap(saveBtn);
       await tester.pumpAndSettle();
 

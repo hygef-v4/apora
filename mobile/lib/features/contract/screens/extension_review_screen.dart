@@ -7,7 +7,7 @@ import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../models/contract.dart';
 import '../providers/contract_provider.dart';
-import '../widgets/spec_layout.dart';
+import '../../../core/widgets/spec_layout.dart';
 
 /// UC09 - Extension Request Detail (bố cục theo wireframe FID-12 trong SRS).
 /// Chỉ MANAGER/LANDLORD (BR-16). Duyệt sẽ dời end_date hợp đồng trong

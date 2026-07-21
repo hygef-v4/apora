@@ -4,13 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../models/task.dart';
-import '../models/ticket.dart';
 import '../providers/task_provider.dart';
+import '../widgets/ticket_category.dart';
 
-/// UC22 - Thân danh sách công việc (theo màn FID-22), nhúng dưới header
+/// UC22 - My Tasks (bố cục theo wireframe FID-22 trong SRS), nhúng dưới header
 /// của TaskBoardScreen. Backend tự phân luồng: staff thấy việc của mình
 /// (BR-42), Manager/Landlord thấy tất cả (BR-39).
 class TaskListBody extends ConsumerStatefulWidget {
@@ -21,15 +20,7 @@ class TaskListBody extends ConsumerStatefulWidget {
 }
 
 class _TaskListBodyState extends ConsumerState<TaskListBody> {
-  /// Filter tabs theo FID-22 field 1: Tất cả / Đang làm / Hoàn thành.
-  static const List<({String? value, String label})> _filters = [
-    (value: null, label: 'Tất cả'),
-    (value: 'ACTIVE', label: 'Đang làm'),
-    (value: 'COMPLETED', label: 'Hoàn thành'),
-  ];
-
-  /// Lọc phía client (tải toàn bộ 1 lần) để tab "Đang làm" đếm được
-  /// số việc chưa xong (FID-22 field 1) mà không cần gọi lại API.
+  /// null = All; ACTIVE = đang làm (ASSIGNED/IN_PROGRESS); COMPLETED.
   String? _filter;
 
   @override
@@ -51,21 +42,20 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
     }
   }
 
-  StatusBadge _statusBadge(String status) {
-    final label = kTaskStatusLabels[status] ?? status;
+  Widget _statusBadge(String status) {
     switch (status) {
       case 'COMPLETED':
-        return StatusBadge.success(label);
+        return StatusBadge.success('COMPLETED');
       case 'IN_PROGRESS':
-        return StatusBadge.warning(label);
+        return StatusBadge.warning('IN_PROGRESS');
       case 'CANCELLED':
-        return StatusBadge(
-          text: label,
-          color: AppColors.error,
-          backgroundColor: AppColors.errorBg,
-        );
+        return StatusBadge.muted('CANCELLED');
       default: // ASSIGNED
-        return StatusBadge.info(label);
+        return const StatusBadge(
+          text: 'ASSIGNED',
+          color: AppColors.primary,
+          backgroundColor: AppColors.infoBg,
+        );
     }
   }
 
@@ -79,41 +69,35 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
   Widget build(BuildContext context) {
     final state = ref.watch(taskProvider);
     final notifier = ref.read(taskProvider.notifier);
-    // FID-22 field 1: số việc chưa xong hiện trên tab "Đang làm"
+    // FID-22 field 1: số việc chưa xong hiện trên tab "Active"
     final activeCount = state.tasks
         .where((t) => t.status == 'ASSIGNED' || t.status == 'IN_PROGRESS')
         .length;
 
     return Column(
       children: [
-        // Thanh lọc trạng thái
-        SizedBox(
-          height: 48,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: _filters.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (_, i) {
-              final f = _filters[i];
-              final selected = _filter == f.value;
-              final label = f.value == 'ACTIVE' && activeCount > 0
-                  ? '${f.label} ($activeCount)'
-                  : f.label;
-              return ChoiceChip(
-                label: Text(label),
-                selected: selected,
-                onSelected: (_) => setState(() => _filter = f.value),
-                selectedColor: AppColors.navy,
-                labelStyle: TextStyle(
-                  fontSize: 12,
-                  color: selected ? Colors.white : AppColors.textSecondary,
-                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                ),
-                backgroundColor: Colors.white,
-                showCheckmark: false,
-              );
-            },
+        // Thanh tab chữ gạch chân theo wireframe
+        Container(
+          color: AppColors.surface,
+          child: Row(
+            children: [
+              _TabItem(
+                label: 'All',
+                selected: _filter == null,
+                onTap: () => setState(() => _filter = null),
+              ),
+              _TabItem(
+                label: 'Active',
+                badgeCount: activeCount,
+                selected: _filter == 'ACTIVE',
+                onTap: () => setState(() => _filter = 'ACTIVE'),
+              ),
+              _TabItem(
+                label: 'Completed',
+                selected: _filter == 'COMPLETED',
+                onTap: () => setState(() => _filter = 'COMPLETED'),
+              ),
+            ],
           ),
         ),
         Expanded(child: _buildBody(state, notifier)),
@@ -139,15 +123,15 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
       return _emptyOrError(
         icon: Icons.assignment_outlined,
         message: _filter == null
-            ? 'Chưa có công việc nào được giao cho bạn.'
-            : 'Không có công việc "${_filter == 'ACTIVE' ? 'Đang làm' : 'Hoàn thành'}".',
+            ? 'No tasks have been assigned to you yet.'
+            : 'No ${_filter == 'ACTIVE' ? 'active' : 'completed'} tasks.',
       );
     }
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: () => notifier.fetchTasks(),
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
         itemCount: visible.length,
         itemBuilder: (_, i) => _taskCard(visible[i]),
       ),
@@ -157,97 +141,97 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
   Widget _taskCard(TaskItem t) {
     final isCompleted = t.status == 'COMPLETED';
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AppCard(
-        // UC23 (TRG-01): bấm thẻ mở chi tiết / cập nhật tiến độ
-        onTap: () async {
-          await context.push(AppRoutes.taskDetailPath(t.id));
-          if (!mounted) return;
-          ref.read(taskProvider.notifier).fetchTasks();
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppColors.cardShadow,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          // UC23 (TRG-01): bấm thẻ mở chi tiết / cập nhật tiến độ
+          onTap: () async {
+            await context.push(AppRoutes.taskDetailPath(t.id));
+            if (!mounted) return;
+            ref.read(taskProvider.notifier).fetchTasks();
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    'TASK-${t.id}',
-                    style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textTertiary),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'TASK-${t.id.toString().padLeft(3, '0')}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ),
+                    _statusBadge(t.status),
+                  ],
                 ),
-                _statusBadge(t.status),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              t.title,
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.infoBg,
-                    borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 8),
+                Text(
+                  t.title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
                   ),
-                  child: Text(
-                    t.category,
-                    style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _CategoryChip(category: t.category),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Room ${t.unitNumber}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Divider(height: 1, color: AppColors.border),
+                const SizedBox(height: 8),
+                Text(
+                  'Assigned by: ${t.assignedByName}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(width: 8),
-                const Icon(Icons.location_on_outlined,
-                    size: 13, color: AppColors.textTertiary),
-                const SizedBox(width: 2),
-                Text('Phòng ${t.unitNumber}',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Giao bởi: ${t.assignedByName}',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Icon(
-                  isCompleted ? Icons.check_circle_outline : Icons.schedule,
-                  size: 13,
-                  color: AppColors.textTertiary,
-                ),
-                const SizedBox(width: 4),
-                // FID-22 field 8/9: task xong hiện ngày hoàn thành,
-                // chưa xong hiện ngày được giao
+                const SizedBox(height: 4),
+                // FID-22 field 8/9: xong hiện ngày hoàn thành, chưa xong hiện
+                // ngày được giao
                 Text(
                   isCompleted && t.completedAt != null
-                      ? _formatDate(t.completedAt!)
-                      : _formatDate(t.assignedAt),
+                      ? 'COMPLETED: ${_formatDate(t.completedAt!)}'
+                      : 'ASSIGNED: ${_formatDate(t.assignedAt)}',
                   style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -274,10 +258,90 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 14),
-              OutlinedButton(onPressed: onRetry, child: const Text('Thử lại')),
+              OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Tab chữ có gạch chân khi đang chọn (theo wireframe).
+class _TabItem extends StatelessWidget {
+  const _TabItem({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.badgeCount,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final int? badgeCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final showCount = badgeCount != null && badgeCount! > 0;
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: selected ? AppColors.primary : AppColors.border,
+                width: selected ? 2.5 : 1,
+              ),
+            ),
+          ),
+          child: Text(
+            showCount ? '$label ($badgeCount)' : label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+              color: selected ? AppColors.primary : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Chip danh mục nền nhạt, viền, icon + nhãn tiếng Anh (theo wireframe).
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({required this.category});
+
+  final String category;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(ticketCategoryIcon(category),
+              size: 13, color: AppColors.textSecondary),
+          const SizedBox(width: 5),
+          Text(
+            ticketCategoryLabel(category),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }

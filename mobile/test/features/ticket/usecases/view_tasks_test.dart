@@ -99,7 +99,7 @@ void main() {
       expect(find.text('Sửa ổ cắm P.301'), findsOneWidget);
 
       // Filter tab 'Đang làm'
-      final activeChip = find.textContaining('Đang làm');
+      final activeChip = find.textContaining('Active');
       await tester.tap(activeChip);
       await tester.pumpAndSettle();
 
@@ -119,7 +119,7 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio));
       await tester.pumpAndSettle();
 
-      expect(find.text('Chưa có công việc nào được giao cho bạn.'), findsOneWidget);
+      expect(find.text('No tasks have been assigned to you yet.'), findsOneWidget);
     });
 
     testWidgets('3. Error Handling: Tải thất bại hiển thị nút Thử lại', (tester) async {
@@ -133,7 +133,7 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio));
       await tester.pumpAndSettle();
 
-      expect(find.text('Thử lại'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
     });
   });
 }

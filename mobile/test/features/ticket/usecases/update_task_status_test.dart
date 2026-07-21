@@ -89,10 +89,10 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio));
       await tester.pumpAndSettle();
 
-      expect(find.text('Chi Tiết Công Việc'), findsOneWidget);
+      expect(find.text('Task Detail'), findsOneWidget);
       expect(find.text('Sửa ống nước P.502'), findsOneWidget);
-      expect(find.text('BẮT ĐẦU LÀM'), findsOneWidget);
-      expect(find.text('ĐÁNH DẤU HOÀN THÀNH'), findsOneWidget);
+      expect(find.text('START TASK'), findsOneWidget);
+      expect(find.text('MARK AS COMPLETE'), findsOneWidget);
     });
 
     testWidgets('2. Validation Tests: Nghiệm thu công việc bắt buộc phải có ít nhất 1 ảnh (AT1/BR-43)', (tester) async {
@@ -133,11 +133,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap ĐÁNH DẤU HOÀN THÀNH without attaching photo
-      final completeBtn = find.text('ĐÁNH DẤU HOÀN THÀNH');
+      final completeBtn = find.text('MARK AS COMPLETE');
       await tester.tap(completeBtn);
       await tester.pumpAndSettle();
 
-      expect(find.text('Cần ít nhất 1 ảnh nghiệm thu để hoàn thành công việc.'), findsOneWidget);
+      expect(find.text('At least 1 completion photo is required to finish the task.'), findsOneWidget);
     });
 
     testWidgets('3. Success Flow: Bắt đầu làm công việc chuyển trạng thái sang IN_PROGRESS (POS-01)', (tester) async {
@@ -191,7 +191,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap BẮT ĐẦU LÀM
-      final startBtn = find.text('BẮT ĐẦU LÀM');
+      final startBtn = find.text('START TASK');
       await tester.tap(startBtn);
       await tester.pumpAndSettle();
 

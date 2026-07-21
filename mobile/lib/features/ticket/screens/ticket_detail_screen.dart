@@ -4,16 +4,17 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
+import '../../../core/widgets/spec_layout.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/ticket.dart';
 import '../providers/ticket_provider.dart';
+import '../widgets/ticket_category.dart';
 
-/// UC20 - Chi tiết sự cố (theo màn FID-20).
+/// UC20 - Ticket Detail (bố cục theo wireframe FID-20 trong SRS).
 /// - MANAGER/LANDLORD: xem đầy đủ + đổi trạng thái (BR-40) + ghi chú nội bộ.
-/// - RESIDENT: chỉ đọc sự cố của chính mình (BR-39), không có khối cập nhật.
+/// - RESIDENT: chỉ đọc sự cố của chính mình (BR-39), không có khối Admin Action.
 class TicketDetailScreen extends ConsumerStatefulWidget {
   const TicketDetailScreen({super.key, required this.ticketId});
 
@@ -28,6 +29,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
   String? _selectedStatus;
   final _notesController = TextEditingController();
   bool _isSaving = false;
+
   /// Ghi chú lấy từ server lần gần nhất - so sánh để phát hiện "chưa đổi gì" (AT4).
   String _serverNotes = '';
 
@@ -52,33 +54,28 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
       ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  String _formatDate(DateTime dt) {
+  String _formatDateTime(DateTime dt) {
     final l = dt.toLocal();
     String two(int n) => n.toString().padLeft(2, '0');
     return '${two(l.day)}/${two(l.month)}/${l.year} ${two(l.hour)}:${two(l.minute)}';
   }
 
-  StatusBadge _statusBadge(String status) {
-    final label = kTicketStatusLabels[status] ?? status;
+  Widget _statusBadge(String status) {
     switch (status) {
       case 'RESOLVED':
-        return StatusBadge.success(label);
+        return StatusBadge.success('RESOLVED');
       case 'PROCESSING':
-        return StatusBadge.warning(label);
+        return StatusBadge.warning('PROCESSING');
       case 'ASSIGNED':
-        return StatusBadge.info(label);
-      case 'CANCELLED':
-        return StatusBadge(
-          text: label,
-          color: AppColors.error,
-          backgroundColor: AppColors.errorBg,
-        );
-      default: // PENDING - cam (FID-20 field 1)
         return const StatusBadge(
-          text: 'Chờ xử lý',
-          color: Color(0xFFEA580C),
-          backgroundColor: Color(0xFFFFEDD5),
+          text: 'ASSIGNED',
+          color: AppColors.primary,
+          backgroundColor: AppColors.infoBg,
         );
+      case 'CANCELLED':
+        return StatusBadge.muted('CANCELLED');
+      default:
+        return StatusBadge.warning('PENDING');
     }
   }
 
@@ -88,20 +85,20 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hủy sự cố?'),
+        title: const Text('Cancel ticket?'),
         content: const Text(
-          'Bạn có chắc muốn hủy sự cố này? Hành động không thể hoàn tác '
-          'và ảnh đính kèm sẽ bị xóa vĩnh viễn.',
+          'Are you sure you want to cancel this ticket? This action cannot be '
+          'undone and attached photos will be permanently deleted.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Không'),
+            child: const Text('No'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Xác nhận hủy'),
+            child: const Text('Confirm Cancel'),
           ),
         ],
       ),
@@ -117,7 +114,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
     // AT4: không đổi trạng thái và không có ghi chú mới -> chặn lưu
     if (!statusChanged && !notesChanged) {
-      _showSnack('Không có thay đổi để lưu.');
+      _showSnack('No changes to save.');
       return;
     }
     // AT3: hủy phải xác nhận
@@ -133,7 +130,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
             internalNotes: notesChanged ? notes : null,
           );
       setState(() => _selectedStatus = null);
-      _showSnack('Cập nhật sự cố thành công.');
+      _showSnack('Ticket updated successfully.');
     } catch (e) {
       // AT2: lỗi mạng/server -> báo SnackBar, giữ nguyên dữ liệu đã nhập
       _showSnack(e.toString());
@@ -152,7 +149,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          const GradientHeader(title: 'Chi Tiết Sự Cố', showBack: true),
+          const GradientHeader(title: 'Ticket Detail', showBack: true),
           Expanded(
             child: state.when(
               loading: () => const Center(
@@ -187,217 +184,151 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
       _notesController.text = serverNotes;
     }
     final nextStatuses = kTicketNextStatuses[ticket.status] ?? const <String>[];
+    final updated = ticket.updatedAt.isAfter(ticket.createdAt)
+        ? _formatDateTime(ticket.updatedAt)
+        : '—';
 
     return ListView(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       children: [
-        // 1. Tổng quan: mã ticket + badge trạng thái + danh mục + thời gian
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        // Badge trạng thái (FID-20 field 1)
+        Align(
+          alignment: Alignment.centerRight,
+          child: _statusBadge(ticket.status),
+        ),
+        const SizedBox(height: 14),
+
+        // TICKET INFO
+        const SpecSectionHeader('Ticket Info'),
+        SpecDetailRow(
+          label: 'Ticket ID',
+          value: '#TK-${ticket.id.toString().padLeft(3, '0')}',
+        ),
+        SpecDetailRow.widget(
+          label: 'Category',
+          child: _CategoryChip(category: ticket.category),
+        ),
+        SpecDetailRow(label: 'Created', value: _formatDateTime(ticket.createdAt)),
+        SpecDetailRow(label: 'Last Updated', value: updated),
+        const SizedBox(height: 18),
+
+        // REPORTED BY
+        const SpecSectionHeader('Reported By'),
+        SpecDetailRow(label: 'Resident', value: ticket.residentName),
+        SpecDetailRow(label: 'Apartment', value: 'Room ${ticket.unitNumber}'),
+        SpecDetailRow(label: 'Phone', value: ticket.residentPhone),
+        const SizedBox(height: 18),
+
+        // ISSUE DESCRIPTION
+        const SpecSectionHeader('Issue Description'),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            ticket.description,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textPrimary,
+              height: 1.5,
+            ),
+          ),
+        ),
+
+        // ATTACHED PHOTOS
+        if (ticket.beforeImages.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '#TK-${ticket.id}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+              const Expanded(child: SpecSectionHeader('Attached Photos')),
+              Text(
+                '${ticket.beforeImages.length} / 3 photos',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final url in ticket.beforeImages)
+                GestureDetector(
+                  onTap: () => _showFullImage(url),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      url,
+                      width: 84,
+                      height: 84,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        width: 84,
+                        height: 84,
+                        color: AppColors.divider,
+                        child: const Icon(Icons.broken_image,
+                            color: AppColors.textTertiary),
                       ),
                     ),
                   ),
-                  _statusBadge(ticket.status),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(
-                  ticket.category,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _InfoRow(
-                icon: Icons.schedule,
-                label: 'Tạo lúc',
-                value: _formatDate(ticket.createdAt),
-              ),
-              _InfoRow(
-                icon: Icons.update,
-                label: 'Cập nhật',
-                // Chưa từng cập nhật -> hiện "—" (theo screen definition)
-                value: ticket.updatedAt.isAfter(ticket.createdAt)
-                    ? _formatDate(ticket.updatedAt)
-                    : '—',
-              ),
             ],
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // 2. Người báo cáo
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _SectionTitle('Người báo cáo'),
-              const SizedBox(height: 8),
-              _InfoRow(
-                icon: Icons.person_outline,
-                label: 'Họ tên',
-                value: ticket.residentName,
-              ),
-              _InfoRow(
-                icon: Icons.location_on_outlined,
-                label: 'Căn hộ',
-                value: 'Phòng ${ticket.unitNumber}',
-              ),
-              _InfoRow(
-                icon: Icons.phone_outlined,
-                label: 'SĐT',
-                value: ticket.residentPhone,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // 3. Mô tả sự cố
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _SectionTitle('Mô tả sự cố'),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.infoBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  ticket.description,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textPrimary,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // 4. Ảnh đính kèm (nếu có) - bấm để xem full
-        if (ticket.beforeImages.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SectionTitle('Ảnh đính kèm (${ticket.beforeImages.length})'),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    for (final url in ticket.beforeImages)
-                      GestureDetector(
-                        onTap: () => _showFullImage(url),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.network(
-                            url,
-                            width: 84,
-                            height: 84,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => Container(
-                              width: 84,
-                              height: 84,
-                              color: AppColors.divider,
-                              child: const Icon(Icons.broken_image,
-                                  color: AppColors.textTertiary),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
           ),
         ],
 
-        // 5. Công việc đã phân công (UC21 - nếu có)
+        // ASSIGNED TASK (UC21 - nếu có)
         if (ticket.assignedTask != null) ...[
-          const SizedBox(height: 10),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _SectionTitle('Công việc đã phân công'),
-                const SizedBox(height: 8),
-                _InfoRow(
-                  icon: Icons.assignment_outlined,
-                  label: 'Tiêu đề',
-                  value: ticket.assignedTask!.title,
-                ),
-                _InfoRow(
-                  icon: Icons.engineering_outlined,
-                  label: 'Người xử lý',
-                  value: ticket.assignedTask!.assigneeName,
-                ),
-                _InfoRow(
-                  icon: Icons.flag_outlined,
-                  label: 'Trạng thái',
-                  value: kTaskStatusLabels[ticket.assignedTask!.status] ??
-                      ticket.assignedTask!.status,
-                ),
-                _InfoRow(
-                  icon: Icons.schedule,
-                  label: 'Giao lúc',
-                  value: _formatDate(ticket.assignedTask!.assignedAt),
-                ),
-                if (ticket.assignedTask!.completedAt != null)
-                  _InfoRow(
-                    icon: Icons.check_circle_outline,
-                    label: 'Hoàn thành',
-                    value: _formatDate(ticket.assignedTask!.completedAt!),
-                  ),
-              ],
-            ),
+          const SizedBox(height: 18),
+          const SpecSectionHeader('Assigned Task'),
+          SpecDetailRow(label: 'Title', value: ticket.assignedTask!.title),
+          SpecDetailRow(
+            label: 'Assignee',
+            value: ticket.assignedTask!.assigneeName,
           ),
+          SpecDetailRow(
+            label: 'Status',
+            value: _taskStatusLabel(ticket.assignedTask!.status),
+          ),
+          SpecDetailRow(
+            label: 'Assigned On',
+            value: _formatDateTime(ticket.assignedTask!.assignedAt),
+          ),
+          if (ticket.assignedTask!.completedAt != null)
+            SpecDetailRow(
+              label: 'Completed On',
+              value: _formatDateTime(ticket.assignedTask!.completedAt!),
+            ),
         ],
 
         // UC21: ticket PENDING -> Manager phân công tạo task cho nhân viên
         if (isManager && ticket.status == 'PENDING') ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 22),
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 50,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
+                elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               icon: const Icon(Icons.assignment_ind_outlined),
-              label: const Text('PHÂN CÔNG CHO NHÂN VIÊN',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text(
+                'ASSIGN TO STAFF',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, letterSpacing: .5),
+              ),
               onPressed: () async {
                 final assigned = await context.push<bool>(
                   AppRoutes.ticketAssignPath(ticket.id),
@@ -414,106 +345,113 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           ),
         ],
 
-        // 6. Khối cập nhật - chỉ MANAGER/LANDLORD (BR-39)
+        // ADMIN ACTION - chỉ MANAGER/LANDLORD (BR-39)
         if (isManager) ...[
+          const SizedBox(height: 22),
+          const SpecSectionHeader('Admin Action'),
           const SizedBox(height: 10),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _SectionTitle('Cập nhật trạng thái'),
-                const SizedBox(height: 10),
-                if (nextStatuses.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.divider,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+          const SpecFieldLabel('Update Status'),
+          if (nextStatuses.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                ticket.status == 'RESOLVED'
+                    ? 'This ticket is resolved — status can no longer change.'
+                    : 'This ticket is cancelled — status can no longer change.',
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary),
+              ),
+            )
+          else
+            DropdownButtonFormField<String>(
+              initialValue: _selectedStatus,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: AppColors.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              hint: Text(
+                _ticketStatusLabel(ticket.status),
+                style: const TextStyle(fontSize: 13),
+              ),
+              items: [
+                for (final s in nextStatuses)
+                  DropdownMenuItem(
+                    value: s,
                     child: Text(
-                      ticket.status == 'RESOLVED'
-                          ? 'Sự cố đã xử lý xong — không thể đổi trạng thái nữa.'
-                          : 'Sự cố đã hủy — không thể đổi trạng thái nữa.',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                  )
-                else
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedStatus,
-                    decoration: InputDecoration(
-                      labelText: 'Trạng thái mới',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      _ticketStatusLabel(s),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: s == 'CANCELLED'
+                            ? AppColors.error
+                            : AppColors.textPrimary,
                       ),
                     ),
-                    hint: Text(
-                      'Hiện tại: ${kTicketStatusLabels[ticket.status]}',
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    items: [
-                      for (final s in nextStatuses)
-                        DropdownMenuItem(
-                          value: s,
-                          child: Text(
-                            kTicketStatusLabels[s] ?? s,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: s == 'CANCELLED'
-                                  ? AppColors.error
-                                  : AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                    ],
-                    onChanged: _isSaving
-                        ? null
-                        : (v) => setState(() => _selectedStatus = v),
                   ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _notesController,
-                  maxLines: 3,
-                  maxLength: 500,
-                  enabled: !_isSaving,
-                  decoration: InputDecoration(
-                    labelText: 'Ghi chú nội bộ (tùy chọn)',
-                    hintText: 'Ghi chú cho đội xử lý...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: _isSaving ? null : () => _save(ticket),
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('LƯU THAY ĐỔI',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ),
               ],
+              onChanged: _isSaving
+                  ? null
+                  : (v) => setState(() => _selectedStatus = v),
+            ),
+          const SizedBox(height: 14),
+          const SpecFieldLabel('Internal Notes / Feedback'),
+          TextField(
+            controller: _notesController,
+            maxLines: 3,
+            maxLength: 500,
+            enabled: !_isSaving,
+            style: const TextStyle(fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'Add notes for the team or feedback for the resident...',
+              hintStyle: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textTertiary,
+              ),
+              filled: true,
+              fillColor: AppColors.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: _isSaving ? null : () => _save(ticket),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text(
+                      'SAVE CHANGES',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: .5,
+                      ),
+                    ),
             ),
           ),
         ],
-        const SizedBox(height: 24),
       ],
     );
   }
@@ -545,55 +483,52 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+/// Nhãn tiếng Anh cho trạng thái sự cố.
+String _ticketStatusLabel(String status) => switch (status) {
+      'PENDING' => 'Pending',
+      'ASSIGNED' => 'Assigned',
+      'PROCESSING' => 'Processing',
+      'RESOLVED' => 'Resolved',
+      'CANCELLED' => 'Cancelled',
+      _ => status,
+    };
 
-  final String text;
+/// Nhãn tiếng Anh cho trạng thái công việc.
+String _taskStatusLabel(String status) => switch (status) {
+      'ASSIGNED' => 'Assigned',
+      'IN_PROGRESS' => 'In Progress',
+      'COMPLETED' => 'Completed',
+      'CANCELLED' => 'Cancelled',
+      _ => status,
+    };
+
+/// Chip danh mục nền nhạt, viền, icon + nhãn tiếng Anh (theo wireframe).
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({required this.category});
+
+  final String category;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.bold,
-        color: AppColors.primary,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(6),
       ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.label, required this.value});
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: AppColors.textTertiary),
-          const SizedBox(width: 6),
-          SizedBox(
-            width: 84,
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+          Icon(ticketCategoryIcon(category),
+              size: 13, color: AppColors.textSecondary),
+          const SizedBox(width: 5),
+          Text(
+            ticketCategoryLabel(category),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
             ),
           ),
         ],
@@ -616,15 +551,17 @@ class _ErrorRetry extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 44, color: AppColors.textTertiary),
+            const Icon(Icons.error_outline,
+                size: 44, color: AppColors.textTertiary),
             const SizedBox(height: 10),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 14),
-            OutlinedButton(onPressed: onRetry, child: const Text('Thử lại')),
+            OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         ),
       ),

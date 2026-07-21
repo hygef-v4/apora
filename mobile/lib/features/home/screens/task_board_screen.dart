@@ -28,7 +28,7 @@ class TaskBoardScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Nhân viên vận hành',
+                        'Operations Staff',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.white.withValues(alpha: .6),
@@ -36,7 +36,7 @@ class TaskBoardScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        'Xin chào, ${user?.fullName ?? 'Nhân viên'} 👋',
+                        'Hello, ${user?.fullName ?? 'Staff'} 👋',
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -60,7 +60,7 @@ class TaskBoardScreen extends ConsumerWidget {
             actions: [
               HeaderIconButton(
                 icon: Icons.logout,
-                tooltip: 'Đăng xuất',
+                tooltip: 'Log out',
                 onTap: () => ref.read(authNotifierProvider.notifier).logout(),
               ),
             ],

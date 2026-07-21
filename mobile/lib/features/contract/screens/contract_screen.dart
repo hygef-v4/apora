@@ -8,7 +8,7 @@ import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/contract.dart';
-import '../widgets/spec_layout.dart';
+import '../../../core/widgets/spec_layout.dart';
 import '../providers/contract_provider.dart';
 
 /// UC06 - Contract Details (bố cục theo wireframe FID-09 trong SRS).
