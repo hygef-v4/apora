@@ -8,6 +8,7 @@ class NotificationModel {
   final int? referenceId;
   final bool isRead;
   final DateTime createdAt;
+  final String? imageUrl;
 
   NotificationModel({
     required this.id,
@@ -17,6 +18,7 @@ class NotificationModel {
     this.referenceId,
     required this.isRead,
     required this.createdAt,
+    this.imageUrl,
   });
 
   NotificationModel copyWith({
@@ -27,6 +29,7 @@ class NotificationModel {
     int? referenceId,
     bool? isRead,
     DateTime? createdAt,
+    String? imageUrl,
   }) {
     return NotificationModel(
       id: id ?? this.id,
@@ -36,6 +39,7 @@ class NotificationModel {
       referenceId: referenceId ?? this.referenceId,
       isRead: isRead ?? this.isRead,
       createdAt: createdAt ?? this.createdAt,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 
@@ -51,6 +55,7 @@ class NotificationModel {
         createdAt: json['created_at'] != null 
             ? DateTime.parse(json['created_at'].toString()) 
             : DateTime.now(),
+        imageUrl: json['image_url'] as String?,
       );
     } catch (e) {
       debugPrint('Error parsing NotificationModel: $e');

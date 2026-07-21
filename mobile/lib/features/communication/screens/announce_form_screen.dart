@@ -20,7 +20,10 @@ class _AnnounceFormScreenState extends ConsumerState<AnnounceFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
+  String _selectedCategory = 'NOTICE';
   File? _bannerImage;
+
+  final List<String> _categories = ['OUTAGE', 'EVENT', 'NOTICE'];
 
   @override
   void dispose() {
@@ -30,11 +33,10 @@ class _AnnounceFormScreenState extends ConsumerState<AnnounceFormScreen> {
   }
 
   Future<void> _pickImage() async {
-    // BR-10: Compress image at client side
     final picker = ref.read(imagePickerProvider);
     final pickedFile = await picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 70, // Giảm chất lượng để tối ưu dung lượng < 500KB
+      imageQuality: 70,
     );
     if (pickedFile != null) {
       setState(() {
@@ -46,7 +48,7 @@ class _AnnounceFormScreenState extends ConsumerState<AnnounceFormScreen> {
   void _submit() {
     if (_formKey.currentState!.validate()) {
       ref.read(announceNotifierProvider.notifier).submit(
-            title: _titleController.text.trim(),
+            title: '[$_selectedCategory] ${_titleController.text.trim()}',
             body: _bodyController.text.trim(),
             banner: _bannerImage,
           );
@@ -65,7 +67,7 @@ class _AnnounceFormScreenState extends ConsumerState<AnnounceFormScreen> {
       } else if (next.isSuccess) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('Đăng thông báo thành công')));
+          ..showSnackBar(const SnackBar(content: Text('Announcement published successfully')));
         ref.invalidate(notificationListProvider);
         context.pop();
       }
@@ -75,88 +77,206 @@ class _AnnounceFormScreenState extends ConsumerState<AnnounceFormScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          GradientHeader(
-            title: 'Tạo thông báo',
+          const GradientHeader(
+            title: 'Create Announcement',
             showBack: true,
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // POST TITLE
+                    const Text(
+                      'POST TITLE',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     TextFormField(
                       controller: _titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Tiêu đề thông báo *',
+                      decoration: InputDecoration(
+                        hintText: 'Enter title...',
+                        hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 14),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.divider, width: 1),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.divider, width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                        ),
                       ),
                       validator: (value) => (value == null || value.trim().isEmpty)
-                          ? 'Vui lòng nhập tiêu đề'
+                          ? 'Title is required'
                           : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
+
+                    // CATEGORY
+                    const Text(
+                      'CATEGORY',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.divider, width: 1),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedCategory,
+                          isExpanded: true,
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textPrimary),
+                          hint: const Text('Select a category...', style: TextStyle(color: AppColors.textTertiary, fontSize: 14)),
+                          items: _categories.map((String cat) {
+                            return DropdownMenuItem<String>(
+                              value: cat,
+                              child: Text(cat, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedCategory = val;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // CONTENT
+                    const Text(
+                      'CONTENT',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     TextFormField(
                       controller: _bodyController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nội dung *',
-                        alignLabelWithHint: true,
+                      maxLines: 8,
+                      minLines: 5,
+                      decoration: InputDecoration(
+                        hintText: 'Write something wavy...',
+                        hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 14),
+                        contentPadding: const EdgeInsets.all(16),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.divider, width: 1),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.divider, width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                        ),
                       ),
-                      maxLines: 5,
                       validator: (value) => (value == null || value.trim().isEmpty)
-                          ? 'Vui lòng nhập nội dung'
+                          ? 'Content is required'
                           : null,
                     ),
-                    const SizedBox(height: 24),
-                    
-                    // Image Picker Section
+                    const SizedBox(height: 20),
+
+                    // ATTACHMENT
                     const Text(
-                      'Ảnh bìa (Không bắt buộc)',
+                      'ATTACHMENT',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
                         color: AppColors.textSecondary,
+                        letterSpacing: 0.5,
                       ),
                     ),
                     const SizedBox(height: 8),
                     GestureDetector(
                       onTap: _pickImage,
                       child: Container(
-                        height: 150,
+                        height: 180,
+                        width: double.infinity,
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.divider),
+                          color: AppColors.infoBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.25),
+                            width: 1.5,
+                          ),
                         ),
                         child: _bannerImage != null
                             ? ClipRRect(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(12),
                                 child: Image.file(_bannerImage!, fit: BoxFit.cover),
                               )
                             : const Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.add_photo_alternate,
-                                      size: 40, color: AppColors.textTertiary),
+                                  Icon(Icons.camera_alt_outlined, size: 36, color: AppColors.primary),
                                   SizedBox(height: 8),
                                   Text(
-                                    'Nhấn để tải ảnh lên',
-                                    style: TextStyle(color: AppColors.textTertiary),
+                                    'ADD IMAGE',
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      letterSpacing: 0.5,
+                                    ),
                                   ),
                                 ],
                               ),
                       ),
                     ),
-                    
                     const SizedBox(height: 32),
-                    FilledButton(
-                      onPressed: state.isLoading ? null : _submit,
-                      child: state.isLoading
-                          ? const SizedBox(
-                              width: 20, height: 20, 
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Đăng thông báo'),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: FilledButton(
+                        onPressed: state.isLoading ? null : _submit,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: state.isLoading
+                            ? const SizedBox(
+                                width: 20, height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text(
+                                'Publish',
+                                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                      ),
                     ),
                   ],
                 ),
