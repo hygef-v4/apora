@@ -57,8 +57,7 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
           
           // Tab Tin nhắn (Hỗ trợ)
           const ChatScreen(
-            title: 'Hỗ trợ',
-            subtitle: 'Trò chuyện và nhận hỗ trợ từ BQL',
+            title: 'APORA Helpdesk',
             showBack: false,
           ),
         ],
