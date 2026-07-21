@@ -56,38 +56,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // Header: back trái + tiêu đề căn giữa (layout wireframe)
-          Container(
-            decoration: const BoxDecoration(
-              gradient: AppColors.residentGradient,
-            ),
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 12,
-              left: 16,
-              right: 16,
-              bottom: 16,
-            ),
-            child: Row(
-              children: [
-                HeaderIconButton(
-                  icon: Icons.arrow_back,
-                  onTap: () => Navigator.of(context).maybePop(),
-                ),
-                const Expanded(
-                  child: Text(
-                    'Profile',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                // Giữ tiêu đề cân giữa so với nút back
-                const SizedBox(width: 36),
-              ],
-            ),
+          // Header: back trái + tiêu đề căn giữa (layout wireframe).
+          // Dùng GradientHeader để màu nền đúng theo role của người đang xem.
+          const GradientHeader(
+            title: 'Profile',
+            centerTitle: true,
+            showBack: true,
           ),
           Expanded(
             child: profile.when(

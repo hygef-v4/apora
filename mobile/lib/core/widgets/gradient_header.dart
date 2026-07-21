@@ -15,6 +15,7 @@ class GradientHeader extends ConsumerWidget {
     this.actions = const [],
     this.bottom,
     this.showBack = false,
+    this.centerTitle = false,
   });
 
   final String? title;
@@ -23,6 +24,10 @@ class GradientHeader extends ConsumerWidget {
   final List<Widget> actions;
   final Widget? bottom;
   final bool showBack;
+
+  /// Tiêu đề căn giữa (các màn theo wireframe: Profile, Change Password...).
+  /// Chừa khoảng trống đối xứng với nút back để chữ nằm đúng giữa màn.
+  final bool centerTitle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -62,13 +67,16 @@ class GradientHeader extends ConsumerWidget {
               Expanded(
                 child: titleWidget ??
                     Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: centerTitle
+                          ? CrossAxisAlignment.center
+                          : CrossAxisAlignment.start,
                       children: [
                         if (title != null)
                           Text(
                             title!,
-                            style: const TextStyle(
-                              fontSize: 20,
+                            textAlign: centerTitle ? TextAlign.center : null,
+                            style: TextStyle(
+                              fontSize: centerTitle ? 17 : 20,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
                             ),
@@ -78,6 +86,7 @@ class GradientHeader extends ConsumerWidget {
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
                               subtitle!,
+                              textAlign: centerTitle ? TextAlign.center : null,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.white.withValues(alpha: .6),
@@ -90,6 +99,11 @@ class GradientHeader extends ConsumerWidget {
               ...actions.map(
                 (a) => Padding(padding: const EdgeInsets.only(left: 8), child: a),
               ),
+              // Chừa chỗ đối xứng nút back / action để tiêu đề nằm đúng giữa.
+              if (centerTitle && showBack && actions.isEmpty)
+                const SizedBox(width: 48),
+              if (centerTitle && !showBack && actions.isNotEmpty)
+                const SizedBox(width: 44),
             ],
           ),
           if (bottom != null)

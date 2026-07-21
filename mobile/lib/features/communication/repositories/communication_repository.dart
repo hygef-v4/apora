@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/notification_model.dart';
 import '../../../core/network/dio_client.dart';
@@ -24,9 +25,13 @@ class CommunicationRepository {
     });
 
     if (bannerImage != null) {
+      final fileName = bannerImage.path.split(RegExp(r'[/\\]')).last;
       formData.files.add(MapEntry(
         'banner',
-        await MultipartFile.fromFile(bannerImage.path),
+        await MultipartFile.fromFile(
+          bannerImage.path,
+          filename: fileName,
+        ),
       ));
     }
 
@@ -38,6 +43,8 @@ class CommunicationRepository {
       'limit': limit,
       'offset': offset,
     });
+    
+    debugPrint('GET /notifications response: ${response.data}');
     
     if (response.data['status'] == 'error') {
       throw Exception(response.data['message'] ?? 'Lỗi từ server');

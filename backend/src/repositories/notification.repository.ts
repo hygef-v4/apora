@@ -62,9 +62,11 @@ export async function getActiveDeviceTokens(userIds: number[]): Promise<string[]
  */
 export async function getUserNotifications(userId: number, limit: number, offset: number): Promise<any[]> {
   const result = await query(
-    `SELECT * FROM notifications 
-     WHERE user_id = $1 
-     ORDER BY created_at DESC 
+    `SELECT n.*, nw.image_url 
+     FROM notifications n
+     LEFT JOIN news nw ON n.reference_id = nw.id AND n.type = 'NEWS'
+     WHERE n.user_id = $1 
+     ORDER BY n.created_at DESC 
      LIMIT $2 OFFSET $3`,
     [userId, limit, offset]
   );
@@ -97,3 +99,22 @@ export async function markSenderAnnouncementsAsRead(userId: number): Promise<voi
     [userId]
   );
 }
+
+/**
+ * Thêm bài tin tức mới phục vụ cho thông báo chung.
+ */
+export async function createNews(
+  authorId: number,
+  title: string,
+  content: string,
+  imageUrl: string | null
+): Promise<number> {
+  const result = await query(
+    `INSERT INTO news (title, content, image_url, author_id, status)
+     VALUES ($1, $2, $3, $4, 'PUBLISHED')
+     RETURNING id`,
+    [title, content, imageUrl, authorId]
+  );
+  return result.rows[0].id;
+}
+

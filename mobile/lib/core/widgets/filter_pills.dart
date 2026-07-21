@@ -20,11 +20,15 @@ class FilterPills<T> extends StatelessWidget {
     required this.pills,
     required this.selected,
     required this.onSelected,
+    this.padding = const EdgeInsets.symmetric(horizontal: 14),
   });
 
   final List<FilterPill<T>> pills;
   final T selected;
   final ValueChanged<T> onSelected;
+
+  /// Lề ngang của hàng pill — đặt `EdgeInsets.zero` khi widget cha đã có lề.
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +36,7 @@ class FilterPills<T> extends StatelessWidget {
       height: 34,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: padding,
         itemCount: pills.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {

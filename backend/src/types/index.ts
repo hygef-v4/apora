@@ -234,6 +234,7 @@ export interface StaffStats {
 export interface ManagerListItem extends PublicUser {
   status: UserStatus;
   createdAt: Date;
+  managedRecordsCount: number;
 }
 
 /** Thống kê tổng quan Manager (UC41 - Manager Statistics Summary). */

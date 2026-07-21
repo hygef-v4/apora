@@ -11,14 +11,19 @@ import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/filter_pills.dart';
 import '../../../core/widgets/gradient_header.dart';
+import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../models/staff_member.dart';
 import '../models/staff_stats.dart';
 import '../providers/staff_notifier.dart';
+import '../repositories/staff_api_service.dart';
 
-/// UC36 (FID-35): Danh sách nhân viên vận hành — style giống hệt trang Căn hộ:
-/// header gradient chứa title + nút search toggle, filter pills, card chữ nhật bo góc 12px
-/// với 2 status: "Hoạt động" màu xanh lá và "Nghỉ việc" màu đỏ.
+/// UC36 (FID-35): Staff Management — layout theo wireframe (header back + tiêu đề,
+/// hàng "Staff Directory" + nút "Add Staff", lưới 4 ô thống kê, ô tìm kiếm,
+/// pill All/Active/Inactive, card nhân viên có badge role + trạng thái và
+/// hàng dưới "N open assigned tickets" · "Details").
+/// Giao diện dùng lại design system Apora: GradientHeader, StatCard, AppCard,
+/// FilterPills, StatusBadge.
 class StaffListScreen extends ConsumerStatefulWidget {
   const StaffListScreen({super.key});
 
@@ -29,7 +34,10 @@ class StaffListScreen extends ConsumerStatefulWidget {
 class _StaffListScreenState extends ConsumerState<StaffListScreen> {
   Timer? _debounce;
   final _searchController = TextEditingController();
-  bool _showSearch = false;
+
+  /// Giữ lại số liệu lần tải gần nhất để lưới thống kê không nháy về 0
+  /// trong lúc refresh (AsyncLoading không mang theo value cũ).
+  StaffStats _lastStats = StaffStats.empty;
 
   @override
   void dispose() {
@@ -49,115 +57,53 @@ class _StaffListScreenState extends ConsumerState<StaffListScreen> {
   Widget build(BuildContext context) {
     final directory = ref.watch(staffDirectoryProvider);
     final notifier = ref.read(staffDirectoryProvider.notifier);
-    final stats = directory.value?.stats ?? StaffStats.empty;
+    final stats = directory.value?.stats;
+    if (stats != null) _lastStats = stats;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
-          GradientHeader(
-            title: 'Nhân viên',
-            showBack: true,
-            actions: [
-              HeaderIconButton(
-                icon: Icons.search,
-                tooltip: 'Tìm kiếm',
-                onTap: () {
-                  setState(() {
-                    _showSearch = !_showSearch;
-                    if (!_showSearch) {
-                      _searchController.clear();
-                      notifier.setSearch('');
-                    }
-                  });
-                },
-              ),
-              HeaderIconButton(
-                icon: Icons.add,
-                tooltip: 'Thêm nhân viên',
-                onTap: () => context.push(AppRoutes.staffCreate),
-              ),
-            ],
-            bottom: _showSearch
-                ? HeaderSearchBar(
-                    hint: 'Tìm tên, số điện thoại...',
-                    onChanged: _onSearchChanged,
-                  )
-                : null,
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 4),
-            child: FilterPills<String?>(
-              pills: [
-                FilterPill(value: null, label: 'Tất cả (${stats.total})'),
-                FilterPill(
-                  value: 'ACTIVE',
-                  label: 'Hoạt động (${stats.active})',
-                  color: AppColors.success,
-                ),
-                FilterPill(
-                  value: 'INACTIVE',
-                  label: 'Nghỉ việc (${stats.inactive})',
-                  color: AppColors.error,
-                ),
-              ],
-              selected: notifier.statusFilter,
-              onSelected: notifier.setStatusFilter,
-            ),
-          ),
+          const GradientHeader(title: 'Staff Management', showBack: true),
           Expanded(
-            child: directory.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(mapDioError(error), textAlign: TextAlign.center),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                        onPressed: notifier.refresh,
-                        child: const Text('Thử lại'),
+            child: RefreshIndicator(
+              onRefresh: notifier.refresh,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
+                children: [
+                  _DirectoryHeader(
+                    onAdd: () => context.push(AppRoutes.staffCreate),
+                  ),
+                  const SizedBox(height: 14),
+                  _StatsGrid(stats: _lastStats),
+                  const SizedBox(height: 14),
+                  _SearchField(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                  ),
+                  const SizedBox(height: 12),
+                  // ListView cha đã có lề 14 -> pill không cần lề riêng.
+                  FilterPills<String?>(
+                    padding: EdgeInsets.zero,
+                    pills: const [
+                      FilterPill(value: null, label: 'All'),
+                      FilterPill(
+                        value: 'ACTIVE',
+                        label: 'Active',
+                        color: AppColors.success,
+                      ),
+                      FilterPill(
+                        value: 'INACTIVE',
+                        label: 'Inactive',
+                        color: AppColors.error,
                       ),
                     ],
+                    selected: notifier.statusFilter,
+                    onSelected: notifier.setStatusFilter,
                   ),
-                ),
-              ),
-              data: (result) => RefreshIndicator(
-                onRefresh: notifier.refresh,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-                  children: [
-                    if (result.staff.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 48),
-                        child: Center(
-                          child: Text(
-                            (notifier.searchKeyword != null ||
-                                    notifier.statusFilter != null)
-                                ? AppStrings.msgStaffNoMatch
-                                : AppStrings.msgStaffEmpty,
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      ...result.staff.map(
-                        (member) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _StaffCard(
-                            member: member,
-                            onTap: () => context.push(
-                              AppRoutes.staffDetailPath(member.id),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                  const SizedBox(height: 14),
+                  ..._buildListSection(context, directory, notifier),
+                ],
               ),
             ),
           ),
@@ -165,9 +111,199 @@ class _StaffListScreenState extends ConsumerState<StaffListScreen> {
       ),
     );
   }
+
+  /// Phần danh sách: loading / lỗi / rỗng / các card nhân viên.
+  List<Widget> _buildListSection(
+    BuildContext context,
+    AsyncValue<StaffListResult> directory,
+    StaffDirectoryNotifier notifier,
+  ) {
+    return [
+      directory.when(
+        loading: () => const Padding(
+          padding: EdgeInsets.only(top: 48),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (error, _) => Padding(
+          padding: const EdgeInsets.only(top: 32),
+          child: Column(
+            children: [
+              Text(
+                mapDioError(error),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: notifier.refresh,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+        data: (result) {
+          if (result.staff.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 48),
+              child: Center(
+                child: Text(
+                  (notifier.searchKeyword != null ||
+                          notifier.statusFilter != null)
+                      ? AppStrings.msgStaffNoMatch
+                      : AppStrings.msgStaffEmpty,
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+            );
+          }
+          return Column(
+            children: [
+              for (final member in result.staff)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _StaffCard(
+                    member: member,
+                    onTap: () =>
+                        context.push(AppRoutes.staffDetailPath(member.id)),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    ];
+  }
 }
 
-/// Card nhân viên: dùng box chữ nhật bo góc giống _ApartmentCard để làm giao diện đồng bộ.
+/// Hàng tiêu đề danh mục: "Staff Directory" + nút "Add Staff" (wireframe).
+class _DirectoryHeader extends StatelessWidget {
+  const _DirectoryHeader({required this.onAdd});
+
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(
+          child: Text(
+            'Staff Directory',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        FilledButton.icon(
+          onPressed: onAdd,
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Add Staff'),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Lưới 2x2 thống kê nhân sự (wireframe: Total / Active / Inactive / Open tickets).
+class _StatsGrid extends StatelessWidget {
+  const _StatsGrid({required this.stats});
+
+  final StaffStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: StatCard(
+                label: 'Total Staff',
+                value: '${stats.total}',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: StatCard(
+                label: 'Active',
+                value: '${stats.active}',
+                valueColor: AppColors.success,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: StatCard(
+                label: 'Inactive',
+                value: '${stats.inactive}',
+                valueColor: AppColors.error,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: StatCard(
+                label: 'Open Assigned Tickets',
+                value: '${stats.openTasks}',
+                valueColor: AppColors.warning,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Ô tìm kiếm luôn hiển thị trong thân trang (wireframe), thay cho nút search ở header.
+class _SearchField extends StatelessWidget {
+  const _SearchField({required this.controller, required this.onChanged});
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border, width: 1.5),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(vertical: 13),
+          icon: Icon(Icons.search, size: 18, color: AppColors.textTertiary),
+          hintText: 'Search staff name or phone',
+          hintStyle: TextStyle(fontSize: 13, color: AppColors.textTertiary),
+        ),
+      ),
+    );
+  }
+}
+
+/// Card nhân viên theo wireframe: avatar + tên/SĐT bên trái, badge role và
+/// trạng thái xếp dọc bên phải, hàng dưới là số việc đang mở + link "Details".
 class _StaffCard extends StatelessWidget {
   const _StaffCard({required this.member, required this.onTap});
 
@@ -186,7 +322,7 @@ class _StaffCard extends StatelessWidget {
   }
 
   Color _getStaffColor(StaffMember member) {
-    if (!member.isActive) return const Color(0xFF94A3B8); // Slate grey cho nhân viên nghỉ việc
+    if (!member.isActive) return AppColors.textTertiary; // Nhân viên nghỉ việc
     switch (member.role) {
       case 'SECURITY_GUARD':
         return const Color(0xFF3B82F6); // Xanh dương
@@ -199,81 +335,134 @@ class _StaffCard extends StatelessWidget {
     }
   }
 
+  /// Badge role: tint theo role, chuyển xám khi nhân viên đã nghỉ việc.
+  StatusBadge _roleBadge() {
+    final label = staffRoleLabel(member.role).toUpperCase();
+    if (!member.isActive) return StatusBadge.muted(label);
+    switch (member.role) {
+      case 'SECURITY_GUARD':
+        return StatusBadge.info(label);
+      case 'JANITOR':
+        return StatusBadge.success(label);
+      case 'TECHNICIAN':
+        return StatusBadge(
+          text: label,
+          color: AppColors.purple,
+          backgroundColor: AppColors.purpleBg,
+        );
+      default:
+        return StatusBadge.muted(label);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final initials = _getInitials(member.fullName);
-    final prefixColor = _getStaffColor(member);
-
-    late final StatusBadge statusBadge;
-    if (member.isActive) {
-      statusBadge = StatusBadge.success('Hoạt động');
-    } else {
-      statusBadge = const StatusBadge(
-        text: 'Nghỉ việc',
-        color: AppColors.error,
-        backgroundColor: AppColors.errorBg,
-      );
-    }
+    final hasOpenTasks = member.openTaskCount > 0;
+    final taskLabel = member.openTaskCount == 1
+        ? '1 open assigned ticket'
+        : '${member.openTaskCount} open assigned tickets';
 
     return AppCard(
       onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      child: Column(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: prefixColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  member.fullName,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: _getStaffColor(member),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _getInitials(member.fullName),
                   style: const TextStyle(
+                    color: Colors.white,
                     fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '${staffRoleLabel(member.role)} · ${member.phoneNumber}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                if (member.openTaskCount > 0) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '${member.openTaskCount} việc đang mở',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.warning,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      member.fullName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 3),
+                    Text(
+                      member.phoneNumber,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _roleBadge(),
+                  const SizedBox(height: 5),
+                  member.isActive
+                      ? StatusBadge.success('ACTIVE')
+                      : const StatusBadge(
+                          text: 'INACTIVE',
+                          color: AppColors.error,
+                          backgroundColor: AppColors.errorBg,
+                        ),
                 ],
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          statusBadge,
+          const SizedBox(height: 10),
+          const Divider(height: 1, thickness: 1, color: AppColors.divider),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                Icons.assignment_outlined,
+                size: 14,
+                color: hasOpenTasks ? AppColors.warning : AppColors.textTertiary,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  taskLabel,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: hasOpenTasks ? FontWeight.w600 : FontWeight.w400,
+                    color: hasOpenTasks
+                        ? AppColors.warning
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              const Text(
+                'Details',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                  decoration: TextDecoration.underline,
+                  decorationColor: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

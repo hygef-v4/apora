@@ -27,9 +27,9 @@ import {
   UserStatus,
 } from '@/types';
 
-const MSG_PHONE_EXISTS = 'Số điện thoại đã tồn tại. Vui lòng nhập số khác.';
-const MSG_STAFF_NOT_FOUND = 'Không tìm thấy tài khoản nhân viên.';
-const MSG_INVALID_ROLE = 'Vai trò không hợp lệ. Vui lòng chọn Bảo vệ, Lao công hoặc Kỹ thuật viên.';
+const MSG_PHONE_EXISTS = 'This phone number already exists. Please use another one.';
+const MSG_STAFF_NOT_FOUND = 'Staff account not found.';
+const MSG_INVALID_ROLE = 'Invalid role. Please choose Security, Janitor or Technician.';
 
 // Khớp VARCHAR(100) của cột users.full_name - validate sớm để trả 400 rõ ràng
 // thay vì lỗi 22001 của Postgres rơi vào 500 chung chung.
@@ -37,7 +37,7 @@ const FULL_NAME_MAX = 100;
 
 function assertFullNameLength(fullName: string): void {
   if (fullName.length > FULL_NAME_MAX) {
-    throw new HttpError(400, `Họ tên tối đa ${FULL_NAME_MAX} ký tự.`);
+    throw new HttpError(400, `Full name must be at most ${FULL_NAME_MAX} characters.`);
   }
 }
 
@@ -125,7 +125,7 @@ export async function registerStaffAccount(
   data: { fullName: string; phone: string; password: string; role: string },
 ): Promise<StaffListItem> {
   if (!data.fullName?.trim() || !data.phone?.trim() || !data.password || !data.role) {
-    throw new HttpError(400, 'Trường bắt buộc không được để trống.');
+    throw new HttpError(400, 'Required fields must not be empty.');
   }
   assertStaffRole(data.role);
   assertFullNameLength(data.fullName.trim());
@@ -187,7 +187,7 @@ export async function modifyStaffAccount(
   data: { fullName: string; phone: string; role: string; avatarBuffer?: Buffer },
 ) {
   if (!data.fullName?.trim() || !data.phone?.trim() || !data.role) {
-    throw new HttpError(400, 'Trường bắt buộc không được để trống.');
+    throw new HttpError(400, 'Required fields must not be empty.');
   }
   assertStaffRole(data.role);
   assertFullNameLength(data.fullName.trim());
@@ -285,7 +285,7 @@ export async function resetStaffPasswordByManager(
 
   // Nhất quán với UC40: tài khoản đã vô hiệu hóa thì không thao tác gì thêm
   if (staff.status === 'INACTIVE') {
-    throw new HttpError(400, 'Tài khoản đã bị vô hiệu hóa, không thể đặt lại mật khẩu.');
+    throw new HttpError(400, 'This account is deactivated, its password cannot be reset.');
   }
 
   const complexityError = validatePasswordComplexity(newPassword); // BR-09
@@ -312,11 +312,11 @@ export async function disableStaffAccount(
 
   // AT2: đã INACTIVE -> chặn deactivate lần 2
   if (staff.status === 'INACTIVE') {
-    throw new HttpError(400, 'Tài khoản này đã bị vô hiệu hóa từ trước.');
+    throw new HttpError(400, 'This account has already been deactivated.');
   }
 
   if (reason && reason.length > 250) {
-    throw new HttpError(400, 'Lý do vô hiệu hóa tối đa 250 ký tự.');
+    throw new HttpError(400, 'The deactivation reason must be at most 250 characters.');
   }
 
   // Toàn bộ deactivate chạy trong 1 transaction: check BR-50, đổi status,

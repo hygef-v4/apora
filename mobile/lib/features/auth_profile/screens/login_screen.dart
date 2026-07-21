@@ -7,8 +7,8 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/router/app_router.dart';
 import '../providers/auth_notifier.dart';
 
-/// UC01: Màn hình đăng nhập (FID-01) — layout theo wireframe (AppBar có back +
-/// tiêu đề "Login", label nằm trên ô nhập, "Forgot Password?" cùng hàng label
+/// UC01: Màn hình đăng nhập (FID-01) — layout theo wireframe (AppBar chỉ có
+/// tiêu đề "Login", không nút back vì đây là màn gốc; label nằm trên ô nhập, "Forgot Password?" cùng hàng label
 /// Password, nút Login full-width) nhưng giữ style design system Apora:
 /// nền gradient navy, logo ô vuông gradient, form trong card trắng bo lớn.
 /// Validate rỗng inline (MSG01), lỗi đăng nhập hiển thị SnackBar (MSG02).
@@ -63,10 +63,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.canPop() ? context.pop() : null,
-        ),
+        automaticallyImplyLeading: false,
         title: const Text(
           'Login',
           style: TextStyle(

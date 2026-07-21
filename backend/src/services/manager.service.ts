@@ -34,7 +34,9 @@ const MSG_MANAGER_NOT_FOUND = 'Không tìm thấy tài khoản quản lý.';
  * @param user - Raw user row from the database
  * @returns Sanitized ManagerListItem for API response
  */
-function toManagerListItem(user: User): ManagerListItem {
+function toManagerListItem(
+  user: User & { managed_records_count?: number },
+): ManagerListItem {
   return {
     id: user.id,
     phoneNumber: user.phone_number,
@@ -43,6 +45,7 @@ function toManagerListItem(user: User): ManagerListItem {
     roles: user.roles,
     status: user.status,
     createdAt: user.created_at,
+    managedRecordsCount: Number(user.managed_records_count ?? 0),
   };
 }
 

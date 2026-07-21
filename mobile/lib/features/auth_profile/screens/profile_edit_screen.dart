@@ -12,6 +12,7 @@ import '../../../core/utils/image_util.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/initials_avatar.dart';
 import '../providers/profile_notifier.dart';
 
@@ -162,39 +163,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // Header: back trái + tiêu đề căn giữa (layout wireframe)
-          Container(
-            decoration: const BoxDecoration(
-              gradient: AppColors.residentGradient,
-            ),
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 12,
-              left: 16,
-              right: 16,
-              bottom: 16,
-            ),
-            child: Row(
-              children: [
-                HeaderIconButton(
-                  icon: Icons.arrow_back,
-                  onTap: () => Navigator.of(context).maybePop(),
-                ),
-                const Expanded(
-                  child: Text(
-                    'UPDATE PROFILE',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: .5,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                // Giữ tiêu đề cân giữa so với nút back
-                const SizedBox(width: 36),
-              ],
-            ),
+          // Header: back trái + tiêu đề căn giữa (layout wireframe).
+          // Dùng GradientHeader để màu nền đúng theo role của người đang sửa.
+          const GradientHeader(
+            title: 'Update Profile',
+            centerTitle: true,
+            showBack: true,
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -241,7 +215,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    const _FieldLabel('Full Name'),
+                    const FieldLabel('Full Name'),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _fullNameController,
@@ -258,7 +232,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     ),
                     const SizedBox(height: 18),
 
-                    const _FieldLabel('Phone Number'),
+                    const FieldLabel('Phone Number'),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _phoneController,
@@ -339,21 +313,3 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   }
 }
 
-/// Nhãn phía trên ô nhập (theo wireframe).
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
-      ),
-    );
-  }
-}

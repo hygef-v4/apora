@@ -22,7 +22,6 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
   @override
   void initState() {
     super.initState();
-    // Đánh dấu đã đọc khi mở chi tiết
     if (!widget.notification.isRead) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(notificationDetailProvider.notifier)
@@ -41,14 +40,13 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
   Widget build(BuildContext context) {
     final status = ref.watch(notificationDetailProvider);
 
-    // Xử lý AT1: Bị xóa / 404
     if (status == NotificationDetailStatus.notFound) {
       return Scaffold(
         backgroundColor: AppColors.background,
         body: Column(
           children: [
             const GradientHeader(
-              title: 'Lỗi',
+              title: 'Error',
               showBack: true,
             ),
             Expanded(
@@ -61,7 +59,7 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
                       const Icon(Icons.error_outline, size: 64, color: AppColors.error),
                       const SizedBox(height: 16),
                       const Text(
-                        'This notification is no longer available or has been removed by the management.',
+                        'This announcement is no longer available or has been removed by the management.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
@@ -83,51 +81,24 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
       );
     }
 
-    // Choose icon based on type (same as list)
-    IconData icon;
-    Color iconColor;
-    Color iconBgColor;
-
-    switch (widget.notification.type) {
-      case 'INVOICE':
-      case 'PAYMENT':
-        icon = Icons.credit_card_outlined;
-        iconColor = const Color(0xFF2563EB); // Xanh dương
-        iconBgColor = const Color(0xFFEFF6FF);
-        break;
-      case 'TICKET':
-      case 'TASK':
-        icon = Icons.build_outlined;
-        iconColor = const Color(0xFFDC2626); // Đỏ
-        iconBgColor = const Color(0xFFFEF2F2);
-        break;
-      case 'EXTENSION':
-      case 'CONTRACT':
-        icon = Icons.description_outlined;
-        iconColor = const Color(0xFFD97706); // Cam
-        iconBgColor = const Color(0xFFFFFBEB);
-        break;
-      case 'ROOMMATE':
-        icon = Icons.home_outlined;
-        iconColor = const Color(0xFF16A34A); // Xanh lá
-        iconBgColor = const Color(0xFFF0FDF4);
-        break;
-      default:
-        icon = Icons.analytics_outlined;
-        iconColor = const Color(0xFF4F46E5); // Indigo
-        iconBgColor = const Color(0xFFEEF2FF);
+    String cleanTitle = widget.notification.title;
+    if (widget.notification.title.startsWith('[')) {
+      final closeBracket = widget.notification.title.indexOf(']');
+      if (closeBracket != -1) {
+        cleanTitle = widget.notification.title.substring(closeBracket + 1).trim();
+      }
     }
+
+    final formattedDate = DateFormat("MMMM dd, yyyy 'at' hh:mm a").format(widget.notification.createdAt);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
           const GradientHeader(
-            title: 'Chi tiết thông báo',
+            title: 'Notification Detail',
             showBack: true,
           ),
-          
-          // AT2: Cảnh báo Offline Mode
           if (status == NotificationDetailStatus.networkError)
             Container(
               width: double.infinity,
@@ -139,7 +110,7 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Offline mode: Cannot load full details or mark as read. Please check your connection.',
+                      'Offline mode: Cannot load full details. Please check your connection.',
                       style: TextStyle(color: AppColors.warning),
                     ),
                   ),
@@ -149,91 +120,113 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
 
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: iconBgColor,
-                          borderRadius: BorderRadius.circular(14),
+                  // Title
+                  Text(
+                    cleanTitle,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Date
+                  Text(
+                    formattedDate,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Sender info box
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.infoBg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.1), width: 1),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppColors.primary, width: 1.5),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(Icons.mail_outline_rounded, color: AppColors.primary, size: 24),
                         ),
-                        alignment: Alignment.center,
-                        child: Icon(icon, color: iconColor, size: 28),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
+                        const SizedBox(width: 14),
+                        const Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.notification.title,
-                              style: const TextStyle(
-                                fontSize: 20,
+                              'From: Management Board',
+                              style: TextStyle(
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.textPrimary,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 2),
                             Text(
-                              DateFormat('dd/MM/yyyy HH:mm').format(widget.notification.createdAt),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: AppColors.textTertiary,
+                              'Building Operations Dept.',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontStyle: FontStyle.italic,
+                                  color: AppColors.textSecondary,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
                   const Divider(color: AppColors.divider),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   
+                  // Body text
                   Text(
                     widget.notification.body,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       height: 1.6,
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  
                   const SizedBox(height: 40),
-                  
-                  // Optional Action Button depending on type
-                  if (widget.notification.type == 'INVOICE')
-                    SizedBox(
+
+                  // Image if imageUrl exists
+                  if (widget.notification.imageUrl != null && widget.notification.imageUrl!.isNotEmpty) ...[
+                    Container(
+                      height: 180,
                       width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Tính năng xem hóa đơn đang phát triển')),
-                          );
-                        },
-                        icon: const Icon(Icons.payment),
-                        label: const Text('Xem hóa đơn'),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.divider, width: 1),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          widget.notification.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return CustomPaint(
+                              painter: _DetailCrossPainter(),
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  if (widget.notification.type == 'TICKET')
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Tính năng xem sự cố đang phát triển')),
-                          );
-                        },
-                        icon: const Icon(Icons.build),
-                        label: const Text('Xem yêu cầu sửa chữa'),
-                      ),
-                    ),
+                  ],
                 ],
               ),
             ),
@@ -244,3 +237,16 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
   }
 }
 
+class _DetailCrossPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.divider
+      ..strokeWidth = 1.0;
+    canvas.drawLine(Offset.zero, Offset(size.width, size.height), paint);
+    canvas.drawLine(Offset(size.width, 0), Offset(0, size.height), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}

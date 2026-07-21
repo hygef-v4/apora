@@ -13,14 +13,19 @@ import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../models/staff_member.dart';
 import '../providers/staff_notifier.dart';
+import '../widgets/deactivate_staff_dialog.dart';
 
-/// UC39 (FID-38): Cập nhật hồ sơ nhân viên.
+/// UC39 (FID-38): Update Staff — layout theo wireframe (avatar tròn có nút "+"
+/// và caption "Tap to change avatar", các field label-trên-ô, nút SAVE CHANGES
+/// full-width, link đỏ "Deactivate Staff Account" cuối trang).
 /// - Avatar nén < 500KB (BR-10), lỗi upload backend vẫn lưu field text (AT3)
 /// - Đổi role khi còn task mở -> cảnh báo xác nhận (AT4)
-/// - Status read-only; deactivate đi qua flow UC40 ở màn Detail
-/// - Nút "Đặt lại mật khẩu" - flow riêng do Manager khởi tạo (BR-03 UC39)
+/// - Status hiển thị read-only: đổi trạng thái chỉ đi qua flow vô hiệu hóa
+///   (UC40) để còn kiểm tra BR-50 + ghi audit, không sửa trực tiếp ở form
+/// - Nút "Reset password" - flow riêng do Manager khởi tạo (BR-03 UC39)
 class StaffEditScreen extends ConsumerStatefulWidget {
   const StaffEditScreen({super.key, required this.staffId});
 
@@ -40,6 +45,7 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
   Uint8List? _avatarBytes;
   String? _currentAvatarUrl;
   String _staffName = '';
+  bool _isActive = true;
   bool _isSubmitting = false;
   bool _dirty = false;
 
@@ -55,6 +61,7 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
       _openTaskCount = detail.member.openTaskCount;
       _currentAvatarUrl = detail.member.avatarUrl;
       _staffName = detail.member.fullName;
+      _isActive = detail.member.isActive;
     }
   }
 
@@ -77,7 +84,7 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
     if (picked == null) return;
     final compressed = await ImageUtil.compressUnder500Kb(picked.path); // BR-10
     if (compressed == null) {
-      _showMessage('Không thể xử lý ảnh. Vui lòng chọn ảnh khác.');
+      _showMessage('Could not process this image. Please pick another one.');
       return;
     }
     setState(() {
@@ -93,16 +100,16 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Cảnh báo đổi vai trò'),
+        title: const Text('Change role?'),
         content: const Text(AppStrings.msgRoleChangeWarning),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Hủy'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Tiếp tục'),
+            child: const Text('Continue'),
           ),
         ],
       ),
@@ -126,7 +133,7 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
               );
       _showMessage(avatarUploadFailed
           ? AppStrings.msgAvatarUploadFailed
-          : 'Cập nhật hồ sơ nhân viên thành công.');
+          : 'Staff profile updated.');
       // Danh sách cũng cần số liệu mới
       await ref.read(staffDirectoryProvider.notifier).refresh();
       if (mounted) context.pop();
@@ -137,26 +144,46 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
     }
   }
 
+  /// UC40: vô hiệu hóa tài khoản — cùng flow với màn Detail (confirm + lý do).
+  /// BR-50: còn task mở thì backend trả 409, hiển thị message của backend.
+  Future<void> _confirmDeactivate() async {
+    final result = await showDeactivateStaffDialog(context);
+    if (result == null) return;
+    try {
+      await ref.read(staffDirectoryProvider.notifier).deactivateStaff(
+            widget.staffId,
+            reason: result.reason,
+          );
+      await ref.read(staffDetailProvider.notifier).fetch(widget.staffId);
+      _showMessage('Staff account deactivated.');
+      if (mounted) context.pop();
+    } catch (e) {
+      _showMessage(mapDioError(e));
+    }
+  }
+
   /// Manager đặt lại mật khẩu cho nhân viên (flow riêng, khác UC03).
   Future<void> _resetPasswordDialog() async {
     final passwordController = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Đặt lại mật khẩu'),
+        title: const Text('Reset password'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Nhân viên sẽ bị đăng xuất khỏi mọi thiết bị và phải đổi mật khẩu ở lần đăng nhập kế tiếp.',
+              'The staff member will be signed out of every device and must '
+              'change their password at the next login.',
             ),
             const SizedBox(height: 16),
             TextField(
               controller: passwordController,
               obscureText: true,
               decoration: const InputDecoration(
-                labelText: 'Mật khẩu mới',
-                helperText: 'Tối thiểu 8 ký tự, gồm 1 chữ hoa và 1 chữ số.',
+                labelText: 'New password',
+                helperText: 'At least 8 characters, 1 uppercase and 1 digit.',
+                helperMaxLines: 2,
               ),
             ),
           ],
@@ -164,11 +191,11 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Hủy'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Đặt lại'),
+            child: const Text('Reset'),
           ),
         ],
       ),
@@ -186,7 +213,7 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
       await ref
           .read(staffDetailProvider.notifier)
           .resetPassword(widget.staffId, passwordController.text);
-      _showMessage('Đặt lại mật khẩu thành công.');
+      _showMessage('Password reset.');
     } catch (e) {
       _showMessage(mapDioError(e));
     }
@@ -202,16 +229,16 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
         final leave = await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
-            title: const Text('Thay đổi chưa lưu'),
+            title: const Text('Unsaved changes'),
             content: const Text(AppStrings.msgUnsavedChanges),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Ở lại'),
+                child: const Text('Stay'),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Thoát'),
+                child: const Text('Leave'),
               ),
             ],
           ),
@@ -219,13 +246,10 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
         if ((leave ?? false) && context.mounted) context.pop();
       },
       child: Scaffold(
+        backgroundColor: AppColors.background,
         body: Column(
           children: [
-            const GradientHeader(
-              title: 'Chỉnh sửa nhân viên',
-              subtitle: 'Cập nhật hồ sơ & vai trò',
-              showBack: true,
-            ),
+            const GradientHeader(title: 'Update Staff', showBack: true),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -239,84 +263,71 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Center(
-                          child: Stack(
-                            children: [
-                              _avatarBytes != null
-                                  ? CircleAvatar(
-                                      radius: 48,
-                                      backgroundImage:
-                                          MemoryImage(_avatarBytes!),
-                                    )
-                                  : InitialsAvatar(
-                                      name: _staffName.isEmpty
-                                          ? '?'
-                                          : _staffName,
-                                      imageUrl: _currentAvatarUrl,
-                                      size: 96,
-                                    ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: IconButton.filled(
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                  ),
-                                  icon: const Icon(Icons.camera_alt, size: 18),
-                                  onPressed: _pickAvatar,
-                                ),
-                              ),
-                            ],
-                          ),
+                        _AvatarPicker(
+                          bytes: _avatarBytes,
+                          imageUrl: _currentAvatarUrl,
+                          name: _staffName,
+                          onTap: _pickAvatar,
                         ),
                         const SizedBox(height: 24),
-                        TextFormField(
-                          controller: _fullNameController,
-                          maxLength: 100,
-                          decoration: const InputDecoration(
-                            labelText: 'Họ và tên',
-                            prefixIcon: Icon(Icons.badge, size: 20),
-                            counterText: '',
+                        LabeledField(
+                          label: 'Full Name',
+                          child: TextFormField(
+                            controller: _fullNameController,
+                            maxLength: 100,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(
+                              hintText: 'e.g. Jane Doe',
+                              counterText: '',
+                            ),
+                            validator: (value) =>
+                                (value == null || value.trim().isEmpty)
+                                    ? 'This field is required.'
+                                    : null,
                           ),
-                          validator: (value) =>
-                              (value == null || value.trim().isEmpty)
-                                  ? AppStrings.msgFieldRequired
-                                  : null,
                         ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          maxLength: 15,
-                          decoration: const InputDecoration(
-                            labelText: 'Số điện thoại (dùng để đăng nhập)',
-                            prefixIcon: Icon(Icons.phone, size: 20),
-                            counterText: '',
+                        const SizedBox(height: 18),
+                        LabeledField(
+                          label: 'Phone Number',
+                          child: TextFormField(
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            maxLength: 15,
+                            decoration: const InputDecoration(
+                              hintText: 'e.g. 0912345678',
+                              counterText: '',
+                            ),
+                            validator: _validatePhone,
                           ),
-                          // BR-02: validate định dạng ngay trên client
-                          validator: Validators.vnPhone,
                         ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          initialValue: _selectedRole,
-                          decoration: const InputDecoration(
-                            labelText: 'Vai trò',
-                            prefixIcon: Icon(Icons.work, size: 20),
+                        const SizedBox(height: 18),
+                        LabeledField(
+                          label: 'Role',
+                          child: DropdownButtonFormField<String>(
+                            initialValue: _selectedRole,
+                            decoration: const InputDecoration(
+                              hintText: 'Select a role',
+                            ),
+                            items: kStaffRoles
+                                .map((role) => DropdownMenuItem(
+                                      value: role,
+                                      child: Text(staffRoleLabel(role)),
+                                    ))
+                                .toList(),
+                            onChanged: (value) => setState(() {
+                              _selectedRole = value;
+                              _dirty = true;
+                            }),
+                            validator: (value) =>
+                                value == null ? 'Please select a role.' : null,
                           ),
-                          items: kStaffRoles
-                              .map((role) => DropdownMenuItem(
-                                    value: role,
-                                    child: Text(staffRoleLabel(role)),
-                                  ))
-                              .toList(),
-                          onChanged: (value) => setState(() {
-                            _selectedRole = value;
-                            _dirty = true;
-                          }),
-                          validator: (value) =>
-                              value == null ? 'Vui lòng chọn vai trò.' : null,
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 18),
+                        LabeledField(
+                          label: 'Status',
+                          child: _ReadOnlyStatusField(isActive: _isActive),
+                        ),
+                        const SizedBox(height: 24),
                         FilledButton(
                           onPressed: _isSubmitting ? null : _save,
                           child: _isSubmitting
@@ -328,12 +339,36 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Lưu thay đổi'),
+                              : const Text('SAVE CHANGES'),
                         ),
+                        const SizedBox(height: 10),
                         TextButton.icon(
                           icon: const Icon(Icons.lock_reset, size: 18),
-                          label: const Text('Đặt lại mật khẩu'),
-                          onPressed: _resetPasswordDialog,
+                          label: const Text('Reset password'),
+                          onPressed: _isSubmitting ? null : _resetPasswordDialog,
+                        ),
+                        const SizedBox(height: 4),
+                        Center(
+                          child: TextButton(
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.error,
+                            ),
+                            onPressed: (_isSubmitting || !_isActive)
+                                ? null
+                                : _confirmDeactivate,
+                            child: Text(
+                              _isActive
+                                  ? 'Deactivate Staff Account'
+                                  : 'Account already deactivated',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                decoration:
+                                    _isActive ? TextDecoration.underline : null,
+                                decorationColor: AppColors.error,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -343,6 +378,116 @@ class _StaffEditScreenState extends ConsumerState<StaffEditScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// BR-02: SĐT là username - 10 chữ số bắt đầu bằng 0 (khớp rule backend).
+  String? _validatePhone(String? value) {
+    final phone = value?.trim() ?? '';
+    if (phone.isEmpty) return 'Please enter a phone number.';
+    if (!RegExp(r'^0\d{9}$').hasMatch(phone)) {
+      return 'Invalid phone number. Enter 10 digits starting with 0.';
+    }
+    return null;
+  }
+}
+
+/// Avatar tròn + nút "+" và caption "Tap to change avatar" (wireframe).
+class _AvatarPicker extends StatelessWidget {
+  const _AvatarPicker({
+    required this.bytes,
+    required this.imageUrl,
+    required this.name,
+    required this.onTap,
+  });
+
+  final Uint8List? bytes;
+  final String? imageUrl;
+  final String name;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          child: Stack(
+            children: [
+              bytes != null
+                  ? CircleAvatar(radius: 48, backgroundImage: MemoryImage(bytes!))
+                  : InitialsAvatar(
+                      name: name.isEmpty ? '?' : name,
+                      imageUrl: imageUrl,
+                      size: 96,
+                    ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.surface, width: 2.5),
+                  ),
+                  child: const Icon(Icons.add, size: 16, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Tap to change avatar',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Ô Status chỉ đọc — cùng khuôn với các ô nhập để khớp wireframe, nhưng không
+/// cho sửa: trạng thái chỉ đổi qua flow vô hiệu hóa (UC40) để kiểm BR-50 + audit.
+class _ReadOnlyStatusField extends StatelessWidget {
+  const _ReadOnlyStatusField({required this.isActive});
+
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      decoration: BoxDecoration(
+        color: AppColors.divider,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isActive ? Icons.check_circle : Icons.block,
+            size: 18,
+            color: isActive ? AppColors.success : AppColors.error,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isActive ? 'Active' : 'Inactive',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const Icon(Icons.lock_outline, size: 16, color: AppColors.textTertiary),
+        ],
       ),
     );
   }

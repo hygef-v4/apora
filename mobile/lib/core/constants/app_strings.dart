@@ -1,4 +1,4 @@
-/// Chuỗi hiển thị tiếng Việt dùng chung toàn app.
+/// Chuỗi hiển thị dùng chung toàn app (tiếng Anh, khớp message của backend).
 /// Message code (MSG01, MSG02...) theo SRS.
 class AppStrings {
   AppStrings._();
@@ -6,57 +6,59 @@ class AppStrings {
   static const String appName = 'APORA';
 
   // Validate (MSG01)
-  static const String msgPhoneRequired = 'Vui lòng nhập Số điện thoại.';
-  static const String msgPasswordRequired = 'Vui lòng nhập Mật khẩu.';
-  static const String msgFieldRequired = 'Trường bắt buộc không được để trống.';
+  static const String msgPhoneRequired = 'Please enter a phone number.';
+  static const String msgPasswordRequired = 'Please enter a password.';
+  static const String msgFieldRequired = 'This field is required.';
 
   // Login (MSG02)
   static const String msgLoginFailed =
-      'Số điện thoại hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.';
+      'Incorrect phone number or password. Please check and try again.';
 
   // UC02: xác nhận đăng xuất (FID-02 - Confirmation Dialog bắt buộc)
-  static const String msgLogoutConfirm = 'Bạn có chắc chắn muốn đăng xuất?';
+  static const String msgLogoutConfirm = 'Are you sure you want to log out?';
 
   // UC05 - AT4: bấm Lưu khi không sửa gì
-  static const String msgNoChanges = 'Không có thay đổi để lưu.';
+  static const String msgNoChanges = 'There are no changes to save.';
 
   static const String msgPhoneInvalid =
-      'Số điện thoại không hợp lệ. Vui lòng nhập 10 chữ số bắt đầu bằng 0.';
+      'Invalid phone number. Enter 10 digits starting with 0.';
 
   // Lỗi chung
   static const String msgNetworkError =
-      'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.';
-  static const String msgUnknownError = 'Đã có lỗi xảy ra. Vui lòng thử lại sau.';
+      'Cannot reach the server. Please check your connection and try again.';
+  static const String msgUnknownError =
+      'Something went wrong. Please try again later.';
   static const String msgSessionExpired =
-      'Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.';
+      'Your session has expired. Please log in again.';
 
   // OTP / mật khẩu
-  static const String msgOtpSent = 'Mã OTP đã được gửi tới số điện thoại của bạn.';
+  static const String msgOtpSent = 'An OTP code has been sent to your phone.';
   static const String msgOtpInvalid =
-      'Mã OTP không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu mã mới.';
-  static const String msgPasswordMismatch = 'Mật khẩu xác nhận không khớp.';
+      'The OTP code is invalid or has expired. Please request a new one.';
+  static const String msgPasswordMismatch = 'The confirmation password does not match.';
   static const String msgSamePassword =
-      'Mật khẩu mới không được trùng mật khẩu hiện tại.';
+      'The new password must be different from the current one.';
   static const String msgChangePasswordFirstLogin =
-      'Bạn đang dùng mật khẩu mặc định. Vui lòng đổi mật khẩu để tiếp tục.';
+      'You are using the default password. Please change it to continue.';
 
   // UC05/UC39 - AT3: text đã lưu nhưng avatar upload thất bại
   static const String msgAvatarUploadFailed =
-      'Đã lưu thông tin, nhưng ảnh đại diện chưa tải lên được. Vui lòng thử lại sau.';
+      'Details were saved, but the avatar could not be uploaded. Please try again later.';
 
   // Module 8: Quản lý nhân viên (UC36-UC40)
-  static const String msgStaffEmpty = 'Chưa có nhân viên nào.';
-  static const String msgStaffNoMatch = 'Không tìm thấy nhân viên phù hợp.';
+  static const String msgStaffEmpty = 'No staff accounts yet.';
+  static const String msgStaffNoMatch = 'No staff match your search.';
   static const String msgStaffLoadFailed =
-      'Không tải được danh sách nhân viên. Vui lòng thử lại.';
+      'Could not load the staff list. Please try again.';
   static const String msgStaffHasOpenTasks =
-      'Nhân viên còn công việc chưa xử lý. Vui lòng phân công lại tất cả công việc trước khi vô hiệu hóa.';
+      'This staff member still has unresolved tickets. Please reassign all open tickets before deactivation.';
   static const String msgStaffDeactivateConfirm =
-      'Bạn có chắc muốn vô hiệu hóa tài khoản nhân viên này? Nhân viên sẽ bị đăng xuất khỏi mọi thiết bị và không thể đăng nhập lại.';
+      'This staff member will no longer be able to log in or receive repair '
+      'tasks, and will be signed out of every device.';
   static const String msgUnsavedChanges =
-      'Dữ liệu chưa lưu sẽ bị mất. Bạn có chắc muốn thoát?';
+      'Unsaved changes will be lost. Do you want to leave?';
   static const String msgRoleChangeWarning =
-      'Nhân viên này còn công việc đang xử lý. Đổi vai trò có thể khiến công việc cần được phân công lại. Tiếp tục?';
+      'This staff member still has open tickets. Changing their role may require those tickets to be reassigned. Continue?';
 
   // Module 9: Quản lý Manager (UC41-UC42)
   static const String msgManagerEmpty = 'Chưa có tài khoản quản lý nào.';

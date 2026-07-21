@@ -70,6 +70,12 @@ class ManagerDirectoryNotifier extends AsyncNotifier<ManagerListResult> {
     await _api.updateManager(id: id, fullName: fullName, phone: phone);
     // Refresh the list immediately after successful update
     await refresh();
+    
+    // Refresh the detail view if it's currently showing this manager
+    final detailState = ref.read(managerDetailProvider);
+    if (detailState.value?.member.id == id) {
+      await ref.read(managerDetailProvider.notifier).fetch(id);
+    }
   }
 }
 

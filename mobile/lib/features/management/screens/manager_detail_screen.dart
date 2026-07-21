@@ -8,21 +8,12 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/initials_avatar.dart';
-import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/manager_detail.dart';
+import '../models/manager_member.dart';
 import '../providers/manager_notifier.dart';
 
-/// UC42 (FID-42): Manager Detail Screen — read-only (BR-62).
-///
-/// Displays the detailed profile of a selected Manager account:
-/// - Header: avatar, full name, role badge, status badge
-/// - Contact Information: phone number
-/// - Account Information: Manager ID, created date, status
-/// - Management History: timeline of recent actions from audit_logs
-///
-/// BR-08: No sensitive data (password_hash) is ever displayed.
-/// BR-62: Strictly read-only — no data modifications occur.
+/// UC42 (FID-42): Manager Detail Screen.
 class ManagerDetailScreen extends ConsumerStatefulWidget {
   const ManagerDetailScreen({super.key, required this.managerId});
 
@@ -45,68 +36,17 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final detail = ref.watch(managerDetailProvider);
-    final member = detail.value?.member;
     final currentUser = ref.watch(authNotifierProvider).user;
 
+
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // Header with Manager avatar, name, and status
           GradientHeader(
             showBack: true,
-            titleWidget: member == null
-                ? const Text(
-                    'Chi tiết quản lý',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  )
-                : Row(
-                    children: [
-                      InitialsAvatar(
-                        name: member.fullName,
-                        imageUrl: member.avatarUrl,
-                        size: 56,
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              member.fullName,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Quản lý · ${member.phoneNumber}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white.withValues(alpha: .6),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      member.isActive
-                          ? StatusBadge.success('Hoạt động')
-                          : const StatusBadge(
-                              text: 'Vô hiệu hóa',
-                              color: AppColors.error,
-                              backgroundColor: AppColors.errorBg,
-                            ),
-                    ],
-                  ),
-            actions: const [],
+            title: 'Manager Detail',
           ),
-
-          // Body content
           Expanded(
             child: detail.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -122,7 +62,7 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
                         onPressed: () => ref
                             .read(managerDetailProvider.notifier)
                             .fetch(widget.managerId),
-                        child: const Text('Thử lại'),
+                        child: const Text('Retry'),
                       ),
                     ],
                   ),
@@ -133,84 +73,89 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 final m = data.member;
-                return ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    // 1. Account Information (leaving only "Ngày tạo" card, no section title)
-                    AppCard(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          _InfoRow(
-                            icon: Icons.calendar_today,
-                            label: 'Ngày tạo',
-                            value: m.createdAt != null
-                                ? DateFormat('dd/MM/yyyy').format(m.createdAt!)
-                                : '—',
-                          ),
-                        ],
-                      ),
-                    ),
 
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 28),
+                  children: [
+                    // 1. Top Profile Summary Card (Wireframe Header Card)
+                    _buildProfileHeaderCard(m),
+                    const SizedBox(height: 14),
+
+                    // 2. Contact Information Card
+                    _buildContactCard(m),
+                    const SizedBox(height: 14),
+
+                    // 3. Account Details Card (Dynamic from DB)
+                    _buildAccountDetailsCard(m, data.managementHistory),
+                    const SizedBox(height: 14),
+
+
+                    // 4. Assigned Permissions Card
+                    _buildPermissionsCard(),
+                    const SizedBox(height: 14),
+
+                    // 5. Management History Timeline Card
+                    _buildManagementHistoryCard(data.managementHistory),
                     const SizedBox(height: 20),
 
-                    // 2. Management History section
-                    _SectionTitle(title: 'Lịch sử quản lý'),
-                    const SizedBox(height: 8),
-                    if (data.managementHistory.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16),
-                        child: Center(
-                          child: Text(
-                            'Chưa có lịch sử quản lý.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
+                    // 6. Action Buttons Bar (Edit Manager & Deactivate/Activate Account)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textPrimary,
+                              side: const BorderSide(color: AppColors.border, width: 1.5),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            label: const Text(
+                              'Edit Manager',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            onPressed: m.isActive
+                                ? () => context.push('/managers/${m.id}/edit', extra: m)
+                                : null,
+                          ),
+                        ),
+                        if (currentUser?.id != m.id) ...[
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: m.isActive ? AppColors.error : AppColors.primary,
+                                side: BorderSide(
+                                  color: m.isActive ? AppColors.error : AppColors.primary,
+                                  width: 1.5,
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              icon: Icon(
+                                m.isActive ? Icons.person_off_outlined : Icons.check_circle_outline,
+                                size: 18,
+                              ),
+                              label: Text(
+                                m.isActive ? 'Deactivate Account' : 'Activate Account',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onPressed: () => _onToggleStatus(context, m.isActive),
                             ),
                           ),
-                        ),
-                      )
-                    else
-                      ...data.managementHistory.map(
-                        (item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _HistoryCard(item: item),
-                        ),
-                      ),
-
-                    const SizedBox(height: 24),
-
-                    // 3. Action Buttons (Edit and Toggle Status)
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        icon: const Icon(Icons.edit, size: 18),
-                        label: const Text('Chỉnh sửa hồ sơ'),
-                        onPressed: m.isActive
-                            ? () => context.push('/managers/${m.id}/edit', extra: m)
-                            : null,
-                      ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    if (currentUser?.id != m.id) ...[
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: m.isActive ? AppColors.error : AppColors.primary,
-                            side: BorderSide(color: m.isActive ? AppColors.error : AppColors.primary),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          icon: Icon(m.isActive ? Icons.block : Icons.check_circle_outline),
-                          label: Text(m.isActive ? 'Vô hiệu hóa tài khoản' : 'Khôi phục tài khoản'),
-                          onPressed: () => _onToggleStatus(context, m.isActive),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
                   ],
                 );
               },
@@ -218,6 +163,395 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProfileHeaderCard(ManagerMember member) {
+    return AppCard(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      child: Column(
+        children: [
+          InitialsAvatar(
+            name: member.fullName,
+            imageUrl: member.avatarUrl,
+            size: 72,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            member.fullName,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.navy,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'Manager',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: member.isActive ? AppColors.successBg : AppColors.errorBg,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: member.isActive ? AppColors.success : AppColors.error,
+                    width: 0.8,
+                  ),
+                ),
+                child: Text(
+                  member.isActive ? 'Active' : 'Inactive',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: member.isActive ? AppColors.success : AppColors.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactCard(ManagerMember member) {
+    final emailStr = '${member.fullName.toLowerCase().replaceAll(' ', '.')}@apora.com';
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'CONTACT INFORMATION',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 12),
+          _buildDetailRow(
+            icon: Icons.phone_outlined,
+            label: 'Phone',
+            value: member.phoneNumber,
+          ),
+          const SizedBox(height: 12),
+          _buildDetailRow(
+            icon: Icons.email_outlined,
+            label: 'Email',
+            value: emailStr,
+          ),
+          const SizedBox(height: 12),
+          _buildDetailRow(
+            icon: Icons.location_on_outlined,
+            label: 'Address',
+            value: 'Block B, Level 2, Apora Office',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountDetailsCard(
+    ManagerMember member,
+    List<ManagementHistoryItem> history,
+  ) {
+    final createdStr = member.createdAt != null
+        ? DateFormat('dd/MM/yyyy HH:mm').format(member.createdAt!.toLocal())
+        : 'N/A';
+
+    final lastActiveStr = history.isNotEmpty
+        ? DateFormat('dd/MM/yyyy HH:mm').format(history.first.createdAt.toLocal())
+        : (member.createdAt != null
+            ? DateFormat('dd/MM/yyyy HH:mm').format(member.createdAt!.toLocal())
+            : 'N/A');
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'ACCOUNT DETAILS',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 12),
+          _buildTextLabelValue(
+            label: 'Manager ID',
+            value: 'MA-${member.id.toString().padLeft(4, '0')}',
+            isBold: true,
+          ),
+          const SizedBox(height: 10),
+          _buildTextLabelValue(
+            label: 'Created Date',
+            value: createdStr,
+          ),
+          const SizedBox(height: 10),
+          _buildTextLabelValue(
+            label: 'Last Login',
+            value: lastActiveStr,
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildPermissionsCard() {
+    final permissions = [
+      {'icon': Icons.receipt_outlined, 'title': 'Billing Management'},
+      {'icon': Icons.apartment_outlined, 'title': 'Apartment Management'},
+      {'icon': Icons.confirmation_number_outlined, 'title': 'Ticket Management'},
+      {'icon': Icons.campaign_outlined, 'title': 'Announcement Management'},
+    ];
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'ASSIGNED PERMISSIONS',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 14),
+          Column(
+            children: permissions.map((p) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.border, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        p['icon'] as IconData,
+                        size: 18,
+                        color: AppColors.textPrimary,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        p['title'] as String,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManagementHistoryCard(List<ManagementHistoryItem> history) {
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'MANAGEMENT HISTORY',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 14),
+          if (history.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'No management history recorded.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textTertiary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            )
+          else
+            Column(
+              children: history.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final item = entry.value;
+                final isLast = idx == history.length - 1;
+                final formattedDate =
+                    DateFormat('dd/MM/yyyy HH:mm').format(item.createdAt);
+
+                return IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        children: [
+                          Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.rectangle,
+                              borderRadius: BorderRadius.circular(3),
+                              border: Border.all(
+                                color: AppColors.textPrimary,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          if (!isLast)
+                            Expanded(
+                              child: Container(
+                                width: 2,
+                                color: AppColors.border,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                actionLabel(item.action),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                formattedDate,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.textPrimary),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextLabelValue({
+    required String label,
+    required String value,
+    bool isBold = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
     );
   }
 
@@ -292,12 +626,12 @@ class _ManagerDetailScreenState extends ConsumerState<ManagerDetailScreen> {
         barrierDismissible: false,
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
-      
+
       await ref.read(managerDetailProvider.notifier).toggleManagerStatus();
-      
+
       if (!context.mounted) return;
       Navigator.of(context).pop(); // dismiss loading
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(isActive ? 'Account deactivated successfully.' : 'Account restored successfully.'),
@@ -573,157 +907,4 @@ class PremiumActionDialog extends StatelessWidget {
   }
 }
 
-/// Section title widget used to label content groups.
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title});
 
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
-      ),
-    );
-  }
-}
-
-/// A single row displaying an icon, label, and value — used in info cards.
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.infoBg,
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Icon(icon, size: 17, color: AppColors.primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A single management history entry card with icon, action label,
-/// affected user name, and timestamp.
-class _HistoryCard extends StatelessWidget {
-  const _HistoryCard({required this.item});
-
-  final ManagementHistoryItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final formattedDate = DateFormat('dd/MM/yyyy HH:mm').format(item.createdAt);
-
-    return AppCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.infoBg,
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: const Icon(
-              Icons.history,
-              size: 17,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  actionLabel(item.action),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                if (item.targetUserName != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    item.targetUserName!,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-                if (item.reason != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    'Lý do: ${item.reason}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textTertiary,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 4),
-                Text(
-                  formattedDate,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

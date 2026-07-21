@@ -9,7 +9,7 @@ import '../models/apartment.dart';
 import '../providers/apartment_notifier.dart';
 import '../providers/tenancy_check_notifier.dart';
 
-/// UC34 (FID-34): Trả phòng (Checkout) & Ẩn danh dữ liệu.
+/// UC34 (FID-34): Checkout Apartment & Data Anonymization.
 class ApartmentCheckoutScreen extends ConsumerStatefulWidget {
   const ApartmentCheckoutScreen({super.key, required this.apartmentId});
 
@@ -31,29 +31,6 @@ class _ApartmentCheckoutScreenState extends ConsumerState<ApartmentCheckoutScree
   }
 
   Future<void> _submit() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận trả phòng?'),
-        content: const Text(
-          'Hành động này sẽ chấm dứt hợp đồng hiện tại, vô hiệu hóa tài khoản cư dân và ẩn danh hoàn toàn dữ liệu người ở ghép. Bạn có chắc chắn muốn tiếp tục?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.warning),
-            child: const Text('Đồng ý Trả phòng'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
     setState(() => _isLoading = true);
 
     try {
@@ -66,17 +43,18 @@ class _ApartmentCheckoutScreenState extends ConsumerState<ApartmentCheckoutScree
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Chạy tiến trình Checkout & Ẩn danh thành công.')),
+          const SnackBar(
+            content: Text('Apartment checkout and data anonymization completed successfully.'),
+          ),
         );
-        // Trở về danh sách căn hộ vì phòng này giờ đã trống
-        Navigator.of(context).pop(); 
+        Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(mapDioError(e)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -90,13 +68,13 @@ class _ApartmentCheckoutScreenState extends ConsumerState<ApartmentCheckoutScree
   @override
   Widget build(BuildContext context) {
     final AsyncValue<ApartmentDetail?> detailAsync = ref.watch(apartmentDetailProvider);
-    final submitLabel = _isLoading ? 'Đang thực hiện Checkout...' : 'Xác nhận Trả phòng';
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
           const GradientHeader(
-            title: 'Trả phòng (Checkout)',
+            title: 'CONFIRM CHECKOUT',
             showBack: true,
           ),
           Expanded(
@@ -111,8 +89,10 @@ class _ApartmentCheckoutScreenState extends ConsumerState<ApartmentCheckoutScree
                       Text(mapDioError(err), textAlign: TextAlign.center),
                       const SizedBox(height: 12),
                       FilledButton(
-                        onPressed: () => ref.read(apartmentDetailProvider.notifier).fetch(widget.apartmentId),
-                        child: const Text('Tải lại'),
+                        onPressed: () => ref
+                            .read(apartmentDetailProvider.notifier)
+                            .fetch(widget.apartmentId),
+                        child: const Text('Retry'),
                       ),
                     ],
                   ),
@@ -120,162 +100,125 @@ class _ApartmentCheckoutScreenState extends ConsumerState<ApartmentCheckoutScree
               ),
               data: (detail) {
                 if (detail == null) {
-                  return const Center(child: Text('Không tìm thấy thông tin căn hộ.'));
+                  return const Center(child: Text('Apartment information not found.'));
                 }
 
                 return ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
                   children: [
-                    // Physical info card
+                    // Main Confirm Checkout Card (Matches Wireframe)
                     AppCard(
                       padding: const EdgeInsets.all(16),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.warningBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.meeting_room, color: AppColors.warning, size: 28),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Căn hộ ${detail.unitNumber}',
-                                  style: const TextStyle(
+                          // 1. Header with Warning Icon Box
+                          Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.errorBg,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: AppColors.error.withValues(alpha: 0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: AppColors.error,
+                                  size: 26,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  'Confirm Checkout',
+                                  style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Chủ hộ: ${detail.ownerName ?? "Chưa rõ"} · SĐT: ${detail.ownerPhone ?? "Không có"}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
+                              ),
+                            ],
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Divider(height: 1, color: AppColors.divider),
+                          ),
+
+                          // 2. Warning Description
+                          const Text(
+                            'This action will lock the current resident account, remove the owner from this apartment, and anonymize sensitive roommate data.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 3. Automated Business Rules Checklist
+                          _buildCheckItem('SET APARTMENT STATUS TO EMPTY'),
+                          const SizedBox(height: 10),
+                          _buildCheckItem('SET OWNER ACCOUNT TO INACTIVE'),
+                          const SizedBox(height: 10),
+                          _buildCheckItem('DELETE CCCD IMAGES FROM CLOUD STORAGE'),
+                          const SizedBox(height: 10),
+                          _buildCheckItem('MASK CCCD NUMBERS IN DATABASE'),
+
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            child: Divider(height: 1, color: AppColors.divider),
+                          ),
+
+                          // 4. Action Buttons
+                          OutlinedButton(
+                            onPressed: _isLoading
+                                ? null
+                                : () => Navigator.of(context).pop(),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textPrimary,
+                              side: const BorderSide(color: AppColors.border, width: 1.5),
+                              minimumSize: const Size.fromHeight(48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'CANCEL',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ElevatedButton(
+                            onPressed: _isLoading ? null : _submit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.error,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              _isLoading ? 'PROCESSING...' : 'CONFIRM CHECKOUT',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    const Text(
-                      'Các bước xử lý tự động khi Checkout (BR-65)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Checklist card
-                    AppCard(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Column(
-                        children: [
-                          _checklistItem(
-                            Icons.history_toggle_off,
-                            'Kết thúc Hợp đồng thuê',
-                            'Chuyển trạng thái hợp đồng đang hoạt động thành EXPIRED.',
-                          ),
-                          const Divider(indent: 52),
-                          _checklistItem(
-                            Icons.no_accounts_outlined,
-                            'Vô hiệu hóa tài khoản Resident',
-                            'Chuyển tài khoản cư dân chính thành INACTIVE. Bump token_version để cưỡng chế logout khỏi tất cả thiết bị (BR-07, BR-49).',
-                          ),
-                          const Divider(indent: 52),
-                          _checklistItem(
-                            Icons.phonelink_erase,
-                            'Thu hồi device tokens',
-                            'Hủy toàn bộ FCM Tokens liên kết với tài khoản cư dân này để ngừng gửi thông báo (BR-44).',
-                          ),
-                          const Divider(indent: 52),
-                          _checklistItem(
-                            Icons.lock_reset,
-                            'Ẩn danh thông tin người ở ghép (BR-20)',
-                            'Xóa hoàn toàn ảnh chụp CCCD mặt trước/mặt sau trên Cloudinary. Mã hóa số CCCD thành chuỗi MASK_<id> bảo mật.',
-                          ),
-                          const Divider(indent: 52),
-                          _checklistItem(
-                            Icons.vpn_key_outlined,
-                            'Bàn giao phòng trống',
-                            'Giải phóng liên kết owner khỏi căn hộ và đổi trạng thái căn hộ về EMPTY (BR-47).',
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Warning card
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.warningBg,
-                        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Cảnh báo Bảo mật & Quyền riêng tư',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Quy trình ẩn danh hóa là quy trình một chiều không thể đảo ngược để bảo vệ thông tin cư dân cũ. Lịch sử hóa đơn, lịch sử sự cố phản ánh vẫn được giữ lại để đối soát tài chính nhưng toàn bộ dữ liệu nhân thân nhạy cảm đã bị loại bỏ.',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Checkout trigger button
-                    ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _submit,
-                      icon: const Icon(Icons.logout),
-                      label: Text(submitLabel),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.warning,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(46),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextButton(
-                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-                      child: const Text('Hủy bỏ'),
                     ),
                   ],
                 );
@@ -287,39 +230,38 @@ class _ApartmentCheckoutScreenState extends ConsumerState<ApartmentCheckoutScree
     );
   }
 
-  Widget _checklistItem(IconData icon, String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: AppColors.textSecondary, size: 20),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+  Widget _buildCheckItem(String label) {
+    return Row(
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: AppColors.textTertiary, width: 1.5),
+          ),
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.check,
+            size: 14,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+              letterSpacing: 0.3,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
+
