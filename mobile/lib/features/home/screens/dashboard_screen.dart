@@ -41,20 +41,20 @@ class DashboardTab extends ConsumerWidget {
   String _formatRelativeTime(DateTime dateTime) {
     final diff = DateTime.now().difference(dateTime);
     if (diff.inMinutes < 60) {
-      return '${diff.inMinutes} phút';
+      return '${diff.inMinutes} mins ago';
     } else if (diff.inHours < 24) {
-      return '${diff.inHours} giờ';
+      return '${diff.inHours} hours ago';
     } else {
-      return '${diff.inDays} ngày';
+      return '${diff.inDays} days ago';
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider).user;
-    final firstName = user?.fullName.split(' ').last ?? 'Quản lý';
+    final firstName = user?.fullName.split(' ').last ?? 'Manager';
     final isLandlord = user?.roles.contains('LANDLORD') ?? false;
-    final roleLabel = isLandlord ? 'Chủ sở hữu' : 'Quản lý';
+    final roleLabel = isLandlord ? 'Owner' : 'Manager';
     
     // Watch real data providers
     final apartmentsAsync = ref.watch(apartmentDirectoryProvider);
@@ -96,8 +96,8 @@ class DashboardTab extends ConsumerWidget {
         : _formatCurrency(revenue);
 
     final growthText = prevRevenue > 0
-        ? '$diffSign${diffPercent.toStringAsFixed(1).replaceAll('.', ',')}% tháng trước'
-        : '↑ 0% tháng trước';
+        ? '$diffSign${diffPercent.toStringAsFixed(1).replaceAll('.', ',')}% vs last month'
+        : '↑ 0% vs last month';
 
     // Construct Activities feed
     final List<Map<String, dynamic>> activities = [];
@@ -107,8 +107,8 @@ class DashboardTab extends ConsumerWidget {
       billingState.payments
           .where((p) => p.status == 'SUCCESS')
           .map((p) => {
-                'title': '${p.residentName ?? 'Cư dân'} đã thanh toán',
-                'subtitle': 'Tiền thuê ${p.unitNumber ?? ''} - ${_formatCurrency(p.amount)}',
+                'title': '${p.residentName ?? 'Resident'} paid',
+                'subtitle': 'Rent ${p.unitNumber ?? ''} - ${_formatCurrency(p.amount)}',
                 'createdAt': p.paidAt ?? p.createdAt,
                 'icon': Icons.credit_card,
                 'iconColor': AppColors.success,
@@ -119,7 +119,7 @@ class DashboardTab extends ConsumerWidget {
     // 2. Repair Tickets
     activities.addAll(
       ticketState.tickets.map((t) => {
-            'title': 'Yêu cầu bảo trì ${t.unitNumber}',
+            'title': 'Maintenance request ${t.unitNumber}',
             'subtitle': '${t.category} - ${t.description}',
             'createdAt': t.createdAt,
             'icon': Icons.build,
@@ -132,8 +132,8 @@ class DashboardTab extends ConsumerWidget {
     final extensions = extensionsAsync.value ?? [];
     activities.addAll(
       extensions.map((e) => {
-            'title': 'Gia hạn hợp đồng ${e.unitNumber}',
-            'subtitle': 'Đề xuất mới - ${e.residentName}',
+            'title': 'Contract extension ${e.unitNumber}',
+            'subtitle': 'New proposal - ${e.residentName}',
             'createdAt': e.createdAt,
             'icon': Icons.insert_drive_file,
             'iconColor': AppColors.warning,
@@ -155,7 +155,7 @@ class DashboardTab extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$roleLabel · Chung cư Apora',
+                      '$roleLabel · Apora Apartment',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -164,7 +164,7 @@ class DashboardTab extends ConsumerWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      'Chào $firstName 👋',
+                      'Welcome, $firstName 👋',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -201,7 +201,7 @@ class DashboardTab extends ConsumerWidget {
           actions: [
             HeaderIconButton(
               icon: Icons.logout,
-              tooltip: 'Đăng xuất',
+              tooltip: 'Logout',
               onTap: () => confirmAndLogout(context, ref),
             ),
           ],
@@ -225,19 +225,19 @@ class DashboardTab extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: StatCard(
-                              label: 'Tổng căn hộ',
+                              label: 'TOTAL UNITS',
                               value: '$totalApartments',
-                              caption: 'Chung cư Apora',
+                              caption: 'Apora Apartment',
                               captionColor: AppColors.primary,
                             ),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: StatCard(
-                              label: 'Đang thuê',
+                              label: 'RENTED',
                               value: '$occupiedApartments',
                               valueColor: AppColors.success,
-                              caption: '↑ ${occupancyRate.toStringAsFixed(1).replaceAll('.', ',')}% lấp đầy',
+                              caption: '↑ ${occupancyRate.toStringAsFixed(1).replaceAll('.', ',')}% occupancy',
                               captionColor: AppColors.success,
                             ),
                           ),
@@ -249,16 +249,16 @@ class DashboardTab extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: StatCard(
-                              label: 'Đang trống',
+                              label: 'VACANT',
                               value: '$vacantApartments',
                               valueColor: AppColors.primary,
-                              caption: 'Sẵn cho thuê',
+                              caption: 'Available for rent',
                             ),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: StatCard(
-                              label: 'Doanh thu T${now.month}',
+                              label: 'MONTH ${now.month} REVENUE',
                               value: revenueText,
                               caption: growthText,
                               highlight: true,
@@ -272,7 +272,7 @@ class DashboardTab extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Thao tác nhanh',
+                              'Quick Actions',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -285,28 +285,28 @@ class DashboardTab extends ConsumerWidget {
                               children: [
                                 QuickActionButton(
                                   icon: Icons.apartment,
-                                  label: 'Căn hộ',
+                                  label: 'Apartments',
                                   color: AppColors.primary,
                                   backgroundColor: AppColors.infoBg,
                                   onTap: () => context.push(AppRoutes.apartmentList),
                                 ),
                                 QuickActionButton(
                                   icon: Icons.people,
-                                  label: 'Duyệt thành viên',
+                                  label: 'Roommates',
                                   color: AppColors.success,
                                   backgroundColor: AppColors.successBg,
                                   onTap: () => context.push(AppRoutes.managerRoommates),
                                 ),
                                 QuickActionButton(
                                   icon: Icons.engineering,
-                                  label: 'Nhân viên',
+                                  label: 'Staff',
                                   color: AppColors.warning,
                                   backgroundColor: AppColors.warningBg,
                                   onTap: () => context.push(AppRoutes.staffList),
                                 ),
                                 QuickActionButton(
                                   icon: Icons.receipt_long,
-                                  label: 'Hóa đơn',
+                                  label: 'Bills',
                                   color: AppColors.purple,
                                   backgroundColor: AppColors.purpleBg,
                                   onTap: () => context.push(AppRoutes.managerInvoiceList),
@@ -325,7 +325,7 @@ class DashboardTab extends ConsumerWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 const Text(
-                                  'Hoạt động gần đây',
+                                  'Recent Activities',
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
@@ -340,8 +340,8 @@ class DashboardTab extends ConsumerWidget {
                                 child: Padding(
                                   padding: EdgeInsets.symmetric(vertical: 20.0),
                                   child: Text(
-                                  'Chưa có hoạt động',
-                                  textAlign: TextAlign.center,
+                                    'No recent activity',
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: AppColors.textTertiary,
