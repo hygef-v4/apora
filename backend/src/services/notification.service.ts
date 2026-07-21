@@ -11,17 +11,25 @@ export async function publishAnnouncement(
   body: string,
   bannerUrl?: string
 ): Promise<void> {
-  // 1. Lấy danh sách tất cả user để lưu vào DB (để ai cũng xem được trên app)
+  // 1. Lưu tin tức trước và lấy id bài đăng
+  const newsId = await NotificationRepo.createNews(
+    senderId,
+    title,
+    body,
+    bannerUrl || null
+  );
+
+  // 2. Lấy danh sách tất cả user để lưu vào DB (để ai cũng xem được trên app)
   const allUserIds = await NotificationRepo.getAllUserIdsToNotify();
   
-  // 2. Lưu thông báo vào database cho TẤT CẢ mọi người
+  // 3. Lưu thông báo vào database cho TẤT CẢ mọi người với reference_id trỏ đến bài tin tức
   if (allUserIds.length > 0) {
     await NotificationRepo.createNotificationsBulk(
       allUserIds,
       title,
       body,
       'NEWS',
-      null // Không có reference cụ thể cho thông báo chung
+      newsId
     );
 
     // Đánh dấu là đã đọc luôn cho người gửi để không bị nhảy số đếm thông báo
@@ -46,6 +54,7 @@ export async function publishAnnouncement(
       sendPushNotification(tokens, title, body, {
         type: 'NEWS',
         bannerUrl: bannerUrl || '',
+        referenceId: String(newsId),
       }).catch((err) => {
         console.error('Lỗi khi gửi Push Notification:', err);
       });
