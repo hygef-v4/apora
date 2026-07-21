@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/widgets/gradient_header.dart';
 
 class ManagerGenerateBillScreen extends ConsumerStatefulWidget {
@@ -89,7 +91,7 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
       if (mounted) {
         setState(() => _isLoadingContracts = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải thông tin khởi tạo: $e')),
+          SnackBar(content: Text('Failed to load initialization data: $e')),
         );
       }
     }
@@ -98,7 +100,7 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
   Future<void> _submit() async {
     if (_selectedContract == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn căn hộ cần lập hóa đơn.')),
+        const SnackBar(content: Text('Please select a room / apartment.')),
       );
       return;
     }
@@ -124,21 +126,21 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
 
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('🚀 Sinh hóa đơn căn hộ thành công!'),
+          content: Text('🚀 Monthly bill generated successfully!'),
           backgroundColor: AppColors.success,
         ),
       );
       router.pop();
     } catch (e) {
       setState(() => _isSubmitting = false);
-      String errMsg = 'Lập hóa đơn thất bại';
+      String errMsg = 'Failed to generate bill';
       if (e is DioException && e.response != null && e.response!.data != null) {
         errMsg = e.response!.data['message'] ?? errMsg;
       } else {
         errMsg = e.toString();
       }
       messenger.showSnackBar(
-        SnackBar(content: Text('❌ Lỗi: $errMsg')),
+        SnackBar(content: Text('❌ Error: $errMsg')),
       );
     }
   }
@@ -149,10 +151,16 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
       backgroundColor: const Color(0xFFF1F5F9),
       body: Column(
         children: [
-          const GradientHeader(
-            title: 'Lập Hóa Đơn',
-            subtitle: 'Nhập chỉ số điện nước định kỳ',
+          GradientHeader(
+            title: 'Input Monthly Bills.',
             showBack: true,
+            actions: [
+              HeaderIconButton(
+                icon: Icons.settings,
+                tooltip: 'Pricing Settings',
+                onTap: () => context.push(AppRoutes.pricingSettings),
+              ),
+            ],
           ),
           Expanded(
             child: _isLoadingContracts
@@ -160,7 +168,7 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                 : _contracts.isEmpty
                     ? const Center(
                         child: Text(
-                          'Không có căn hộ nào có hợp đồng thuê hoạt động.',
+                          'No active rented apartments found.',
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                       )
@@ -215,7 +223,7 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                                       return DropdownMenuItem<Map<String, dynamic>>(
                                         value: contract as Map<String, dynamic>,
                                         child: Text(
-                                          'Căn ${contract['unit_number']} - ${contract['resident_name']}',
+                                          'Unit ${contract['unit_number']} - ${contract['resident_name']}',
                                           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                                         ),
                                       );
@@ -242,14 +250,14 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                                   TextFormField(
                                     controller: _monthYearController,
                                     decoration: InputDecoration(
-                                      hintText: 'June 2026 (07/2026)',
+                                      hintText: '07/2026',
                                       prefixIcon: const Icon(Icons.calendar_month, color: AppColors.textSecondary),
                                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     ),
                                     validator: (val) {
-                                      if (val == null || val.trim().isEmpty) return 'Vui lòng nhập kỳ hóa đơn.';
-                                      if (!RegExp(r'^\d{2}/\d{4}$').hasMatch(val)) return 'Định dạng hợp lệ: MM/YYYY';
+                                      if (val == null || val.trim().isEmpty) return 'Please enter billing month.';
+                                      if (!RegExp(r'^\d{2}/\d{4}$').hasMatch(val)) return 'Valid format: MM/YYYY';
                                       return null;
                                     },
                                   ),
@@ -282,11 +290,11 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     ),
                                     validator: (val) {
-                                      if (val == null || val.trim().isEmpty) return 'Vui lòng nhập chỉ số điện.';
+                                      if (val == null || val.trim().isEmpty) return 'Please enter electricity reading.';
                                       final current = double.tryParse(val);
-                                      if (current == null) return 'Phải là số hợp lệ.';
+                                      if (current == null) return 'Must be a valid number.';
                                       if (_selectedContract != null && current < _lastElec) {
-                                        return 'Không được nhỏ hơn chỉ số cũ (${_lastElec.toInt()}).';
+                                        return 'Cannot be lower than previous index (${_lastElec.toInt()}).';
                                       }
                                       return null;
                                     },
@@ -316,11 +324,11 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     ),
                                     validator: (val) {
-                                      if (val == null || val.trim().isEmpty) return 'Vui lòng nhập chỉ số nước.';
+                                      if (val == null || val.trim().isEmpty) return 'Please enter water reading.';
                                       final current = double.tryParse(val);
-                                      if (current == null) return 'Phải là số hợp lệ.';
+                                      if (current == null) return 'Must be a valid number.';
                                       if (_selectedContract != null && current < _lastWater) {
-                                        return 'Không được nhỏ hơn chỉ số cũ (${_lastWater.toInt()}).';
+                                        return 'Cannot be lower than previous index (${_lastWater.toInt()}).';
                                       }
                                       return null;
                                     },
@@ -354,7 +362,7 @@ class _ManagerGenerateBillScreenState extends ConsumerState<ManagerGenerateBillS
                                     ),
                                     validator: (val) {
                                       if (val != null && val.trim().isNotEmpty && double.tryParse(val) == null) {
-                                        return 'Phải là số hợp lệ.';
+                                        return 'Must be a valid number.';
                                       }
                                       return null;
                                     },

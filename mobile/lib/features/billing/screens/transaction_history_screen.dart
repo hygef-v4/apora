@@ -5,14 +5,14 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/gradient_header.dart';
 import '../providers/billing_provider.dart';
 
-class ManagerInvoiceListScreen extends ConsumerStatefulWidget {
-  const ManagerInvoiceListScreen({super.key});
+class TransactionHistoryScreen extends ConsumerStatefulWidget {
+  const TransactionHistoryScreen({super.key});
 
   @override
-  ConsumerState<ManagerInvoiceListScreen> createState() => _ManagerInvoiceListScreenState();
+  ConsumerState<TransactionHistoryScreen> createState() => _TransactionHistoryScreenState();
 }
 
-class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScreen> {
+class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScreen> {
   static const List<String> _statusOptions = ['All Statuses', 'Success', 'Failed'];
 
   String _selectedMonth = 'All Months';
@@ -79,7 +79,7 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      // Filter Controls (Vertical Layout per mockup 2)
+                      // Filter Controls (Vertical Layout per mockup)
                       Column(
                         children: [
                           // 1. Select Month Filter Box
@@ -154,7 +154,7 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
                       ),
                       const SizedBox(height: 16),
 
-                      // Main Transaction Table matching mockup 2
+                      // Main Transaction Table matching mockup
                       if (filteredPayments.isEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(vertical: 40),
@@ -276,7 +276,7 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
                         ),
                       const SizedBox(height: 16),
 
-                      // Pagination Control Bar matching mockup 2
+                      // Pagination Control Bar matching mockup
                       if (filteredPayments.isNotEmpty)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,

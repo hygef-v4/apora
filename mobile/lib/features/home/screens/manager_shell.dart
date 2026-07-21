@@ -188,15 +188,31 @@ class _ManagementHubTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              // 8. hoá đơn
+              // 8. Transaction History
               AppCard(
                 onTap: () => context.push(AppRoutes.managerInvoiceList),
                 child: const _HubRow(
-                  icon: Icons.receipt_long,
+                  icon: Icons.history,
                   iconBg: AppColors.purpleBg,
                   iconColor: AppColors.purple,
-                  title: 'Hóa đơn',
-                  subtitle: 'Chỉ số điện nước, thanh toán & thiết lập đơn giá',
+                  title: 'Transaction History',
+                  subtitle: 'Lịch sử giao dịch & xác thực thanh toán',
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // 9. Input Monthly Bills
+              AppCard(
+                onTap: () => context.push(AppRoutes.generateBill),
+                child: const _HubRow(
+                  icon: Icons.post_add,
+                  iconBg: Color(0xFFFEF2F2),
+                  iconColor: Color(0xFFEF4444),
+                  title: 'Input Monthly Bills.',
+                  subtitle: 'Nhập chỉ số điện nước & lập hóa đơn định kỳ',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,

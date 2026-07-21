@@ -36,6 +36,7 @@ import '../../features/billing/screens/payment_receipt_screen.dart';
 import '../../features/billing/screens/manager_generate_bill_screen.dart';
 import '../../features/billing/screens/manager_invoice_list_screen.dart';
 import '../../features/billing/screens/manager_pricing_settings_screen.dart';
+import '../../features/billing/screens/transaction_history_screen.dart';
 import '../../features/roommate/screens/roommate_list_screen.dart';
 import '../../features/roommate/screens/roommate_register_screen.dart';
 import '../../features/roommate/screens/manager_roommate_list_screen.dart';
@@ -85,6 +86,7 @@ class AppRoutes {
   static const String generateBill = '/manager/bills/generate';
   static const String managerInvoiceList = '/manager/bills';
   static const String pricingSettings = '/manager/pricing-settings';
+  static const String transactionHistory = '/manager/transactions';
 
   // Module Communication
   static const String announce = '/manager/announce';
@@ -301,6 +303,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.pricingSettings,
         builder: (context, state) => const ManagerPricingSettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.transactionHistory,
+        builder: (context, state) => const TransactionHistoryScreen(),
       ),
       GoRoute(
         path: AppRoutes.announce,
