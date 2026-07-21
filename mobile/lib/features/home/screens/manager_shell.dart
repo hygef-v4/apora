@@ -62,8 +62,8 @@ class _ManagementHubTab extends ConsumerWidget {
     return Column(
       children: [
         const GradientHeader(
-          title: 'Quản lý',
-          subtitle: 'Nhân sự & cư dân của tòa nhà',
+          title: 'Management',
+          subtitle: 'Building Staff & Resident Hub',
         ),
         Expanded(
           child: ListView(
@@ -82,8 +82,8 @@ class _ManagementHubTab extends ConsumerWidget {
                     icon: Icons.admin_panel_settings,
                     iconBg: Color(0xFFEEF2FF),
                     iconColor: Color(0xFF4F46E5),
-                    title: 'Quản lý',
-                    subtitle: 'Danh sách quản lý viên',
+                    title: 'Managers',
+                    subtitle: 'List of property managers',
                     trailing: Icon(
                       Icons.chevron_right,
                       color: AppColors.textTertiary,
@@ -99,8 +99,8 @@ class _ManagementHubTab extends ConsumerWidget {
                   icon: Icons.apartment,
                   iconBg: Color(0xFFECFEFF),
                   iconColor: Color(0xFF0891B2),
-                  title: 'Căn hộ',
-                  subtitle: 'Quản lý căn hộ, check-in, check-out',
+                  title: 'Apartments',
+                  subtitle: 'Apartment list, check-in, check-out',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -115,8 +115,8 @@ class _ManagementHubTab extends ConsumerWidget {
                   icon: Icons.notifications,
                   iconBg: Color(0xFFFFF7ED),
                   iconColor: Color(0xFFF97316),
-                  title: 'Thông báo',
-                  subtitle: 'Gửi và quản lý thông báo tòa nhà',
+                  title: 'Announcements',
+                  subtitle: 'Send & manage building announcements',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -131,8 +131,8 @@ class _ManagementHubTab extends ConsumerWidget {
                   icon: Icons.people,
                   iconBg: Color(0xFFFDF2F8),
                   iconColor: Color(0xFFEC4899),
-                  title: 'Duyệt thành viên',
-                  subtitle: 'Phê duyệt yêu cầu tạm trú & người ở ghép',
+                  title: 'Roommate Approvals',
+                  subtitle: 'Approve temporary residence & roommate requests',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -147,8 +147,8 @@ class _ManagementHubTab extends ConsumerWidget {
                   icon: Icons.description,
                   iconBg: Color(0xFFFEFCE8),
                   iconColor: Color(0xFFCA8A04),
-                  title: 'Hợp đồng',
-                  subtitle: 'Danh sách hợp đồng & duyệt gia hạn',
+                  title: 'Contracts',
+                  subtitle: 'Contract list & extension approvals',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -163,8 +163,8 @@ class _ManagementHubTab extends ConsumerWidget {
                   icon: Icons.engineering,
                   iconBg: Color(0xFFF0FDF4),
                   iconColor: Color(0xFF22C55E),
-                  title: 'Nhân viên',
-                  subtitle: 'Bảo vệ, lao công, kỹ thuật viên',
+                  title: 'Staff',
+                  subtitle: 'Security, cleaners, technicians',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -179,8 +179,8 @@ class _ManagementHubTab extends ConsumerWidget {
                   icon: Icons.build_circle,
                   iconBg: Color(0xFFEFF6FF),
                   iconColor: Color(0xFF3B82F6),
-                  title: 'Bảo trì',
-                  subtitle: 'Theo dõi yêu cầu sửa chữa của cư dân',
+                  title: 'Maintenance',
+                  subtitle: 'Track resident repair requests',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -196,7 +196,7 @@ class _ManagementHubTab extends ConsumerWidget {
                   iconBg: AppColors.purpleBg,
                   iconColor: AppColors.purple,
                   title: 'Transaction History',
-                  subtitle: 'Lịch sử giao dịch & xác thực thanh toán',
+                  subtitle: 'Payment records & verification log',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,
@@ -212,7 +212,7 @@ class _ManagementHubTab extends ConsumerWidget {
                   iconBg: Color(0xFFFEF2F2),
                   iconColor: Color(0xFFEF4444),
                   title: 'Input Monthly Bills.',
-                  subtitle: 'Nhập chỉ số điện nước & lập hóa đơn định kỳ',
+                  subtitle: 'Enter utility meter readings & generate bills',
                   trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textTertiary,

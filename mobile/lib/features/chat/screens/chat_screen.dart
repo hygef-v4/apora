@@ -10,6 +10,7 @@ import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/chat_message_model.dart';
 import '../providers/chat_provider.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/widgets/initials_avatar.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final int? partnerId; // null means chatting with general management
@@ -97,7 +98,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       await _handleSend(image: File(pickedFile.path));
     }
   }
-
   Widget _buildHeader() {
     final user = ref.watch(authNotifierProvider).user;
     final isAdminOrOwner = user != null &&
@@ -108,7 +108,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         top: MediaQuery.of(context).padding.top + 12,
         bottom: 12,
         left: 8,
-        right: 16,
+        right: 8,
       ),
       decoration: isAdminOrOwner
           ? const BoxDecoration(gradient: AppColors.headerGradient)
@@ -155,9 +155,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    const Text(
-                      'Đang hoạt động',
-                      style: TextStyle(
+                    Text(
+                      isAdminOrOwner ? 'RESIDENT ONLINE' : 'HELPDESK ONLINE',
+                      style: const TextStyle(
                         fontSize: 12,
                         color: Colors.white70,
                       ),
@@ -167,93 +167,118 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ],
             ),
           ),
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+            onPressed: () {},
+          ),
         ],
       ),
     );
   }
 
   Widget _buildMessageBubble(ChatMessageModel message, bool isMe) {
-    final timeStr = DateFormat('HH:mm').format(message.createdAt.toLocal());
+    final timeStr = DateFormat('hh:mm a').format(message.createdAt.toLocal());
+    final labelStr = isMe ? 'You • $timeStr' : 'Helpdesk • $timeStr';
+    final currentUser = ref.watch(authNotifierProvider).user;
     
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-        padding: message.isImage 
-            ? const EdgeInsets.all(4) 
-            : const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          color: isMe ? const Color(0xFF149EE7) : Colors.white,
-          borderRadius: BorderRadius.circular(20).copyWith(
-            bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(20),
-            bottomLeft: !isMe ? const Radius.circular(4) : const Radius.circular(20),
-          ),
-          boxShadow: isMe ? [] : [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            )
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+      child: Row(
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!isMe) ...[
+            const CircleAvatar(
+              radius: 16,
+              backgroundColor: AppColors.infoBg,
+              child: Icon(Icons.home, size: 18, color: AppColors.primary),
+            ),
+            const SizedBox(width: 8),
           ],
-        ),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
-        child: Column(
-          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            if (message.isImage)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: message.content.startsWith('http')
-                    ? Image.network(
-                        message.content,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const Padding(
-                            padding: EdgeInsets.all(32.0),
-                            child: CircularProgressIndicator(),
-                          );
-                        },
-                      )
-                    : Image.file(
-                        File(message.content),
-                        fit: BoxFit.cover,
-                      ),
-              )
-            else
-              Text(
-                message.content,
-                style: TextStyle(
-                  color: isMe ? Colors.white : AppColors.textPrimary,
-                  fontSize: 15,
-                  height: 1.4,
-                ),
-              ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  timeStr,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isMe ? Colors.white70 : AppColors.textTertiary,
+          Column(
+            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: message.isImage 
+                    ? const EdgeInsets.all(4) 
+                    : const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: isMe ? const Color(0xFF149EE7) : Colors.white,
+                  borderRadius: BorderRadius.circular(20).copyWith(
+                    bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(20),
+                    bottomLeft: !isMe ? const Radius.circular(4) : const Radius.circular(20),
                   ),
+                  boxShadow: isMe ? [] : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    )
+                  ],
                 ),
-                if (isMe) ...[
-                  const SizedBox(width: 4),
-                  const Icon(Icons.done_all, size: 14, color: Colors.white70),
-                ]
-              ],
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.65,
+                ),
+                child: message.isImage
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: message.content.startsWith('http')
+                            ? Image.network(
+                                message.content,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return const Padding(
+                                    padding: EdgeInsets.all(32.0),
+                                    child: CircularProgressIndicator(),
+                                  );
+                                },
+                              )
+                            : Image.file(
+                                File(message.content),
+                                fit: BoxFit.cover,
+                              ),
+                      )
+                    : Text(
+                        message.content,
+                        style: TextStyle(
+                          color: isMe ? Colors.white : AppColors.textPrimary,
+                          fontSize: 15,
+                          height: 1.4,
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    labelStr,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                  if (isMe) ...[
+                    const SizedBox(width: 4),
+                    const Icon(Icons.done_all, size: 14, color: Colors.white70),
+                  ]
+                ],
+              ),
+            ],
+          ),
+          if (isMe) ...[
+            const SizedBox(width: 8),
+            InitialsAvatar(
+              name: currentUser?.fullName ?? 'Me',
+              imageUrl: currentUser?.avatarUrl,
+              size: 32,
             ),
           ],
-        ),
+        ],
       ),
     );
   }
-
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(chatMessagesProvider);
@@ -268,13 +293,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             child: messagesAsync.when(
               data: (messages) {
                 if (messages.isEmpty) {
-                  return const Center(child: Text('Chưa có tin nhắn nào.'));
+                  return const Center(child: Text('No messages yet.'));
                 }
                 return ListView.builder(
                   controller: _scrollController,
                   reverse: true, // Show latest messages at the bottom
                   padding: const EdgeInsets.only(top: 16, bottom: 8),
-                  itemCount: messages.length + 1, // +1 for "Hôm nay" label
+                  itemCount: messages.length + 1, // +1 for "Today" label
                   itemBuilder: (context, index) {
                     if (index == messages.length) {
                       return Center(
@@ -286,7 +311,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Text(
-                            'Hôm nay',
+                            'Today',
                             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                           ),
                         ),
@@ -311,7 +336,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         onPressed: () {
                           ref.read(chatMessagesProvider.notifier).loadChat(widget.partnerId);
                         },
-                        child: const Text('Thử lại'),
+                        child: const Text('Retry'),
                       ),
                     ],
                   ),
@@ -357,7 +382,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         textInputAction: TextInputAction.send,
                         onSubmitted: (_) => _handleSend(),
                         decoration: const InputDecoration(
-                          hintText: 'Nhập tin nhắn...',
+                          hintText: 'Type a message...',
                           hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 14),
                           border: InputBorder.none,
                           counterText: '',

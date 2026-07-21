@@ -46,7 +46,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
             roommateId: targetId,
             status: 'APPROVED',
           );
-      _showMessage('Đã duyệt yêu cầu tạm trú thành công.');
+      _showMessage('Approved roommate request successfully.');
       await ref.read(roommateProvider.notifier).fetchPendingRequests();
     } catch (e) {
       _showMessage(mapDioError(e));
@@ -63,7 +63,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
             status: 'REJECTED',
             reason: reason,
           );
-      _showMessage('Đã từ chối yêu cầu đăng ký tạm trú.');
+      _showMessage('Rejected roommate request.');
       await ref.read(roommateProvider.notifier).fetchPendingRequests();
     } catch (e) {
       _showMessage(mapDioError(e));
@@ -79,7 +79,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
       builder: (context) {
         return AlertDialog(
           title: const Text(
-            'Lý do từ chối',
+            'Reason for Rejection',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           content: Form(
@@ -88,11 +88,11 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
               controller: _reasonController,
               maxLines: 3,
               decoration: InputDecoration(
-                hintText: 'Nhập lý do từ chối (ví dụ: Ảnh CCCD bị mờ, Sai số CCCD...)',
+                hintText: 'Enter reason for rejection (e.g. blurry ID photo, invalid ID number...)',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
               validator: (val) {
-                if (val == null || val.trim().isEmpty) return 'Vui lòng nhập lý do từ chối.';
+                if (val == null || val.trim().isEmpty) return 'Please enter a reason for rejection.';
                 return null;
               },
             ),
@@ -100,7 +100,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Hủy', style: TextStyle(color: AppColors.textSecondary)),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -115,7 +115,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              child: const Text('Từ Chối'),
+              child: const Text('REJECT'),
             ),
           ],
         );
@@ -127,12 +127,12 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Phê duyệt thành viên'),
-        content: Text('Bạn có chắc chắn muốn duyệt tạm trú cho thành viên ${roommate.fullName} vào Căn ${roommate.unitNumber ?? "N/A"}?'),
+        title: const Text('Approve Roommate'),
+        content: Text('Are you sure you want to approve temporary residence for ${roommate.fullName} in Apartment ${roommate.unitNumber ?? "N/A"}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -140,7 +140,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
               _approve(roommate.id);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-            child: const Text('Xác Nhận'),
+            child: const Text('CONFIRM'),
           ),
         ],
       ),
@@ -167,7 +167,6 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
         children: [
           GradientHeader(
             title: 'Roommate Approval',
-            subtitle: 'Phê duyệt đăng ký tạm trú',
             showBack: true,
             actions: [
               IconButton(
@@ -182,7 +181,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
                 : pendingRequests.isEmpty
                     ? const Center(
                         child: Text(
-                          'Không có yêu cầu tạm trú nào đang chờ duyệt.',
+                          'No pending roommate requests.',
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                       )
@@ -249,7 +248,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            'Apartment: Căn ${roommate.unitNumber ?? "N/A"}',
+                                            'Apartment: ${roommate.unitNumber ?? "N/A"}',
                                             style: const TextStyle(
                                               fontSize: 12,
                                               color: AppColors.textSecondary,
@@ -324,7 +323,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    selectedRoommate.phoneNumber ?? 'Không có',
+                                    selectedRoommate.phoneNumber ?? 'None',
                                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                                   ),
                                   const SizedBox(height: 14),
@@ -374,7 +373,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
                                       child: OutlinedButton.icon(
                                         onPressed: () => _showRejectDialog(selectedRoommate.id),
                                         icon: const Icon(Icons.close, color: AppColors.error),
-                                        label: const Text('TỪ CHỐI', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.error)),
+                                        label: const Text('REJECT', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.error)),
                                         style: OutlinedButton.styleFrom(
                                           side: const BorderSide(color: AppColors.error, width: 1.5),
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -389,7 +388,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
                                       child: ElevatedButton.icon(
                                         onPressed: () => _showApproveDialog(selectedRoommate),
                                         icon: const Icon(Icons.check, color: Colors.white),
-                                        label: const Text('PHÊ DUYỆT', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                                        label: const Text('APPROVE', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: AppColors.primary,
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -420,7 +419,7 @@ class _RoommateApprovalDetailScreenState extends ConsumerState<RoommateApprovalD
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Center(
-          child: Text('Không có ảnh chụp hoặc ảnh bị lỗi.', style: TextStyle(color: AppColors.textTertiary)),
+          child: Text('No image available or image error.', style: TextStyle(color: AppColors.textTertiary)),
         ),
       );
     }
