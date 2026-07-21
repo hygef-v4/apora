@@ -9,6 +9,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../providers/auth_notifier.dart';
 import '../widgets/logout_confirm.dart';
 
@@ -50,7 +51,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đổi mật khẩu thành công.')),
+        const SnackBar(content: Text('Password changed successfully.')),
       );
       if (!wasForced && context.canPop()) {
         context.pop();
@@ -79,17 +80,15 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       body: Column(
         children: [
           GradientHeader(
-            title: 'Đổi mật khẩu',
-            subtitle: mustChange
-                ? 'Bắt buộc trước khi tiếp tục sử dụng'
-                : 'Cập nhật mật khẩu đăng nhập',
+            title: 'Change Password',
+            centerTitle: true,
             // BR-01: không cho back khi đang bị ép đổi mật khẩu mặc định
             showBack: !mustChange,
             actions: [
               if (mustChange)
                 HeaderIconButton(
                   icon: Icons.logout,
-                  tooltip: 'Đăng xuất',
+                  tooltip: 'Log out',
                   // UC02: hỏi xác nhận trước khi đăng xuất (FID-02)
                   onTap: () => confirmAndLogout(context, ref),
                 ),
@@ -134,53 +133,63 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          TextFormField(
-                            controller: _oldPasswordController,
-                            obscureText: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Mật khẩu hiện tại',
-                              prefixIcon: Icon(Icons.lock_open, size: 20),
+                          LabeledField(
+                            label: 'Current Password',
+                            child: TextFormField(
+                              controller: _oldPasswordController,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                hintText: 'Enter your current password',
+                                prefixIcon: Icon(Icons.lock_open, size: 20),
+                              ),
+                              validator: (value) =>
+                                  (value == null || value.isEmpty)
+                                      ? AppStrings.msgFieldRequired
+                                      : null,
                             ),
-                            validator: (value) =>
-                                (value == null || value.isEmpty)
-                                    ? AppStrings.msgFieldRequired
-                                    : null,
                           ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _newPasswordController,
-                            obscureText: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Mật khẩu mới',
-                              helperText:
-                                  'Tối thiểu 8 ký tự, gồm 1 chữ hoa và 1 chữ số.',
-                              prefixIcon: Icon(Icons.lock, size: 20),
+                          const SizedBox(height: 18),
+                          LabeledField(
+                            label: 'New Password',
+                            child: TextFormField(
+                              controller: _newPasswordController,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                hintText: 'Enter a new password',
+                                helperText:
+                                    'At least 8 characters, 1 uppercase and 1 digit.',
+                                helperMaxLines: 2,
+                                prefixIcon: Icon(Icons.lock, size: 20),
+                              ),
+                              // BR-09 validate client + chặn sớm trùng mật khẩu cũ
+                              validator: (value) {
+                                final complexityError =
+                                    Validators.passwordComplexity(value);
+                                if (complexityError != null) return complexityError;
+                                if (value == _oldPasswordController.text) {
+                                  return AppStrings.msgSamePassword;
+                                }
+                                return null;
+                              },
                             ),
-                            // BR-09 validate client + chặn sớm trùng mật khẩu cũ
-                            validator: (value) {
-                              final complexityError =
-                                  Validators.passwordComplexity(value);
-                              if (complexityError != null) return complexityError;
-                              if (value == _oldPasswordController.text) {
-                                return AppStrings.msgSamePassword;
-                              }
-                              return null;
-                            },
                           ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _confirmPasswordController,
-                            obscureText: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Xác nhận mật khẩu mới',
-                              prefixIcon: Icon(Icons.lock_outline, size: 20),
+                          const SizedBox(height: 18),
+                          LabeledField(
+                            label: 'Confirm New Password',
+                            child: TextFormField(
+                              controller: _confirmPasswordController,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                hintText: 'Re-enter the new password',
+                                prefixIcon: Icon(Icons.lock_outline, size: 20),
+                              ),
+                              validator: (value) =>
+                                  value != _newPasswordController.text
+                                      ? AppStrings.msgPasswordMismatch
+                                      : null,
                             ),
-                            validator: (value) =>
-                                value != _newPasswordController.text
-                                    ? AppStrings.msgPasswordMismatch
-                                    : null,
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 24),
                           FilledButton(
                             onPressed: _isSubmitting ? null : _submit,
                             child: _isSubmitting
@@ -192,7 +201,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Text('Xác nhận'),
+                                : const Text('CHANGE PASSWORD'),
                           ),
                         ],
                       ),

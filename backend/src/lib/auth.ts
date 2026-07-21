@@ -50,7 +50,7 @@ export function verifyToken(token: string): JwtPayload {
  */
 export function validatePhoneNumber(phone: string): string | null {
   if (!/^0\d{9}$/.test(phone)) {
-    return 'Số điện thoại không hợp lệ. Vui lòng nhập 10 chữ số bắt đầu bằng 0.';
+    return 'Invalid phone number. Enter 10 digits starting with 0.';
   }
   return null;
 }
@@ -72,13 +72,13 @@ export function normalizeVnPhone(phone: string): string {
  */
 export function validatePasswordComplexity(password: string): string | null {
   if (!password || password.length < 8) {
-    return 'Mật khẩu phải có ít nhất 8 ký tự.';
+    return 'Password must be at least 8 characters long.';
   }
   if (!/[A-Z]/.test(password)) {
-    return 'Mật khẩu phải chứa ít nhất 1 chữ cái viết hoa.';
+    return 'Password must contain at least 1 uppercase letter.';
   }
   if (!/[0-9]/.test(password)) {
-    return 'Mật khẩu phải chứa ít nhất 1 chữ số.';
+    return 'Password must contain at least 1 digit.';
   }
   return null;
 }

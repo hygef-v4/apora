@@ -14,10 +14,10 @@ const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png'];
 /** Validate 1 file ảnh (loại + kích thước), ném HttpError 400 nếu sai (BR-37). */
 function assertValidImage(file: File): void {
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    throw new HttpError(400, 'Ảnh không hợp lệ. Chỉ chấp nhận định dạng JPG hoặc PNG.');
+    throw new HttpError(400, 'Invalid image. Only JPG or PNG files are accepted.');
   }
   if (file.size > MAX_IMAGE_SIZE_BYTES) {
-    throw new HttpError(400, 'Ảnh quá lớn. Kích thước tối đa là 5MB.');
+    throw new HttpError(400, 'Image is too large. The maximum size is 5MB.');
   }
 }
 
@@ -52,7 +52,7 @@ export async function readImageUploads(
     .filter((f): f is File => f instanceof File && f.size > 0);
 
   if (files.length > maxCount) {
-    throw new HttpError(400, `Chỉ được đính kèm tối đa ${maxCount} ảnh.`);
+    throw new HttpError(400, `You can attach at most ${maxCount} image(s).`);
   }
 
   const buffers: Buffer[] = [];

@@ -94,7 +94,7 @@ describe('UC01: authenticateUser', () => {
       userService.authenticateUser('0999999999', PASSWORD),
     ).rejects.toMatchObject({
       status: 401,
-      message: 'Số điện thoại hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.',
+      message: 'Incorrect phone number or password. Please check and try again.',
     });
   });
 

@@ -9,6 +9,7 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/services/phone_otp_service.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/gradient_header.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../providers/auth_notifier.dart';
 
 /// UC03: Quên mật khẩu (FID-03) - 2 bước, OTP qua Firebase Phone Auth (BR-08):
@@ -122,37 +123,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       body: Column(
         children: [
           // Header: back trái + tiêu đề căn giữa (layout wireframe)
-          Container(
-            decoration: const BoxDecoration(
-              gradient: AppColors.residentGradient,
-            ),
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 12,
-              left: 16,
-              right: 16,
-              bottom: 16,
-            ),
-            child: Row(
-              children: [
-                HeaderIconButton(
-                  icon: Icons.arrow_back,
-                  onTap: () => Navigator.of(context).maybePop(),
-                ),
-                const Expanded(
-                  child: Text(
-                    'Forgot Password',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                // Giữ tiêu đề cân giữa so với nút back
-                const SizedBox(width: 36),
-              ],
-            ),
+          const GradientHeader(
+            title: 'Forgot Password',
+            centerTitle: true,
+            showBack: true,
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -187,7 +161,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    const _FieldLabel('Phone Number'),
+                    const FieldLabel('Phone Number'),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _phoneController,
@@ -205,7 +179,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
                     if (_otpSent) ...[
                       const SizedBox(height: 18),
-                      const _FieldLabel('OTP Code'),
+                      const FieldLabel('OTP Code'),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _otpController,
@@ -222,7 +196,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                                 : null,
                       ),
                       const SizedBox(height: 18),
-                      const _FieldLabel('New Password'),
+                      const FieldLabel('New Password'),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _newPasswordController,
@@ -237,7 +211,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                         validator: Validators.passwordComplexity,
                       ),
                       const SizedBox(height: 18),
-                      const _FieldLabel('Confirm New Password'),
+                      const FieldLabel('Confirm New Password'),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _confirmPasswordController,
@@ -326,21 +300,3 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   }
 }
 
-/// Nhãn phía trên ô nhập (theo wireframe).
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
-      ),
-    );
-  }
-}
