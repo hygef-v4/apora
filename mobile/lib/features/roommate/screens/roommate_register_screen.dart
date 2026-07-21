@@ -365,13 +365,13 @@ class _RoommateRegisterScreenState extends ConsumerState<RoommateRegisterScreen>
                     ),
                   ),
 
-                  // 5. BOTTOM PREVIEW CARD
+                  // 5. BOTTOM PREVIEW CARD (Matching intact blueprint layout)
                   Container(
                     width: double.infinity,
-                    height: 180,
+                    height: 250,
                     margin: const EdgeInsets.only(top: 24, bottom: 20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color(0xFFFAFAFA),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.border, width: 1.2),
                       boxShadow: AppColors.cardShadow,
@@ -380,13 +380,16 @@ class _RoommateRegisterScreenState extends ConsumerState<RoommateRegisterScreen>
                     child: Stack(
                       children: [
                         Positioned.fill(
-                          child: Image.asset(
-                            'assets/images/apartment-layout.webp',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              color: const Color(0xFF0F172A),
-                              child: const Center(
-                                child: Icon(Icons.apartment, size: 48, color: Colors.white54),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 48, 12, 12),
+                            child: Image.asset(
+                              'assets/images/apartment-layout.webp',
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                color: const Color(0xFF0F172A),
+                                child: const Center(
+                                  child: Icon(Icons.apartment, size: 48, color: Colors.white54),
+                                ),
                               ),
                             ),
                           ),

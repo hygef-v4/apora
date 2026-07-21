@@ -19,7 +19,9 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(roommateProvider.notifier).fetchRoommates());
+    Future.microtask(
+      () => ref.read(roommateProvider.notifier).fetchRoommates(),
+    );
   }
 
   @override
@@ -28,7 +30,9 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
     final profile = ref.watch(profileNotifierProvider).value;
 
     // BR-24: Tính chủ hộ + các thành viên được duyệt vào tổng số cư dân
-    final approvedCount = state.roommates.where((r) => r.status == 'APPROVED').length;
+    final approvedCount = state.roommates
+        .where((r) => r.status == 'APPROVED')
+        .length;
     final totalOccupants = approvedCount + 1; // 1 Chủ hộ + Approved roommates
 
     return Scaffold(
@@ -38,30 +42,38 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
           // Header Bar với Gradient Xanh Xịn xò của App
           GradientHeader(
             title: 'My Roommates',
-            subtitle: 'Quản lý thông tin tạm trú',
             showBack: true,
             actions: [
               HeaderIconButton(
                 icon: Icons.refresh,
                 tooltip: 'Làm mới',
-                onTap: () => ref.read(roommateProvider.notifier).fetchRoommates(),
+                onTap: () =>
+                    ref.read(roommateProvider.notifier).fetchRoommates(),
               ),
             ],
           ),
 
           Expanded(
             child: state.isLoading && state.roommates.isEmpty
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
                       // 1. TOP CARD: Total Residents Summary (Matching Mockup)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.border, width: 1.0),
+                          border: Border.all(
+                            color: AppColors.border,
+                            width: 1.0,
+                          ),
                           boxShadow: AppColors.cardShadow,
                         ),
                         child: Row(
@@ -99,8 +111,13 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                                     left: 0,
                                     child: CircleAvatar(
                                       radius: 18,
-                                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                                      child: const Icon(Icons.person, size: 18, color: AppColors.primary),
+                                      backgroundColor: AppColors.primary
+                                          .withValues(alpha: 0.15),
+                                      child: const Icon(
+                                        Icons.person,
+                                        size: 18,
+                                        color: AppColors.primary,
+                                      ),
                                     ),
                                   ),
                                   Positioned(
@@ -108,7 +125,11 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                                     child: CircleAvatar(
                                       radius: 18,
                                       backgroundColor: const Color(0xFFDCFCE7),
-                                      child: const Icon(Icons.person, size: 18, color: Color(0xFF16A34A)),
+                                      child: const Icon(
+                                        Icons.person,
+                                        size: 18,
+                                        color: Color(0xFF16A34A),
+                                      ),
                                     ),
                                   ),
                                   Positioned(
@@ -116,7 +137,11 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                                     child: CircleAvatar(
                                       radius: 18,
                                       backgroundColor: const Color(0xFFFEF3C7),
-                                      child: const Icon(Icons.person, size: 18, color: Color(0xFFD97706)),
+                                      child: const Icon(
+                                        Icons.person,
+                                        size: 18,
+                                        color: Color(0xFFD97706),
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -136,15 +161,24 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.border, width: 1.0),
+                            border: Border.all(
+                              color: AppColors.border,
+                              width: 1.0,
+                            ),
                             boxShadow: AppColors.cardShadow,
                           ),
                           child: Row(
                             children: [
                               CircleAvatar(
                                 radius: 22,
-                                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                                child: const Icon(Icons.person, color: AppColors.primary, size: 22),
+                                backgroundColor: AppColors.primary.withValues(
+                                  alpha: 0.12,
+                                ),
+                                child: const Icon(
+                                  Icons.person,
+                                  color: AppColors.primary,
+                                  size: 22,
+                                ),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
@@ -172,16 +206,26 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                               ),
                               // Badge [ ✔ Approved / Owner ]
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFDCFCE7),
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: const Color(0xFF16A34A), width: 1.0),
+                                  border: Border.all(
+                                    color: const Color(0xFF16A34A),
+                                    width: 1.0,
+                                  ),
                                 ),
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.check_circle, size: 13, color: Color(0xFF16A34A)),
+                                    Icon(
+                                      Icons.check_circle,
+                                      size: 13,
+                                      color: Color(0xFF16A34A),
+                                    ),
                                     SizedBox(width: 4),
                                     Text(
                                       'Approved',
@@ -204,14 +248,22 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                         final isPending = roommate.status == 'PENDING';
                         final badgeColor = isApproved
                             ? const Color(0xFF16A34A)
-                            : (isPending ? const Color(0xFFD97706) : const Color(0xFFEF4444));
+                            : (isPending
+                                  ? const Color(0xFFD97706)
+                                  : const Color(0xFFEF4444));
                         final badgeBg = isApproved
                             ? const Color(0xFFDCFCE7)
-                            : (isPending ? const Color(0xFFFEF3C7) : const Color(0xFFFEE2E2));
+                            : (isPending
+                                  ? const Color(0xFFFEF3C7)
+                                  : const Color(0xFFFEE2E2));
                         final badgeIcon = isApproved
                             ? Icons.check_circle
-                            : (isPending ? Icons.remove_circle_outline : Icons.cancel);
-                        final badgeText = isApproved ? 'Approved' : (isPending ? 'Pending' : 'Rejected');
+                            : (isPending
+                                  ? Icons.remove_circle_outline
+                                  : Icons.cancel);
+                        final badgeText = isApproved
+                            ? 'Approved'
+                            : (isPending ? 'Pending' : 'Rejected');
 
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -219,7 +271,10 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.border, width: 1.0),
+                            border: Border.all(
+                              color: AppColors.border,
+                              width: 1.0,
+                            ),
                             boxShadow: AppColors.cardShadow,
                           ),
                           child: Column(
@@ -230,12 +285,17 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                                   CircleAvatar(
                                     radius: 22,
                                     backgroundColor: badgeBg,
-                                    child: Icon(Icons.person, color: badgeColor, size: 22),
+                                    child: Icon(
+                                      Icons.person,
+                                      color: badgeColor,
+                                      size: 22,
+                                    ),
                                   ),
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           roommate.fullName,
@@ -247,7 +307,8 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                                         ),
                                         const SizedBox(height: 3),
                                         Text(
-                                          roommate.phoneNumber ?? 'Không có SĐT',
+                                          roommate.phoneNumber ??
+                                              'Không có SĐT',
                                           style: const TextStyle(
                                             fontSize: 12,
                                             color: AppColors.textSecondary,
@@ -257,16 +318,26 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: badgeBg,
                                       borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: badgeColor, width: 1.0),
+                                      border: Border.all(
+                                        color: badgeColor,
+                                        width: 1.0,
+                                      ),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(badgeIcon, size: 13, color: badgeColor),
+                                        Icon(
+                                          badgeIcon,
+                                          size: 13,
+                                          color: badgeColor,
+                                        ),
                                         const SizedBox(width: 4),
                                         Text(
                                           badgeText,
@@ -282,10 +353,17 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                                 ],
                               ),
                               if (roommate.status == 'REJECTED') ...[
-                                const Divider(height: 16, color: AppColors.divider),
+                                const Divider(
+                                  height: 16,
+                                  color: AppColors.divider,
+                                ),
                                 Row(
                                   children: [
-                                    const Icon(Icons.error_outline, color: AppColors.error, size: 14),
+                                    const Icon(
+                                      Icons.error_outline,
+                                      color: AppColors.error,
+                                      size: 14,
+                                    ),
                                     const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
@@ -312,8 +390,13 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                         height: 52,
                         margin: const EdgeInsets.only(bottom: 16),
                         child: OutlinedButton.icon(
-                          onPressed: () => context.push(AppRoutes.roommateRegister),
-                          icon: const Icon(Icons.add_circle_outline, color: AppColors.textPrimary, size: 20),
+                          onPressed: () =>
+                              context.push(AppRoutes.roommateRegister),
+                          icon: const Icon(
+                            Icons.add_circle_outline,
+                            color: AppColors.textPrimary,
+                            size: 20,
+                          ),
                           label: const Text(
                             'Invite New Roommate',
                             style: TextStyle(
@@ -324,7 +407,10 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                           ),
                           style: OutlinedButton.styleFrom(
                             backgroundColor: Colors.white,
-                            side: const BorderSide(color: AppColors.textPrimary, width: 1.5),
+                            side: const BorderSide(
+                              color: AppColors.textPrimary,
+                              width: 1.5,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -339,7 +425,10 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFF0F172A), width: 1.5),
+                          border: Border.all(
+                            color: const Color(0xFF0F172A),
+                            width: 1.5,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.05),
@@ -355,7 +444,9 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                               padding: const EdgeInsets.all(16),
                               decoration: const BoxDecoration(
                                 color: Color(0xFFFAFAFA),
-                                borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(14),
+                                ),
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
@@ -364,19 +455,27 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                                   height: 240,
                                   width: double.infinity,
                                   fit: BoxFit.contain,
-                                  errorBuilder: (context, error, stackTrace) => Container(
-                                    height: 180,
-                                    color: const Color(0xFFF1F5F9),
-                                    child: const Center(
-                                      child: Icon(Icons.house_siding_rounded, size: 64, color: AppColors.primary),
-                                    ),
-                                  ),
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
+                                        height: 180,
+                                        color: const Color(0xFFF1F5F9),
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.house_siding_rounded,
+                                            size: 64,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ),
                                 ),
                               ),
                             ),
                             const Divider(height: 1, color: AppColors.border),
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                                horizontal: 16,
+                              ),
                               child: Text(
                                 'Sketch: Household Dynamic Layout',
                                 textAlign: TextAlign.center,
