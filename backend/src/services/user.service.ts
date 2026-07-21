@@ -2,7 +2,7 @@
  * UserService - Business Logic cho Module 1: Auth & Profile (UC01-UC05)
  *
  * Điều phối UserRepository + Cloudinary + Firebase Auth (SMS OTP).
- * Mọi message lỗi là tiếng Việt, ném HttpError để route map sang response.
+ * Mọi message lỗi là tiếng Anh (khớp UI), ném HttpError để route map sang response.
  *
  * Business Rules chính:
  * - BR-01: không tự đăng ký; mật khẩu mặc định phải đổi ở lần login đầu
@@ -40,11 +40,11 @@ const LOGIN_LOCK_WINDOW_MS = 15 * 60 * 1000;
 const FULL_NAME_MAX = 100;
 
 // MSG theo SRS
-const MSG_LOGIN_FAILED = 'Số điện thoại hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.';
-const MSG_INACTIVE = 'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ Ban quản lý.';
-const MSG_OTP_INVALID = 'Phiên xác thực OTP không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.';
-const MSG_PHONE_EXISTS = 'Số điện thoại đã tồn tại. Vui lòng nhập số khác.';
-const MSG_SAME_PASSWORD = 'Mật khẩu mới không được trùng mật khẩu hiện tại.';
+const MSG_LOGIN_FAILED = 'Incorrect phone number or password. Please check and try again.';
+const MSG_INACTIVE = 'Your account has been deactivated. Please contact the building management.';
+const MSG_OTP_INVALID = 'The OTP session is invalid or has expired. Please try again.';
+const MSG_PHONE_EXISTS = 'This phone number already exists. Please use another one.';
+const MSG_SAME_PASSWORD = 'The new password must be different from the current one.';
 
 /**
  * Bộ đếm đăng nhập sai theo SĐT (in-memory).
@@ -66,7 +66,7 @@ function assertLoginNotLocked(phone: string): void {
     );
     throw new HttpError(
       429,
-      `Bạn đã nhập sai quá ${LOGIN_MAX_FAILURES} lần. Vui lòng thử lại sau ${waitMinutes} phút.`,
+      `Too many failed attempts (${LOGIN_MAX_FAILURES}). Please try again in ${waitMinutes} minute(s).`,
     );
   }
 }
@@ -106,8 +106,8 @@ export async function authenticateUser(
   password: string,
   fcmToken?: string,
 ): Promise<LoginResponseData> {
-  if (!phone?.trim()) throw new HttpError(400, 'Vui lòng nhập Số điện thoại.');
-  if (!password) throw new HttpError(400, 'Vui lòng nhập Mật khẩu.');
+  if (!phone?.trim()) throw new HttpError(400, 'Please enter a phone number.');
+  if (!password) throw new HttpError(400, 'Please enter a password.');
 
   const trimmedPhone = phone.trim();
   assertLoginNotLocked(trimmedPhone); // chống brute-force
@@ -170,14 +170,14 @@ export async function invalidateSession(userId: number, fcmToken?: string): Prom
  * Việc sinh mã, gửi SMS, đếm nhập sai, hết hạn do Firebase đảm nhiệm (BR-08).
  */
 export async function ensureAccountForPasswordReset(phone: string): Promise<void> {
-  if (!phone?.trim()) throw new HttpError(400, 'Vui lòng nhập Số điện thoại.');
+  if (!phone?.trim()) throw new HttpError(400, 'Please enter a phone number.');
 
   const user = await userRepo.findByPhone(phone.trim());
   if (!user) {
     // Trade-off có chủ đích: message này cho phép dò SĐT đã đăng ký (user
     // enumeration), nhưng SRS UC03 yêu cầu báo rõ để cư dân gõ nhầm số biết
     // đường sửa. Firebase tự rate-limit SMS theo số/thiết bị.
-    throw new HttpError(404, 'Số điện thoại không tồn tại trong hệ thống.');
+    throw new HttpError(404, 'This phone number is not registered in the system.');
   }
   if (user.status !== 'ACTIVE') {
     throw new HttpError(403, MSG_INACTIVE); // BR-05
@@ -236,7 +236,7 @@ export async function resetPasswordWithFirebase(
 
 export async function getUserProfile(userId: number): Promise<PublicUser> {
   const user = await userRepo.findById(userId);
-  if (!user) throw new HttpError(404, 'Không tìm thấy người dùng.');
+  if (!user) throw new HttpError(404, 'User not found.');
   return toPublicUser(user);
 }
 
@@ -251,17 +251,17 @@ export async function updateUserProfile(
   avatarBuffer?: Buffer,
   currentPassword?: string,
 ): Promise<PublicUser & { avatarUploadFailed?: true }> {
-  if (!fullName?.trim()) throw new HttpError(400, 'Trường bắt buộc không được để trống.');
-  if (!phone?.trim()) throw new HttpError(400, 'Vui lòng nhập Số điện thoại.');
+  if (!fullName?.trim()) throw new HttpError(400, 'Required fields must not be empty.');
+  if (!phone?.trim()) throw new HttpError(400, 'Please enter a phone number.');
   if (fullName.trim().length > FULL_NAME_MAX) {
-    throw new HttpError(400, `Họ tên tối đa ${FULL_NAME_MAX} ký tự.`);
+    throw new HttpError(400, `Full name must be at most ${FULL_NAME_MAX} characters.`);
   }
 
   const phoneError = validatePhoneNumber(phone.trim()); // BR-02
   if (phoneError) throw new HttpError(400, phoneError);
 
   const current = await userRepo.findById(userId);
-  if (!current) throw new HttpError(404, 'Không tìm thấy người dùng.');
+  if (!current) throw new HttpError(404, 'User not found.');
 
   // BR-02: phone unique
   const phoneChanged = phone.trim() !== current.phone_number;
@@ -269,10 +269,10 @@ export async function updateUserProfile(
     // Đổi SĐT = đổi username đăng nhập + nơi nhận OTP khôi phục -> yêu cầu
     // xác nhận mật khẩu hiện tại, kẻ chiếm được phiên không chiếm luôn tài khoản.
     if (!currentPassword) {
-      throw new HttpError(400, 'Vui lòng nhập mật khẩu hiện tại để đổi số điện thoại.');
+      throw new HttpError(400, 'Please enter your current password to change the phone number.');
     }
     if (!(await comparePassword(currentPassword, current.password_hash))) {
-      throw new HttpError(400, 'Mật khẩu hiện tại không đúng.');
+      throw new HttpError(400, 'The current password is incorrect.');
     }
     const existed = await userRepo.findByPhone(phone.trim());
     if (existed) throw new HttpError(409, MSG_PHONE_EXISTS);
@@ -320,12 +320,12 @@ export async function changePassword(
   newPassword: string,
 ): Promise<{ token: string }> {
   const user = await userRepo.findById(userId);
-  if (!user) throw new HttpError(404, 'Không tìm thấy người dùng.');
+  if (!user) throw new HttpError(404, 'User not found.');
 
   // 400 (không phải 401) - 401 dành riêng cho "phiên hết hiệu lực"
   // để mobile auto-logout không đá user ra khi gõ nhầm mật khẩu cũ
   if (!(await comparePassword(oldPassword, user.password_hash))) {
-    throw new HttpError(400, 'Mật khẩu hiện tại không đúng.');
+    throw new HttpError(400, 'The current password is incorrect.');
   }
 
   const complexityError = validatePasswordComplexity(newPassword); // BR-09

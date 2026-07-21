@@ -46,15 +46,15 @@ class StaffMember {
       };
 }
 
-/// Nhãn tiếng Việt cho role nhân viên.
+/// Nhãn hiển thị cho role nhân viên (tiếng Anh theo wireframe).
 String staffRoleLabel(String role) {
   switch (role) {
     case 'SECURITY_GUARD':
-      return 'Bảo vệ';
+      return 'Security';
     case 'JANITOR':
-      return 'Lao công';
+      return 'Janitor';
     case 'TECHNICIAN':
-      return 'Kỹ thuật viên';
+      return 'Technician';
     default:
       return role;
   }

@@ -45,20 +45,20 @@ export function jsonError(error: unknown): NextResponse<ApiResponse> {
   if (pgError?.code === '23505') {
     if (pgError.constraint === 'users_phone_number_key') {
       return NextResponse.json(
-        { status: 'error', message: 'Số điện thoại đã tồn tại. Vui lòng nhập số khác.' },
+        { status: 'error', message: 'This phone number already exists. Please use another one.' },
         { status: 409 },
       );
     }
     if (pgError.constraint === 'invoices_apartment_id_month_year_key') {
       return NextResponse.json(
-        { status: 'error', message: 'Hóa đơn của căn hộ này trong kỳ thanh toán đã chọn đã được lập trước đó.' },
+        { status: 'error', message: 'An invoice for this apartment and billing period already exists.' },
         { status: 409 },
       );
     }
   }
   console.error('[API] Lỗi không xác định:', error);
   return NextResponse.json(
-    { status: 'error', message: 'Đã có lỗi xảy ra. Vui lòng thử lại sau.' },
+    { status: 'error', message: 'Something went wrong. Please try again later.' },
     { status: 500 },
   );
 }
@@ -82,14 +82,14 @@ export async function requireAuth(
 ): Promise<JwtPayload> {
   const header = req.headers.get('authorization');
   if (!header || !header.startsWith('Bearer ')) {
-    throw new HttpError(401, 'Vui lòng đăng nhập để tiếp tục.');
+    throw new HttpError(401, 'Please log in to continue.');
   }
 
   let payload: JwtPayload;
   try {
     payload = verifyToken(header.slice('Bearer '.length));
   } catch {
-    throw new HttpError(401, 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.');
+    throw new HttpError(401, 'Your session is invalid or has expired.');
   }
 
   // 1 query duy nhất: check tồn tại + ACTIVE (BR-04) + token_version (BR-07)
@@ -100,15 +100,15 @@ export async function requireAuth(
   );
   const user = result.rows[0];
   if (!user || user.status !== 'ACTIVE') {
-    throw new HttpError(401, 'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ Ban quản lý.');
+    throw new HttpError(401, 'Your account has been deactivated. Please contact the building management.');
   }
   if (user.token_version !== payload.tv) {
-    throw new HttpError(401, 'Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.');
+    throw new HttpError(401, 'Your session has expired. Please log in again.');
   }
 
   // BR-01: đang dùng mật khẩu mặc định -> chặn mọi API khác cho tới khi đổi
   if (user.must_change_password && !options?.allowPendingPasswordChange) {
-    throw new HttpError(403, 'Bạn cần đổi mật khẩu mặc định trước khi tiếp tục sử dụng.');
+    throw new HttpError(403, 'You must change your default password before continuing.');
   }
 
   // Luôn dùng roles mới nhất từ DB (role có thể đổi sau khi ký token - UC39),
@@ -118,7 +118,7 @@ export async function requireAuth(
   if (allowedRoles && allowedRoles.length > 0) {
     const permitted = payload.roles.some((r) => allowedRoles.includes(r));
     if (!permitted) {
-      throw new HttpError(403, 'Bạn không có quyền thực hiện thao tác này.');
+      throw new HttpError(403, 'You do not have permission to perform this action.');
     }
   }
 
