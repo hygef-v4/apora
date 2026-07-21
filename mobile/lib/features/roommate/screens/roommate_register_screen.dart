@@ -55,14 +55,14 @@ class _RoommateRegisterScreenState extends ConsumerState<RoommateRegisterScreen>
         sourcePath: picked.path,
         uiSettings: [
           AndroidUiSettings(
-            toolbarTitle: 'Cắt ảnh CCCD',
+            toolbarTitle: 'Crop ID Photo',
             toolbarColor: AppColors.primary,
             toolbarWidgetColor: Colors.white,
             initAspectRatio: CropAspectRatioPreset.original,
             lockAspectRatio: false,
           ),
           IOSUiSettings(
-            title: 'Cắt ảnh CCCD',
+            title: 'Crop ID Photo',
           ),
         ],
       );
@@ -72,7 +72,7 @@ class _RoommateRegisterScreenState extends ConsumerState<RoommateRegisterScreen>
       // BR-10: Nén ảnh phía client xuống dưới 500KB trước khi gửi
       final compressed = await ImageUtil.compressUnder500Kb(croppedFile.path);
       if (compressed == null) {
-        _showMessage('Không thể nén ảnh. Vui lòng chọn ảnh khác.');
+        _showMessage('Unable to compress image. Please select another image.');
         return;
       }
 
@@ -84,7 +84,7 @@ class _RoommateRegisterScreenState extends ConsumerState<RoommateRegisterScreen>
         }
       });
     } catch (e) {
-      _showMessage('Lỗi chọn ảnh: $e');
+      _showMessage('Image selection error: $e');
     } finally {
       if (mounted) {
         setState(() => _isPickingImage = false);

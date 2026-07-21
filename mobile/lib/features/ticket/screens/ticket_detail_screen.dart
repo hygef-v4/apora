@@ -292,7 +292,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
               ),
               _InfoRow(
                 icon: Icons.phone_outlined,
-                label: 'SĐT',
+                label: 'Phone',
                 value: ticket.residentPhone,
               ),
             ],
@@ -315,7 +315,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                 ),
                 _InfoRow(
                   icon: Icons.phone_outlined,
-                  label: 'SĐT',
+                  label: 'Phone',
                   value: ticket.assignedTask!.assigneePhone ?? '—',
                 ),
               ],

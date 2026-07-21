@@ -37,25 +37,25 @@ class ManagementHistoryItem {
   }
 }
 
-/// Returns a human-readable Vietnamese label for an audit action code.
+/// Returns a human-readable English label for an audit action code.
 String actionLabel(String action) {
   switch (action) {
     case 'STAFF_CREATE':
-      return 'Tạo tài khoản nhân viên';
+      return 'Created staff account';
     case 'STAFF_UPDATE':
-      return 'Cập nhật hồ sơ nhân viên';
+      return 'Updated staff profile';
     case 'STAFF_DEACTIVATE':
-      return 'Vô hiệu hóa nhân viên';
+      return 'Deactivated staff account';
     case 'STAFF_RESET_PASSWORD':
-      return 'Đặt lại mật khẩu nhân viên';
+      return 'Reset staff password';
     case 'MANAGER_CREATE':
-      return 'Tạo tài khoản quản lý';
+      return 'Created manager account';
     case 'MANAGER_UPDATE':
-      return 'Cập nhật hồ sơ quản lý';
+      return 'Updated manager profile';
     case 'MANAGER_DEACTIVATE':
-      return 'Vô hiệu hóa quản lý';
+      return 'Deactivated manager account';
     case 'PROFILE_PHONE_CHANGE':
-      return 'Đổi số điện thoại';
+      return 'Changed phone number';
     default:
       return action;
   }
