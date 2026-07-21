@@ -11,11 +11,7 @@ import '../../management/models/apartment.dart';
 import '../providers/chat_provider.dart';
 import '../../../core/network/dio_client.dart';
 
-/// UC41 - Danh sách tin nhắn hỗ trợ của Quản lý.
-/// Đã được thiết kế lại:
-/// - Danh sách căn hộ dạng lưới danh mục căn hộ (nhãn phòng, màu block, thông tin tầng/diện tích/cư dân).
-/// - Hiển thị badge đỏ báo số lượng tin nhắn chưa đọc đối với các phòng đang hoạt động.
-/// - Bấm vào sẽ mở màn hình tin nhắn chat trực tiếp của cư dân ở căn hộ đó.
+/// UC41 - Manager chat list screen.
 class ManagerChatListScreen extends ConsumerStatefulWidget {
   const ManagerChatListScreen({super.key});
 
@@ -81,13 +77,13 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
       body: Column(
         children: [
           GradientHeader(
-            title: 'Hỗ trợ',
-            subtitle: 'Nhắn tin hỗ trợ theo căn hộ',
+            title: 'Support',
+            subtitle: 'Apartment support chat',
             showBack: false,
             actions: [
               HeaderIconButton(
                 icon: _searchOpen ? Icons.search_off : Icons.search,
-                tooltip: 'Tìm kiếm',
+                tooltip: 'Search',
                 onTap: () => setState(() {
                   _searchOpen = !_searchOpen;
                   if (!_searchOpen) _searchController.clear();
@@ -103,7 +99,7 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
                 autofocus: true,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                  hintText: 'Tìm theo số phòng, tên cư dân...',
+                  hintText: 'Search by unit, resident name...',
                   hintStyle: const TextStyle(fontSize: 13),
                   prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _searchController.text.isEmpty
@@ -138,7 +134,7 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
                           ref.read(apartmentDirectoryProvider.notifier).refresh();
                           ref.read(chatSessionsProvider.notifier).refresh();
                         },
-                        child: const Text('Thử lại'),
+                        child: const Text('Retry'),
                       ),
                     ],
                   ),
@@ -156,7 +152,7 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
                         const Icon(Icons.chat_bubble_outline, size: 64, color: AppColors.textTertiary),
                         const SizedBox(height: 16),
                         Text(
-                          'Không tìm thấy căn hộ nào.',
+                          'No apartments found.',
                           style: TextStyle(color: Colors.grey[600], fontSize: 14),
                         ),
                       ],
@@ -164,7 +160,6 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
                   );
                 }
 
-                // Lấy danh sách tin nhắn hoạt động
                 final sessions = sessionsAsync.value ?? [];
 
                 return RefreshIndicator(
@@ -178,9 +173,7 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
                     itemBuilder: (context, index) {
                       final apt = visibleApartments[index];
                       
-                      // Tìm tin nhắn tương ứng với số phòng này
                       final roomSessions = sessions.where((s) => s.unitNumber == apt.unitNumber).toList();
-                      // Ưu tiên tin có tin chưa đọc hoặc mới nhất
                       roomSessions.sort((a, b) {
                         final unreadCompare = b.unreadCount.compareTo(a.unreadCount);
                         if (unreadCompare != 0) return unreadCompare;
@@ -188,9 +181,8 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
                       });
                       final activeSession = roomSessions.isNotEmpty ? roomSessions.first : null;
 
-                      // Phân giải các giá trị hiển thị & điều hướng từ chat_room.resident_id
                       final int targetResidentId = activeSession != null ? activeSession.residentId : (apt.ownerId ?? 0);
-                      final String targetResidentName = activeSession != null ? activeSession.residentName : (apt.ownerName ?? 'Chưa có chủ hộ');
+                      final String targetResidentName = activeSession != null ? activeSession.residentName : (apt.ownerName ?? 'No owner assigned');
                       final int unreadCount = activeSession != null ? activeSession.unreadCount : 0;
 
                       final prefix = _getPrefix(apt.unitNumber);
@@ -203,12 +195,11 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
                             if (targetResidentId == 0) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Căn hộ hiện đang trống, chưa có cư dân nhận phòng.'),
+                                  content: Text('Apartment is currently empty. No resident has checked in.'),
                                 ),
                               );
                               return;
                             }
-                            // Mở màn chat trực tiếp với cư dân được phân giải
                             context.push(
                               AppRoutes.chatDetailPath(targetResidentId),
                               extra: targetResidentName,
@@ -240,7 +231,7 @@ class _ManagerChatListScreenState extends ConsumerState<ManagerChatListScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Căn hộ ${apt.unitNumber}',
+                                      'Apartment ${apt.unitNumber}',
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
