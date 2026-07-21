@@ -57,8 +57,8 @@ class TaskBoardScreen extends ConsumerWidget {
       ),
       bottomNavigationBar: AppBottomNav(
         items: const [
-          AppBottomNavItem(icon: Icons.home, label: 'Trang chủ'),
-          AppBottomNavItem(icon: Icons.build_outlined, label: 'Công việc'),
+          AppBottomNavItem(icon: Icons.home, label: 'Home'),
+          AppBottomNavItem(icon: Icons.build_outlined, label: 'Tasks'),
         ],
         currentIndex: nav.tabIndex,
         onTap: (index) {

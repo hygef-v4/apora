@@ -26,10 +26,10 @@ class _ManagerShellState extends State<ManagerShell> {
   int _index = 0;
 
   static const _tabs = [
-    AppBottomNavItem(icon: Icons.home, label: 'Trang chủ'),
-    AppBottomNavItem(icon: Icons.groups, label: 'Quản lý'),
-    AppBottomNavItem(icon: Icons.bar_chart, label: 'Báo cáo'),
-    AppBottomNavItem(icon: Icons.chat, label: 'Hỗ trợ'),
+    AppBottomNavItem(icon: Icons.home, label: 'Home'),
+    AppBottomNavItem(icon: Icons.groups, label: 'Management'),
+    AppBottomNavItem(icon: Icons.bar_chart, label: 'Reports'),
+    AppBottomNavItem(icon: Icons.chat, label: 'Support'),
   ];
 
   @override

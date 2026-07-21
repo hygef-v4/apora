@@ -29,10 +29,10 @@ class _ResidentHomeScreenState extends ConsumerState<ResidentHomeScreen> {
   int _index = 0;
 
   static const _tabs = [
-    AppBottomNavItem(icon: Icons.home, label: 'Trang chủ'),
-    AppBottomNavItem(icon: Icons.receipt_long, label: 'Hóa đơn'),
-    AppBottomNavItem(icon: Icons.build, label: 'Bảo trì'),
-    AppBottomNavItem(icon: Icons.chat_bubble, label: 'Tin nhắn'),
+    AppBottomNavItem(icon: Icons.home, label: 'Home'),
+    AppBottomNavItem(icon: Icons.receipt_long, label: 'Bills'),
+    AppBottomNavItem(icon: Icons.build, label: 'Tickets'),
+    AppBottomNavItem(icon: Icons.chat_bubble, label: 'Messages'),
   ];
 
   void _switchTab(int index) {
@@ -80,7 +80,7 @@ class _HomeTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider).user;
-    final firstName = user?.fullName.split(' ').last ?? 'Cư dân';
+    final firstName = user?.fullName.split(' ').last ?? 'Resident';
     
     final billingState = ref.watch(billingProvider);
     final unpaidInvoices = billingState.invoices.where((inv) => inv.status == 'UNPAID' || inv.status == 'PARTIAL').toList();
@@ -139,12 +139,12 @@ class _HomeTab extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Cư dân · Chung cư Apora',
+                            'Resident · Apora Apartment',
                             style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13, fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Chào $firstName 👋',
+                            'Welcome, $firstName 👋',
                             style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -175,7 +175,7 @@ class _HomeTab extends ConsumerWidget {
                     const SizedBox(width: 4),
                     IconButton(
                       icon: const Icon(Icons.logout, color: Colors.white),
-                      tooltip: 'Đăng xuất',
+                      tooltip: 'Logout',
                       onPressed: () => confirmAndLogout(context, ref),
                     ),
                   ],
@@ -201,7 +201,7 @@ class _HomeTab extends ConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Hoá đơn tháng ${currentInvoice.monthYear}',
+                              'Bill for Month ${currentInvoice.monthYear}',
                               style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                             Container(
@@ -211,7 +211,7 @@ class _HomeTab extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Text(
-                                'Chưa thanh toán',
+                                'Unpaid',
                                 style: TextStyle(color: Color(0xFF8B6400), fontSize: 11, fontWeight: FontWeight.bold),
                               ),
                             ),
@@ -224,7 +224,7 @@ class _HomeTab extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Hạn: ${DateFormat('dd/MM/yyyy').format(currentInvoice.dueDate)}',
+                          'Due Date: ${DateFormat('dd/MM/yyyy').format(currentInvoice.dueDate)}',
                           style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
                         ),
                         const SizedBox(height: 20),
@@ -259,7 +259,7 @@ class _HomeTab extends ConsumerWidget {
                                 if (context.mounted) {
                                   Navigator.of(context).pop(); // Đóng loading dialog
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Lỗi tải link thanh toán: $e')),
+                                    SnackBar(content: Text('Error loading payment link: $e')),
                                   );
                                 }
                               }
@@ -269,7 +269,7 @@ class _HomeTab extends ConsumerWidget {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               elevation: 0,
                             ),
-                            child: const Text('Thanh toán ngay', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                            child: const Text('PAY NOW', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -301,7 +301,7 @@ class _HomeTab extends ConsumerWidget {
                         const SizedBox(width: 16),
                         const Expanded(
                           child: Text(
-                            'Không có hoá đơn chưa thanh toán',
+                            'No pending bills',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                           ),
                         ),
@@ -324,22 +324,22 @@ class _HomeTab extends ConsumerWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Thông báo từ BQL', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                            const Text('Building Announcements', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                             GestureDetector(
                               onTap: () => context.push(AppRoutes.notifications),
-                              child: const Text('Xem tất cả', style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                              child: const Text('View All', style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600)),
                             ),
                           ],
                         ),
                       ),
                       const _NotificationItem(
                         icon: Icons.water_drop, iconColor: Color(0xFF3B82F6), iconBg: Color(0xFFEFF6FF),
-                        title: 'Cúp nước bảo trì', time: 'Thứ 7, 28/6 từ 8h-11h sáng', duration: '1 giờ'
+                        title: 'Water maintenance shutdown', time: 'Saturday, Jun 28 from 8AM - 11AM', duration: '1 hour ago'
                       ),
                       const Divider(height: 1, indent: 64, endIndent: 20, color: AppColors.divider),
                       const _NotificationItem(
                         icon: Icons.celebration, iconColor: Color(0xFF10B981), iconBg: Color(0xFFECFDF5),
-                        title: 'Tiệc cư dân tháng 7', time: 'Sảnh tầng trệt - 06/07 19h', duration: '2 ngày'
+                        title: 'July Resident Party', time: 'Ground Lobby - Jul 6th, 7 PM', duration: '2 days ago'
                       ),
                       const SizedBox(height: 12),
                     ],
