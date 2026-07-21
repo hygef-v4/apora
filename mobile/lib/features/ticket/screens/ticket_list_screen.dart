@@ -8,6 +8,7 @@ import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/ticket.dart';
 import '../providers/ticket_provider.dart';
+import '../widgets/ticket_category.dart';
 
 /// UC18 - Danh sách sự cố (theo màn FID-18).
 /// Đã được thiết kế lại theo mockup giao diện cao cấp:
@@ -42,13 +43,13 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
 
   String _getRelativeTime(DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.isNegative) return 'Vừa xong';
+    if (diff.isNegative) return 'Just now';
     if (diff.inMinutes < 60) {
-      return '${diff.inMinutes.clamp(1, 59)} phút trước';
+      return '${diff.inMinutes.clamp(1, 59)} min ago';
     } else if (diff.inHours < 24) {
-      return '${diff.inHours} giờ trước';
+      return '${diff.inHours}h ago';
     } else if (diff.inDays < 30) {
-      return '${diff.inDays} ngày trước';
+      return '${diff.inDays}d ago';
     }
     return '${dt.day}/${dt.month}/${dt.year}';
   }
@@ -73,24 +74,24 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
   Widget _buildStatusBadge(String status) {
     switch (status) {
       case 'RESOLVED':
-        return StatusBadge.success('Đã xong');
+        return StatusBadge.success('Resolved');
       case 'ASSIGNED':
         return const StatusBadge(
-          text: 'Đã phân công',
+          text: 'Assigned',
           color: Color(0xFF0284C7),
           backgroundColor: Color(0xFFF0F9FF),
         );
       case 'PROCESSING':
-        return StatusBadge.warning('Đang xử lý');
+        return StatusBadge.warning('Processing');
       case 'CANCELLED':
         return const StatusBadge(
-          text: 'Đã hủy',
+          text: 'Cancelled',
           color: Color(0xFF64748B),
           backgroundColor: Color(0xFFF1F5F9),
         );
       default:
         return const StatusBadge(
-          text: 'Chờ xử lý',
+          text: 'Pending',
           color: Color(0xFFEA580C),
           backgroundColor: Color(0xFFFFF7ED),
         );
@@ -162,7 +163,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Bảo trì',
+                            'Ticket Management',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
@@ -171,7 +172,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '$processingCount đang xử lý · $pendingCount mới',
+                            '$processingCount processing · $pendingCount new',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.white.withValues(alpha: 0.7),
@@ -182,7 +183,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                     ),
                     IconButton(
                       icon: Icon(_searchOpen ? Icons.search_off : Icons.search, color: Colors.white),
-                      tooltip: 'Tìm kiếm',
+                      tooltip: 'Search',
                       onPressed: () => setState(() {
                         _searchOpen = !_searchOpen;
                         if (!_searchOpen) _searchController.clear();
@@ -191,7 +192,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                     if (isResident)
                       IconButton(
                         icon: const Icon(Icons.add, color: Colors.white),
-                        tooltip: 'Báo sự cố',
+                        tooltip: 'Report Issue',
                         onPressed: () async {
                           await context.push(AppRoutes.ticketCreate);
                           if (mounted) ref.read(ticketProvider.notifier).fetchTickets();
@@ -210,7 +211,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                 autofocus: true,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                  hintText: 'Tìm theo người báo, số phòng...',
+                  hintText: 'Search by reporter, room...',
                   hintStyle: const TextStyle(fontSize: 13),
                   prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _searchController.text.isEmpty
@@ -237,7 +238,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
               child: Row(
                 children: [
                   _buildTabItem(
-                    label: 'Tất cả ($total)',
+                    label: 'All ($total)',
                     selected: _filter == null,
                     onTap: () => setState(() => _filter = null),
                     selectedBgColor: const Color(0xFF1E293B),
@@ -247,7 +248,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                   ),
                   const SizedBox(width: 8),
                   _buildTabItem(
-                    label: 'Chờ xử lý ($pendingCount)',
+                    label: 'Pending ($pendingCount)',
                     selected: _filter == 'PENDING',
                     onTap: () => setState(() => _filter = 'PENDING'),
                     selectedBgColor: const Color(0xFFFFF7ED),
@@ -257,7 +258,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                   ),
                   const SizedBox(width: 8),
                   _buildTabItem(
-                    label: 'Đã phân công ($assignedCount)',
+                    label: 'Assigned ($assignedCount)',
                     selected: _filter == 'ASSIGNED',
                     onTap: () => setState(() => _filter = 'ASSIGNED'),
                     selectedBgColor: const Color(0xFFF0F9FF),
@@ -267,7 +268,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                   ),
                   const SizedBox(width: 8),
                   _buildTabItem(
-                    label: 'Đang xử lý ($processingCount)',
+                    label: 'Processing ($processingCount)',
                     selected: _filter == 'PROCESSING',
                     onTap: () => setState(() => _filter = 'PROCESSING'),
                     selectedBgColor: const Color(0xFFFFFBEB),
@@ -277,7 +278,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                   ),
                   const SizedBox(width: 8),
                   _buildTabItem(
-                    label: 'Đã xong ($resolvedCount)',
+                    label: 'Resolved ($resolvedCount)',
                     selected: _filter == 'RESOLVED',
                     onTap: () => setState(() => _filter = 'RESOLVED'),
                     selectedBgColor: const Color(0xFFF0FDF4),
@@ -287,9 +288,9 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                   ),
                   const SizedBox(width: 8),
                   _buildTabItem(
-                    label: 'Đã hủy ($cancelledCount)',
+                    label: 'Cancelled ($cancelledCount)',
                     selected: _filter == 'CANCELLED',
-                    onTap: () => setState(() => _filter == 'CANCELLED'),
+                    onTap: () => setState(() => _filter = 'CANCELLED'),
                     selectedBgColor: const Color(0xFFF1F5F9),
                     selectedTextColor: const Color(0xFF64748B),
                     unselectedTextColor: const Color(0xFF64748B),
@@ -356,8 +357,8 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
       return _emptyOrError(
         icon: Icons.build_circle_outlined,
         message: searching
-            ? 'Không tìm thấy sự cố nào khớp từ khóa.'
-            : 'Không có sự cố nào.',
+            ? 'No tickets match your search.'
+            : 'No tickets found.',
       );
     }
     return RefreshIndicator(
@@ -420,7 +421,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  t.category,
+                  ticketCategoryLabel(t.category),
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -477,7 +478,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
             TextButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('Thử lại'),
+              label: const Text('Retry'),
             ),
           ],
         ],

@@ -98,9 +98,9 @@ void main() {
       expect(find.text('Sửa ống nước P.502'), findsOneWidget);
       expect(find.text('Sửa ổ cắm P.301'), findsOneWidget);
 
-      // Filter tab 'Đang làm'
-      final activeChip = find.textContaining('Active');
-      await tester.tap(activeChip);
+      // Lọc tab 'Assigned' -> chỉ còn công việc ASSIGNED (P.502)
+      final assignedChip = find.text('Assigned (1)');
+      await tester.tap(assignedChip);
       await tester.pumpAndSettle();
 
       expect(find.text('Sửa ống nước P.502'), findsOneWidget);

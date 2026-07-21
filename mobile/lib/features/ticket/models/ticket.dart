@@ -133,21 +133,21 @@ class TicketDetail extends Ticket {
   }
 }
 
-/// Nhãn tiếng Việt cho từng trạng thái sự cố (dùng cho badge/hiển thị).
+/// Nhãn hiển thị cho từng trạng thái sự cố (dùng cho badge/hiển thị).
 const Map<String, String> kTicketStatusLabels = {
-  'PENDING': 'Chờ xử lý',
-  'ASSIGNED': 'Đã phân công',
-  'PROCESSING': 'Đang xử lý',
-  'RESOLVED': 'Đã xong',
-  'CANCELLED': 'Đã hủy',
+  'PENDING': 'Pending',
+  'ASSIGNED': 'Assigned',
+  'PROCESSING': 'Processing',
+  'RESOLVED': 'Resolved',
+  'CANCELLED': 'Cancelled',
 };
 
-/// Nhãn tiếng Việt cho trạng thái công việc của nhân viên (UC20/UC22).
+/// Nhãn hiển thị cho trạng thái công việc của nhân viên (UC20/UC22).
 const Map<String, String> kTaskStatusLabels = {
-  'ASSIGNED': 'Đang chờ',
-  'IN_PROGRESS': 'Đang làm',
-  'COMPLETED': 'Đã xong',
-  'CANCELLED': 'Đã hủy',
+  'ASSIGNED': 'Assigned',
+  'IN_PROGRESS': 'In Progress',
+  'COMPLETED': 'Completed',
+  'CANCELLED': 'Cancelled',
 };
 
 /// BR-40: các bước đổi trạng thái THỦ CÔNG hợp lệ ở dropdown UC20.

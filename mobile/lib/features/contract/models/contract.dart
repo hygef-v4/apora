@@ -252,15 +252,15 @@ class StayExtensionDetail extends StayExtension {
   }
 }
 
-/// Nhãn tiếng Việt cho trạng thái hợp đồng (FID-09 field 4).
+/// Nhãn hiển thị cho trạng thái hợp đồng (FID-09 field 4).
 const Map<String, String> kContractStatusLabels = {
-  'ACTIVE': 'Hiệu lực',
-  'EXPIRED': 'Hết hạn',
+  'ACTIVE': 'Active',
+  'EXPIRED': 'Expired',
 };
 
-/// Nhãn tiếng Việt cho trạng thái yêu cầu gia hạn (FID-11 field 4).
+/// Nhãn hiển thị cho trạng thái yêu cầu gia hạn (FID-11 field 4).
 const Map<String, String> kExtensionStatusLabels = {
-  'PENDING': 'Chờ duyệt',
-  'APPROVED': 'Đã duyệt',
-  'REJECTED': 'Từ chối',
+  'PENDING': 'Pending',
+  'APPROVED': 'Approved',
+  'REJECTED': 'Rejected',
 };

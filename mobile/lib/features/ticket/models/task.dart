@@ -127,7 +127,7 @@ class StaffWorkload {
 
 /// Nhãn tiếng Việt cho role nhân viên vận hành (hiển thị ở màn phân công).
 const Map<String, String> kStaffRoleLabels = {
-  'SECURITY_GUARD': 'Bảo vệ',
-  'JANITOR': 'Lao công',
-  'TECHNICIAN': 'Kỹ thuật',
+  'SECURITY_GUARD': 'Security Guard',
+  'JANITOR': 'Janitor',
+  'TECHNICIAN': 'Technician',
 };

@@ -12,6 +12,7 @@ import '../../../core/widgets/status_badge.dart';
 import '../models/task.dart';
 import '../models/ticket.dart';
 import '../providers/task_provider.dart';
+import '../widgets/ticket_category.dart';
 
 /// UC23 - Chi tiết công việc + cập nhật tiến độ (theo màn FID-23).
 /// Nhân viên được giao: bắt đầu làm (IN_PROGRESS) hoặc nghiệm thu
@@ -92,7 +93,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       // BR-10: nén < 500KB trước khi giữ để upload
       final compressed = await ImageUtil.compressUnder500Kb(picked.path);
       if (compressed == null) {
-        _showSnack('Không thể nén ảnh. Vui lòng chọn ảnh khác.');
+        _showSnack('Could not compress the image. Please pick another.');
         return;
       }
       setState(() {
@@ -100,7 +101,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         _highlightPhotoError = false;
       });
     } catch (e) {
-      _showSnack('Lỗi chọn ảnh: $e');
+      _showSnack('Image pick error: $e');
     } finally {
       if (mounted) setState(() => _isPicking = false);
     }
@@ -113,7 +114,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   Future<void> _complete() async {
     if (_images.isEmpty) {
       setState(() => _highlightPhotoError = true);
-      _showSnack('Cần ít nhất 1 ảnh nghiệm thu để hoàn thành công việc.');
+      _showSnack('At least 1 completion photo is required to finish the task.');
       return;
     }
     await _update('COMPLETED');
@@ -129,8 +130,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             imageBytes: status == 'COMPLETED' ? _images : const [],
           );
       _showSnack(status == 'COMPLETED'
-          ? 'Đã hoàn thành công việc. Sự cố chuyển sang "Đã xong".'
-          : 'Đã bắt đầu xử lý công việc.');
+          ? 'Task completed. The ticket is now marked resolved.'
+          : 'Task started.');
       if (status == 'COMPLETED') {
         setState(_images.clear);
         // FID-23 field 13: hoàn thành xong quay về danh sách công việc
@@ -152,7 +153,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          const GradientHeader(title: 'Chi Tiết Công Việc', showBack: true),
+          const GradientHeader(title: 'Task Detail', showBack: true),
           Expanded(
             child: state.when(
               loading: () => const Center(
@@ -228,18 +229,18 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               const SizedBox(height: 10),
               _InfoRow(
                 icon: Icons.person_outline,
-                label: 'Người giao',
+                label: 'Assigned by',
                 value: task.assignedByName,
               ),
               _InfoRow(
                 icon: Icons.schedule,
-                label: 'Giao lúc',
+                label: 'Assigned on',
                 value: _formatDate(task.assignedAt),
               ),
               if (task.completedAt != null)
                 _InfoRow(
                   icon: Icons.check_circle_outline,
-                  label: 'Hoàn thành',
+                  label: 'Completed on',
                   value: _formatDate(task.completedAt!),
                 ),
             ],
@@ -252,7 +253,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _SectionTitle('Sự cố liên quan'),
+              const _SectionTitle('Related Ticket'),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -272,7 +273,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      task.category,
+                      ticketCategoryLabel(task.category),
                       style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -284,12 +285,12 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               const SizedBox(height: 8),
               _InfoRow(
                 icon: Icons.location_on_outlined,
-                label: 'Căn hộ',
-                value: 'Phòng ${task.unitNumber}',
+                label: 'Apartment',
+                value: 'Room ${task.unitNumber}',
               ),
               _InfoRow(
                 icon: Icons.person_outline,
-                label: 'Người báo',
+                label: 'Reported by',
                 value: task.residentName,
               ),
               const SizedBox(height: 6),
@@ -318,10 +319,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _SectionTitle(
-                    'Ảnh hiện trạng (${task.ticketBeforeImages.length})'),
+                    'Before Photos (${task.ticketBeforeImages.length})'),
                 const SizedBox(height: 4),
                 const Text(
-                  'Ảnh do cư dân cung cấp khi báo sự cố.',
+                  'Photos reported by resident.',
                   style:
                       TextStyle(fontSize: 11, color: AppColors.textSecondary),
                 ),
@@ -339,7 +340,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SectionTitle('Ảnh nghiệm thu (${task.completionImages.length})'),
+                _SectionTitle('Completion Photos (${task.completionImages.length})'),
                 const SizedBox(height: 10),
                 _imageWrap(task.completionImages),
               ],
@@ -354,7 +355,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _SectionTitle('Cập nhật tiến độ'),
+                const _SectionTitle('Update Progress'),
                 const SizedBox(height: 10),
                 TextField(
                   controller: _notesController,
@@ -362,21 +363,21 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   maxLength: 500,
                   enabled: !_isSubmitting,
                   decoration: InputDecoration(
-                    labelText: 'Ghi chú tiến độ (tùy chọn)',
-                    hintText: 'Đã làm gì, thay vật tư nào...',
+                    labelText: 'Progress notes (optional)',
+                    hintText: 'What was done, parts replaced...',
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text('Ảnh nghiệm thu (bắt buộc ≥1 khi hoàn thành, tối đa $_maxImages)',
+                Text('Completion photos (min 1 to complete, max $_maxImages)',
                     style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                         color: AppColors.textPrimary)),
                 const SizedBox(height: 4),
                 const Text(
-                  'Ảnh JPG/PNG, tự động nén trước khi gửi.',
+                  'JPG/PNG, auto-compressed before upload.',
                   style:
                       TextStyle(fontSize: 11, color: AppColors.textSecondary),
                 ),
@@ -410,7 +411,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     height: 46,
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.play_arrow),
-                      label: const Text('BẮT ĐẦU',
+                      label: const Text('START TASK',
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
@@ -435,7 +436,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                                 strokeWidth: 2, color: Colors.white),
                           )
                         : const Icon(Icons.check_circle_outline),
-                    label: const Text('HOÀN THÀNH',
+                    label: const Text('MARK AS COMPLETE',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.success,
@@ -460,7 +461,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _SectionTitle('Ghi chú tiến độ'),
+                const _SectionTitle('Progress Notes'),
                 const SizedBox(height: 8),
                 Text(
                   task.progressNotes!,
@@ -668,7 +669,7 @@ class _ErrorRetry extends StatelessWidget {
                   const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 14),
-            OutlinedButton(onPressed: onRetry, child: const Text('Thử lại')),
+            OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         ),
       ),

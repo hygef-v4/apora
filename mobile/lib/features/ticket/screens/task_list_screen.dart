@@ -9,6 +9,7 @@ import '../../../core/widgets/status_badge.dart';
 import '../models/task.dart';
 import '../models/ticket.dart';
 import '../providers/task_provider.dart';
+import '../widgets/ticket_category.dart';
 import '../../home/screens/task_board_screen.dart';
 
 /// UC22 - Thân danh sách công việc (theo màn FID-22), nhúng dưới header
@@ -22,12 +23,12 @@ class TaskListBody extends ConsumerStatefulWidget {
 }
 
 class _TaskListBodyState extends ConsumerState<TaskListBody> {
-  /// Filter tabs: Tất cả / Đang chờ / Đang làm / Đã xong.
+  /// Filter tabs: All / Assigned / In Progress / Completed.
   static const List<({String? value, String label})> _filters = [
-    (value: null, label: 'Tất cả'),
-    (value: 'ASSIGNED', label: 'Đang chờ'),
-    (value: 'IN_PROGRESS', label: 'Đang làm'),
-    (value: 'COMPLETED', label: 'Đã xong'),
+    (value: null, label: 'All'),
+    (value: 'ASSIGNED', label: 'Assigned'),
+    (value: 'IN_PROGRESS', label: 'In Progress'),
+    (value: 'COMPLETED', label: 'Completed'),
   ];
 
   @override
@@ -143,8 +144,8 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
       return _emptyOrError(
         icon: Icons.assignment_outlined,
         message: currentFilter == null
-            ? 'Chưa có công việc nào được giao cho bạn.'
-            : 'Không có công việc "${currentFilter == 'ASSIGNED' ? 'Đang chờ' : currentFilter == 'IN_PROGRESS' ? 'Đang làm' : 'Đã xong'}".',
+            ? 'No tasks have been assigned to you yet.'
+            : 'No "${currentFilter == 'ASSIGNED' ? 'Assigned' : currentFilter == 'IN_PROGRESS' ? 'In Progress' : 'Completed'}" tasks.',
       );
     }
     return RefreshIndicator(
@@ -177,7 +178,7 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
               children: [
                 Expanded(
                   child: Text(
-                    'Phòng ${t.unitNumber} · ${t.category}',
+                    'Room ${t.unitNumber} · ${ticketCategoryLabel(t.category)}',
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -208,7 +209,7 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
               children: [
                 Expanded(
                   child: Text(
-                    'Giao bởi: ${t.assignedByName}',
+                    'Assigned by: ${t.assignedByName}',
                     style: const TextStyle(
                         fontSize: 11, color: AppColors.textSecondary),
                     overflow: TextOverflow.ellipsis,
@@ -242,7 +243,7 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
                         } catch (e) {
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Lỗi: $e')),
+                            SnackBar(content: Text('Error: $e')),
                           );
                         }
                       },
@@ -257,7 +258,7 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                       child: const Text(
-                        'Bắt đầu',
+                        'Start',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -283,7 +284,7 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                       child: const Text(
-                        'Hoàn thành',
+                        'Complete',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -313,7 +314,7 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
                     padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                   child: const Text(
-                    'Hoàn thành',
+                    'Complete',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -350,7 +351,7 @@ class _TaskListBodyState extends ConsumerState<TaskListBody> {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 14),
-              OutlinedButton(onPressed: onRetry, child: const Text('Thử lại')),
+              OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
             ],
           ],
         ),

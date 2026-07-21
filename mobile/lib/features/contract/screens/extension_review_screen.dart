@@ -57,7 +57,7 @@ class _ExtensionReviewScreenState extends ConsumerState<ExtensionReviewScreen> {
       if (i > 0 && (str.length - i) % 3 == 0) buffer.write('.');
       buffer.write(str[i]);
     }
-    return '$buffer đ';
+    return '$buffer VND';
   }
 
   String _formatFloor(String floor) {

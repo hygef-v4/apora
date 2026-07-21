@@ -39,7 +39,7 @@ class _ContractScreenState extends ConsumerState<ContractScreen> {
       if (i > 0 && (str.length - i) % 3 == 0) buffer.write('.');
       buffer.write(str[i]);
     }
-    return '$buffer đ';
+    return '$buffer VND';
   }
 
   /// Wireframe hiển thị tầng dạng "4th Floor"; dữ liệu số thì thêm hậu tố

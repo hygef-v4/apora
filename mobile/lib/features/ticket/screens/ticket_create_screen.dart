@@ -47,12 +47,12 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
       if (picked == null) return;
       final compressed = await ImageUtil.compressUnder500Kb(picked.path);
       if (compressed == null) {
-        _showMessage('Không thể nén ảnh. Vui lòng chọn ảnh khác.');
+        _showMessage('Could not compress the image. Please pick another.');
         return;
       }
       setState(() => _images.add(compressed));
     } catch (e) {
-      _showMessage('Lỗi chọn ảnh: $e');
+      _showMessage('Image pick error: $e');
     } finally {
       if (mounted) setState(() => _isPicking = false);
     }
@@ -60,7 +60,7 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
 
   Future<void> _submit() async {
     if (_category == null) {
-      _showMessage('Vui lòng chọn danh mục sự cố.');
+      _showMessage('Please select an issue category.');
       return;
     }
     if (!_formKey.currentState!.validate()) return;
@@ -72,7 +72,7 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
             description: _descController.text.trim(),
             imageBytes: _images,
           );
-      _showMessage('Gửi yêu cầu sửa chữa thành công.');
+      _showMessage('Issue reported successfully.');
       if (mounted) context.pop();
     } catch (e) {
       _showMessage(e.toString());
@@ -81,11 +81,11 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
     }
   }
 
-  Widget _buildCategoryItem(String name, IconData icon) {
-    final isSelected = _category == name;
+  Widget _buildCategoryItem(String value, String label, IconData icon) {
+    final isSelected = _category == value;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _category = name),
+        onTap: () => setState(() => _category = value),
         child: Container(
           height: 72,
           decoration: BoxDecoration(
@@ -106,7 +106,7 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                name,
+                label,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -147,7 +147,7 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
                       onPressed: () => Navigator.of(context).maybePop(),
                     ),
                     const Text(
-                      'Gửi yêu cầu bảo trì',
+                      'Report Issue',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -167,7 +167,7 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
                 children: [
                   // 1. Loại sự cố
                   const Text(
-                    'Loại sự cố',
+                    'Issue Category',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -177,24 +177,24 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      _buildCategoryItem('Điện', Icons.lightbulb),
+                      _buildCategoryItem('Điện', 'Electricity', Icons.lightbulb),
                       const SizedBox(width: 12),
-                      _buildCategoryItem('Nước', Icons.water_drop),
+                      _buildCategoryItem('Nước', 'Water', Icons.water_drop),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      _buildCategoryItem('Nội thất', Icons.chair),
+                      _buildCategoryItem('Nội thất', 'Furniture', Icons.chair),
                       const SizedBox(width: 12),
-                      _buildCategoryItem('Khác', Icons.build),
+                      _buildCategoryItem('Khác', 'Other', Icons.build),
                     ],
                   ),
                   const SizedBox(height: 20),
 
                   // 2. Mô tả chi tiết
                   const Text(
-                    'Mô tả chi tiết',
+                    'Description',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -208,7 +208,7 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
                     maxLength: 500,
                     style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                     decoration: InputDecoration(
-                      hintText: 'Mô tả vấn đề cụ thể...',
+                      hintText: 'Describe the issue in detail...',
                       hintStyle: const TextStyle(fontSize: 14, color: AppColors.textTertiary),
                       filled: true,
                       fillColor: Colors.white,
@@ -228,9 +228,9 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
                     ),
                     validator: (val) {
                       final v = val?.trim() ?? '';
-                      if (v.isEmpty) return 'Vui lòng nhập mô tả sự cố.';
+                      if (v.isEmpty) return 'Please enter an issue description.';
                       if (v.length < 10) {
-                        return 'Mô tả phải có ít nhất 10 ký tự.';
+                        return 'Description must be at least 10 characters.';
                       }
                       return null;
                     },
@@ -239,7 +239,7 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
 
                   // 3. Hình ảnh đính kèm
                   const Text(
-                    'Hình ảnh đính kèm',
+                    'Attach Photos',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -279,7 +279,7 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                             )
                           : const Text(
-                              'Gửi yêu cầu',
+                              'SUBMIT TICKET',
                               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                     ),

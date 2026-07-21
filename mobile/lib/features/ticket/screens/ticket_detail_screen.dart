@@ -9,6 +9,7 @@ import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/ticket.dart';
 import '../providers/ticket_provider.dart';
+import '../widgets/ticket_category.dart';
 
 /// UC20 - Chi tiết sự cố (theo màn FID-20).
 /// - MANAGER/LANDLORD: xem đầy đủ + đổi trạng thái (BR-40) + ghi chú nội bộ.
@@ -68,13 +69,13 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
         return StatusBadge.info(label);
       case 'CANCELLED':
         return const StatusBadge(
-          text: 'Đã hủy',
+          text: 'Cancelled',
           color: Color(0xFF64748B),
           backgroundColor: Color(0xFFF1F5F9),
         );
       default: // PENDING - cam (FID-20 field 1)
         return const StatusBadge(
-          text: 'Chờ xử lý',
+          text: 'Pending',
           color: Color(0xFFEA580C),
           backgroundColor: Color(0xFFFFEDD5),
         );
@@ -87,20 +88,20 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hủy sự cố?'),
+        title: const Text('Cancel ticket?'),
         content: const Text(
-          'Bạn có chắc muốn hủy sự cố này? Hành động không thể hoàn tác '
-          'và ảnh đính kèm sẽ bị xóa vĩnh viễn.',
+          'Are you sure you want to cancel this ticket? This action cannot be '
+          'undone and attached photos will be permanently deleted.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Không'),
+            child: const Text('No'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Xác nhận hủy'),
+            child: const Text('Confirm Cancel'),
           ),
         ],
       ),
@@ -116,7 +117,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
     // AT4: không đổi trạng thái và không có ghi chú mới -> chặn lưu
     if (!statusChanged && !notesChanged) {
-      _showSnack('Không có thay đổi để lưu.');
+      _showSnack('No changes to save.');
       return;
     }
     // AT3: hủy phải xác nhận
@@ -132,7 +133,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
             internalNotes: notesChanged ? notes : null,
           );
       setState(() => _selectedStatus = null);
-      _showSnack('Cập nhật sự cố thành công.');
+      _showSnack('Ticket updated successfully.');
     } catch (e) {
       // AT2: lỗi mạng/server -> báo SnackBar, giữ nguyên dữ liệu đã nhập
       _showSnack(e.toString());
@@ -167,7 +168,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                       onPressed: () => Navigator.of(context).maybePop(),
                     ),
                     const Text(
-                      'Chi tiết sự cố',
+                      'Ticket Detail',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -245,7 +246,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  ticket.category,
+                  ticketCategoryLabel(ticket.category),
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -256,12 +257,12 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
               const SizedBox(height: 10),
               _InfoRow(
                 icon: Icons.schedule,
-                label: 'Tạo lúc',
+                label: 'Created',
                 value: _formatDate(ticket.createdAt),
               ),
               _InfoRow(
                 icon: Icons.update,
-                label: 'Cập nhật',
+                label: 'Last Updated',
                 // Chưa từng cập nhật -> hiện "—" (theo screen definition)
                 value: ticket.updatedAt.isAfter(ticket.createdAt)
                     ? _formatDate(ticket.updatedAt)
@@ -277,17 +278,17 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _SectionTitle('Người báo cáo'),
+              const _SectionTitle('Reported By'),
               const SizedBox(height: 8),
               _InfoRow(
                 icon: Icons.person_outline,
-                label: 'Họ tên',
+                label: 'Full Name',
                 value: ticket.residentName,
               ),
               _InfoRow(
                 icon: Icons.location_on_outlined,
-                label: 'Căn hộ',
-                value: 'Phòng ${ticket.unitNumber}',
+                label: 'Apartment',
+                value: 'Room ${ticket.unitNumber}',
               ),
               _InfoRow(
                 icon: Icons.phone_outlined,
@@ -305,11 +306,11 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _SectionTitle('Nhân viên xử lý'),
+                const _SectionTitle('Assigned Staff'),
                 const SizedBox(height: 8),
                 _InfoRow(
                   icon: Icons.engineering_outlined,
-                  label: 'Họ tên',
+                  label: 'Full Name',
                   value: ticket.assignedTask!.assigneeName,
                 ),
                 _InfoRow(
@@ -326,13 +327,13 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _SectionTitle('Nhân viên xử lý'),
+                const _SectionTitle('Assigned Staff'),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Chưa phân công nhân viên',
+                      'No staff assigned yet',
                       style: TextStyle(
                         fontSize: 13,
                         fontStyle: FontStyle.italic,
@@ -351,7 +352,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                       },
                       icon: const Icon(Icons.add, size: 16, color: Color(0xFF149EE7)),
                       label: const Text(
-                        'Phân công',
+                        'Assign',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -372,7 +373,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _SectionTitle('Mô tả sự cố'),
+              const _SectionTitle('Issue Description'),
               const SizedBox(height: 8),
               Container(
                 width: double.infinity,
@@ -401,7 +402,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SectionTitle('Ảnh đính kèm (${ticket.beforeImages.length})'),
+                _SectionTitle('Attached Photos (${ticket.beforeImages.length})'),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 10,
@@ -443,7 +444,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _SectionTitle('Cập nhật trạng thái'),
+                const _SectionTitle('Update Status'),
                 const SizedBox(height: 10),
                 if (nextStatuses.isEmpty)
                   Container(
@@ -455,8 +456,8 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                     ),
                     child: Text(
                       ticket.status == 'RESOLVED'
-                          ? 'Sự cố đã xử lý xong — không thể đổi trạng thái nữa.'
-                          : 'Sự cố đã hủy — không thể đổi trạng thái nữa.',
+                          ? 'This ticket is resolved — status can no longer change.'
+                          : 'This ticket is cancelled — status can no longer change.',
                       style: const TextStyle(
                           fontSize: 12, color: AppColors.textSecondary),
                     ),
@@ -465,13 +466,13 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                   DropdownButtonFormField<String>(
                     initialValue: _selectedStatus,
                     decoration: InputDecoration(
-                      labelText: 'Trạng thái mới',
+                      labelText: 'New Status',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     hint: Text(
-                      'Hiện tại: ${kTicketStatusLabels[ticket.status]}',
+                      'Current: ${kTicketStatusLabels[ticket.status]}',
                       style: const TextStyle(fontSize: 13),
                     ),
                     items: [
@@ -500,8 +501,8 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                   maxLength: 500,
                   enabled: !_isSaving,
                   decoration: InputDecoration(
-                    labelText: 'Ghi chú nội bộ (tùy chọn)',
-                    hintText: 'Ghi chú cho đội xử lý...',
+                    labelText: 'Internal Notes (optional)',
+                    hintText: 'Notes for the handling team...',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -527,7 +528,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text('LƯU THAY ĐỔI',
+                        : const Text('SAVE CHANGES',
                             style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
@@ -646,7 +647,7 @@ class _ErrorRetry extends StatelessWidget {
               style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 14),
-            OutlinedButton(onPressed: onRetry, child: const Text('Thử lại')),
+            OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         ),
       ),
