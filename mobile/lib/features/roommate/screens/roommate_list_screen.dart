@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/gradient_header.dart';
-import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/profile_notifier.dart';
 import '../providers/roommate_provider.dart';
 
@@ -28,14 +27,17 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
     final state = ref.watch(roommateProvider);
     final profile = ref.watch(profileNotifierProvider).value;
 
-    final totalOccupants = state.roommates.where((r) => r.status == 'APPROVED').length + 1; // BR-24: Primary Owner counted
+    // BR-24: Tính chủ hộ + các thành viên được duyệt vào tổng số cư dân
+    final approvedCount = state.roommates.where((r) => r.status == 'APPROVED').length;
+    final totalOccupants = approvedCount + 1; // 1 Chủ hộ + Approved roommates
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Column(
         children: [
+          // Header Bar với Gradient Xanh Xịn xò của App
           GradientHeader(
-            title: 'Thành Viên Phòng',
+            title: 'My Roommates',
             subtitle: 'Quản lý thông tin tạm trú',
             showBack: true,
             actions: [
@@ -46,37 +48,76 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
               ),
             ],
           ),
+
           Expanded(
             child: state.isLoading && state.roommates.isEmpty
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      // Thẻ tóm tắt tổng số thành viên
-                      AppCard(
+                      // 1. TOP CARD: Total Residents Summary (Matching Mockup)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.border, width: 1.0),
+                          boxShadow: AppColors.cardShadow,
+                        ),
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(Icons.group, color: AppColors.primary, size: 28),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Tổng số người đăng ký lưu trú',
-                                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Total Residents',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textSecondary,
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '$totalOccupants người',
-                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.navy),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '$totalOccupants Roommates',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Stacked Avatar circles (👤)(👤)(👤)
+                            SizedBox(
+                              width: 80,
+                              height: 36,
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    left: 0,
+                                    child: CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                                      child: const Icon(Icons.person, size: 18, color: AppColors.primary),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    left: 20,
+                                    child: CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: const Color(0xFFDCFCE7),
+                                      child: const Icon(Icons.person, size: 18, color: Color(0xFF16A34A)),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    left: 40,
+                                    child: CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: const Color(0xFFFEF3C7),
+                                      child: const Icon(Icons.person, size: 18, color: Color(0xFFD97706)),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -85,163 +126,274 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
-                      // Danh sách thành viên (Chủ hộ trước)
-                      const Text(
-                        'Danh sách thành viên',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
-                      ),
-                      const SizedBox(height: 10),
 
-                      // Card của chủ hộ
+                      // 2. ROOMMATE ITEMS LIST (Matching Mockup)
+                      // Thẻ Chủ Hộ (Primary Owner)
                       if (profile != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: AppCard(
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 22,
-                                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                                  child: Text(
-                                    profile.fullName[0].toUpperCase(),
-                                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        profile.fullName,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        profile.phoneNumber,
-                                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                StatusBadge.success('Chủ hộ'),
-                              ],
-                            ),
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border, width: 1.0),
+                            boxShadow: AppColors.cardShadow,
                           ),
-                        ),
-
-                      // Roommates khác
-                      if (state.roommates.isEmpty) ...[
-                        const SizedBox(height: 20),
-                        Center(
-                          child: Column(
+                          child: Row(
                             children: [
-                              const Icon(Icons.people_outline, size: 48, color: AppColors.textTertiary),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Hiện tại chưa có thành viên nào khác trong phòng.',
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                              CircleAvatar(
+                                radius: 22,
+                                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                                child: const Icon(Icons.person, color: AppColors.primary, size: 22),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      profile.fullName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 15,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      profile.phoneNumber,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Badge [ ✔ Approved / Owner ]
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFDCFCE7),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFF16A34A), width: 1.0),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.check_circle, size: 13, color: Color(0xFF16A34A)),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Approved',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF16A34A),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      ] else
-                        ...state.roommates.map((roommate) {
-                          Widget statusBadge;
-                          if (roommate.status == 'APPROVED') {
-                            statusBadge = StatusBadge.success('Đã duyệt');
-                          } else if (roommate.status == 'PENDING') {
-                            statusBadge = StatusBadge.warning('Chờ duyệt');
-                          } else {
-                            statusBadge = const StatusBadge(
-                              text: 'Từ chối',
-                              color: AppColors.error,
-                              backgroundColor: AppColors.errorBg,
-                            );
-                          }
 
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: AppCard(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                      // List of Roommates
+                      ...state.roommates.map((roommate) {
+                        final isApproved = roommate.status == 'APPROVED';
+                        final isPending = roommate.status == 'PENDING';
+                        final badgeColor = isApproved
+                            ? const Color(0xFF16A34A)
+                            : (isPending ? const Color(0xFFD97706) : const Color(0xFFEF4444));
+                        final badgeBg = isApproved
+                            ? const Color(0xFFDCFCE7)
+                            : (isPending ? const Color(0xFFFEF3C7) : const Color(0xFFFEE2E2));
+                        final badgeIcon = isApproved
+                            ? Icons.check_circle
+                            : (isPending ? Icons.remove_circle_outline : Icons.cancel);
+                        final badgeText = isApproved ? 'Approved' : (isPending ? 'Pending' : 'Rejected');
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border, width: 1.0),
+                            boxShadow: AppColors.cardShadow,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 children: [
-                                  Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 22,
-                                        backgroundColor: roommate.status == 'APPROVED'
-                                            ? Colors.green.withValues(alpha: 0.1)
-                                            : roommate.status == 'PENDING'
-                                                ? Colors.orange.withValues(alpha: 0.1)
-                                                : Colors.red.withValues(alpha: 0.1),
-                                        child: Text(
-                                          roommate.fullName[0].toUpperCase(),
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: roommate.status == 'APPROVED'
-                                                ? Colors.green
-                                                : roommate.status == 'PENDING'
-                                                    ? Colors.orange
-                                                    : Colors.red,
+                                  CircleAvatar(
+                                    radius: 22,
+                                    backgroundColor: badgeBg,
+                                    child: Icon(Icons.person, color: badgeColor, size: 22),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          roommate.fullName,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 15,
+                                            color: AppColors.textPrimary,
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              roommate.fullName,
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              roommate.phoneNumber ?? 'Không có SĐT',
-                                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      statusBadge,
-                                    ],
-                                  ),
-                                  if (roommate.status == 'REJECTED') ...[
-                                    const Divider(height: 16, color: AppColors.divider),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.error_outline, color: AppColors.error, size: 14),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Text(
-                                            'Lý do từ chối: ${roommate.rejectionReason ?? "Yêu cầu bị mờ hoặc thông tin không trùng khớp."}',
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: AppColors.error,
-                                              fontStyle: FontStyle.italic,
-                                            ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          roommate.phoneNumber ?? 'Không có SĐT',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary,
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ],
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: badgeBg,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: badgeColor, width: 1.0),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(badgeIcon, size: 13, color: badgeColor),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          badgeText,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: badgeColor,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
+                              if (roommate.status == 'REJECTED') ...[
+                                const Divider(height: 16, color: AppColors.divider),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.error_outline, color: AppColors.error, size: 14),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'Lý do từ chối: ${roommate.rejectionReason ?? "Yêu cầu bị mờ hoặc thông tin không trùng khớp."}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.error,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 8),
+
+                      // 3. INVITE NEW ROOMMATE BUTTON (Matching Mockup)
+                      Container(
+                        width: double.infinity,
+                        height: 52,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        child: OutlinedButton.icon(
+                          onPressed: () => context.push(AppRoutes.roommateRegister),
+                          icon: const Icon(Icons.add_circle_outline, color: AppColors.textPrimary, size: 20),
+                          label: const Text(
+                            'Invite New Roommate',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
                             ),
-                          );
-                        }),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            side: const BorderSide(color: AppColors.textPrimary, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // 4. HOUSEHOLD DYNAMIC LAYOUT CARD (Matching Mockup Bottom Sketch)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFF0F172A), width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFAFAFA),
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.asset(
+                                  'assets/images/apartment-layout.webp',
+                                  height: 240,
+                                  width: double.infinity,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) => Container(
+                                    height: 180,
+                                    color: const Color(0xFFF1F5F9),
+                                    child: const Center(
+                                      child: Icon(Icons.house_siding_rounded, size: 64, color: AppColors.primary),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const Divider(height: 1, color: AppColors.border),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                              child: Text(
+                                'Sketch: Household Dynamic Layout',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(AppRoutes.roommateRegister),
-        backgroundColor: AppColors.navy,
-        icon: const Icon(Icons.person_add, color: Colors.white),
-        label: const Text('ĐĂNG KÝ THÀNH VIÊN', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
       ),
     );
   }
