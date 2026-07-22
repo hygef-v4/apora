@@ -78,17 +78,21 @@ void main() {
       await tester.pumpWidget(createWidget(dio: mockDio));
       await tester.pumpAndSettle();
 
-      // Submit with empty description (category is pre-selected)
+      // Submit without selecting category
       final submitBtn = find.text('SUBMIT TICKET');
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 
-      // Expect inline error for missing description
-      expect(find.text('Please enter an issue description.'), findsOneWidget);
+      // Expect snackbar for missing category
+      expect(find.text('Please select an issue category.'), findsOneWidget);
 
-      // Enter short description (< 10 chars)
+      // Select category 'Điện'
+      await tester.tap(find.text('Electricity'));
+      await tester.pumpAndSettle();
+
+      // Enter short description
       final descField = find.byType(TextFormField);
-      await tester.enterText(descField, 'Ngan');
+      await tester.enterText(descField, 'Ngắn');
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 
