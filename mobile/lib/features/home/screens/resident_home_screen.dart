@@ -105,7 +105,6 @@ class _HomeTab extends ConsumerWidget {
       }
     });
     final hasUnpaid = unpaidInvoices.isNotEmpty;
-    final currentInvoice = hasUnpaid ? unpaidInvoices.first : null;
 
     String formatCurrency(double amount) {
       final format = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
@@ -183,99 +182,106 @@ class _HomeTab extends ConsumerWidget {
                   ],
                 ),
               ),
-              // 1. Billing Card
-              if (hasUnpaid && currentInvoice != null)
+              // 1. Billing Cards
+              if (hasUnpaid)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1B2336), // Dark navy from image
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: const [
-                        BoxShadow(color: Color(0x2A000000), blurRadius: 12, offset: Offset(0, 6)),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Bill for Month ${currentInvoice.monthYear}',
-                              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14, fontWeight: FontWeight.w500),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFBE6A1), // Yellow badge
-                                borderRadius: BorderRadius.circular(12),
+                  child: Column(
+                    children: unpaidInvoices.map((currentInvoice) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1B2336), // Dark navy from image
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: const [
+                              BoxShadow(color: Color(0x2A000000), blurRadius: 12, offset: Offset(0, 6)),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Bill for Month ${currentInvoice.monthYear}',
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14, fontWeight: FontWeight.w500),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFBE6A1), // Yellow badge
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'Unpaid',
+                                      style: TextStyle(color: Color(0xFF8B6400), fontSize: 11, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              child: const Text(
-                                'Unpaid',
-                                style: TextStyle(color: Color(0xFF8B6400), fontSize: 11, fontWeight: FontWeight.bold),
+                              const SizedBox(height: 12),
+                              Text(
+                                formatCurrency(currentInvoice.totalAmount),
+                                style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          formatCurrency(currentInvoice.totalAmount),
-                          style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Due Date: ${DateFormat('dd/MM/yyyy').format(currentInvoice.dueDate)}',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
-                        ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (context) => const Center(
-                                  child: CircularProgressIndicator(),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Due Date: ${DateFormat('dd/MM/yyyy').format(currentInvoice.dueDate)}',
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                              ),
+                              const SizedBox(height: 20),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (context) => const Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                    try {
+                                      final paymentUrl = await ref
+                                          .read(billingProvider.notifier)
+                                          .getPaymentLink(currentInvoice.id);
+                                      if (context.mounted) {
+                                        Navigator.of(context).pop(); // Đóng loading dialog
+                                        context.push(
+                                          '/invoices/pay',
+                                          extra: {
+                                            'invoiceId': currentInvoice.id,
+                                            'paymentUrl': paymentUrl,
+                                            'totalAmount': currentInvoice.totalAmount,
+                                          },
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        Navigator.of(context).pop(); // Đóng loading dialog
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Error loading payment link: $e')),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF12A8F1), // Bright blue button
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text('PAY NOW', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                                 ),
-                              );
-                              try {
-                                final paymentUrl = await ref
-                                    .read(billingProvider.notifier)
-                                    .getPaymentLink(currentInvoice.id);
-                                if (context.mounted) {
-                                  Navigator.of(context).pop(); // Đóng loading dialog
-                                  context.push(
-                                    '/invoices/pay',
-                                    extra: {
-                                      'invoiceId': currentInvoice.id,
-                                      'paymentUrl': paymentUrl,
-                                      'totalAmount': currentInvoice.totalAmount,
-                                    },
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  Navigator.of(context).pop(); // Đóng loading dialog
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error loading payment link: $e')),
-                                  );
-                                }
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF12A8F1), // Bright blue button
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 0,
-                            ),
-                            child: const Text('PAY NOW', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      );
+                    }).toList(),
                   ),
                 )
               else
