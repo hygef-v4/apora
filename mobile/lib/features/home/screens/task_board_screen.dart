@@ -87,7 +87,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
   String _getFloorOf(String unit) {
     final digits = RegExp(r'\d+').stringMatch(unit) ?? '';
     if (digits.length >= 3) {
-      return 'Tầng ${digits[0]}';
+      return 'Floor ${digits[0]}';
     }
     return '';
   }
@@ -99,10 +99,10 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
   }
 
   String _getRoleLabel(List<String> roles) {
-    if (roles.contains('TECHNICIAN')) return 'Kỹ thuật';
-    if (roles.contains('SECURITY_GUARD')) return 'Bảo vệ';
-    if (roles.contains('JANITOR')) return 'Lao công';
-    return 'Nhân viên';
+    if (roles.contains('TECHNICIAN')) return 'Technician';
+    if (roles.contains('SECURITY_GUARD')) return 'Security Guard';
+    if (roles.contains('JANITOR')) return 'Janitor';
+    return 'Staff';
   }
 
   @override
@@ -118,7 +118,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
     final inProgressTasks = state.tasks.where((t) => t.status == 'IN_PROGRESS').toList();
     final waitingTasks = state.tasks.where((t) => t.status == 'ASSIGNED').toList();
 
-    final firstName = user?.fullName.split(' ').last ?? 'Nhân viên';
+    final firstName = user?.fullName.split(' ').last ?? 'Staff';
     final roleLabel = _getRoleLabel(user?.roles ?? []);
 
     return Column(
@@ -131,7 +131,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$roleLabel · Chung cư Apora',
+                      '$roleLabel · Apora Building',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -140,7 +140,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      'Chào $firstName 👋',
+                      'Hello $firstName 👋',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -179,21 +179,21 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
               Expanded(
                 child: GestureDetector(
                   onTap: () => ref.read(staffTabProvider.notifier).setTab(1, filter: 'ASSIGNED'),
-                  child: _buildStatBox('Đang chờ', waitingCount),
+                  child: _buildStatBox('Pending', waitingCount),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
                   onTap: () => ref.read(staffTabProvider.notifier).setTab(1, filter: 'IN_PROGRESS'),
-                  child: _buildStatBox('Đang làm', processingCount),
+                  child: _buildStatBox('In Progress', processingCount),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
                   onTap: () => ref.read(staffTabProvider.notifier).setTab(1, filter: 'COMPLETED'),
-                  child: _buildStatBox('Đã xong', completedCount),
+                  child: _buildStatBox('Completed', completedCount),
                 ),
               ),
             ],
@@ -201,7 +201,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
           actions: [
             HeaderIconButton(
               icon: Icons.logout,
-              tooltip: 'Đăng xuất',
+              tooltip: 'Logout',
               onTap: () => confirmAndLogout(context, ref),
             ),
           ],
@@ -216,7 +216,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
                   child: Text(
-                    'ĐANG LÀM',
+                    'IN PROGRESS',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -230,7 +230,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
                     padding: EdgeInsets.only(bottom: 16),
                     child: Center(
                       child: Text(
-                        'Không có công việc đang làm.',
+                        'No tasks in progress.',
                         style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 13,
@@ -244,7 +244,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
                   child: Text(
-                    'ĐANG CHỜ',
+                    'PENDING',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -258,7 +258,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
                     padding: EdgeInsets.only(bottom: 16),
                     child: Center(
                       child: Text(
-                        'Không có công việc đang chờ.',
+                        'No pending tasks.',
                         style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 13,
@@ -326,7 +326,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
               children: [
                 Expanded(
                   child: Text(
-                    'Phòng ${t.unitNumber} · ${_getFloorOf(t.unitNumber)}',
+                    'Unit ${t.unitNumber} · ${_getFloorOf(t.unitNumber)}',
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -335,7 +335,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
                   ),
                 ),
                 StatusBadge(
-                  text: isAssigned ? 'Đang chờ' : 'Đang làm',
+                  text: isAssigned ? 'Pending' : 'In Progress',
                   color: isAssigned ? AppColors.primary : AppColors.warning,
                   backgroundColor: isAssigned ? AppColors.infoBg : AppColors.warningBg,
                 ),
@@ -368,12 +368,12 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
                 const Icon(Icons.schedule, size: 13, color: AppColors.textTertiary),
                 const SizedBox(width: 4),
                 Text(
-                  'Giao ngày ${_formatDate(t.assignedAt)}',
+                  'Assigned date: ${_formatDate(t.assignedAt)}',
                   style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                 ),
                 const Spacer(),
                 Text(
-                  'Giao bởi: ${t.assignedByName}',
+                  'Assigned by: ${t.assignedByName}',
                   style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                 ),
               ],
@@ -394,7 +394,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
                         } catch (e) {
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Lỗi: $e')),
+                            SnackBar(content: Text('Error: $e')),
                           );
                         }
                       },
@@ -409,7 +409,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: const Text(
-                        'Bắt đầu',
+                        'Start',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -435,7 +435,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: const Text(
-                        'Hoàn thành',
+                        'Complete',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -465,7 +465,7 @@ class _StaffHomeTabState extends ConsumerState<StaffHomeTab> {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   child: const Text(
-                    'Hoàn thành',
+                    'Complete',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -492,8 +492,8 @@ class StaffTasksTab extends StatelessWidget {
       body: Column(
         children: [
           GradientHeader(
-            title: 'Công việc',
-            subtitle: 'Danh sách công việc được giao',
+            title: 'Tasks',
+            subtitle: 'Assigned task list',
           ),
           Expanded(child: TaskListBody()),
         ],

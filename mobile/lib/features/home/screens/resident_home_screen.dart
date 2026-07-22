@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/network/dio_client.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
 import '../../../core/widgets/app_card.dart';
@@ -12,6 +13,8 @@ import '../../../core/widgets/initials_avatar.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../../auth_profile/widgets/logout_confirm.dart';
 import '../../billing/providers/billing_provider.dart';
+import '../../communication/models/notification_model.dart';
+import '../../communication/providers/notification_list_provider.dart';
 import '../../billing/screens/invoice_list_screen.dart';
 import '../../ticket/screens/ticket_list_screen.dart';
 import '../../chat/screens/chat_screen.dart';
@@ -102,7 +105,6 @@ class _HomeTab extends ConsumerWidget {
       }
     });
     final hasUnpaid = unpaidInvoices.isNotEmpty;
-    final currentInvoice = hasUnpaid ? unpaidInvoices.first : null;
 
     String formatCurrency(double amount) {
       final format = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
@@ -180,99 +182,106 @@ class _HomeTab extends ConsumerWidget {
                   ],
                 ),
               ),
-              // 1. Billing Card
-              if (hasUnpaid && currentInvoice != null)
+              // 1. Billing Cards
+              if (hasUnpaid)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1B2336), // Dark navy from image
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: const [
-                        BoxShadow(color: Color(0x2A000000), blurRadius: 12, offset: Offset(0, 6)),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Bill for Month ${currentInvoice.monthYear}',
-                              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14, fontWeight: FontWeight.w500),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFBE6A1), // Yellow badge
-                                borderRadius: BorderRadius.circular(12),
+                  child: Column(
+                    children: unpaidInvoices.map((currentInvoice) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1B2336), // Dark navy from image
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: const [
+                              BoxShadow(color: Color(0x2A000000), blurRadius: 12, offset: Offset(0, 6)),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Bill for Month ${currentInvoice.monthYear}',
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14, fontWeight: FontWeight.w500),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFBE6A1), // Yellow badge
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'Unpaid',
+                                      style: TextStyle(color: Color(0xFF8B6400), fontSize: 11, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              child: const Text(
-                                'Unpaid',
-                                style: TextStyle(color: Color(0xFF8B6400), fontSize: 11, fontWeight: FontWeight.bold),
+                              const SizedBox(height: 12),
+                              Text(
+                                formatCurrency(currentInvoice.totalAmount),
+                                style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          formatCurrency(currentInvoice.totalAmount),
-                          style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Due Date: ${DateFormat('dd/MM/yyyy').format(currentInvoice.dueDate)}',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
-                        ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (context) => const Center(
-                                  child: CircularProgressIndicator(),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Due Date: ${DateFormat('dd/MM/yyyy').format(currentInvoice.dueDate)}',
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                              ),
+                              const SizedBox(height: 20),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (context) => const Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                    try {
+                                      final paymentUrl = await ref
+                                          .read(billingProvider.notifier)
+                                          .getPaymentLink(currentInvoice.id);
+                                      if (context.mounted) {
+                                        Navigator.of(context).pop(); // Đóng loading dialog
+                                        context.push(
+                                          '/invoices/pay',
+                                          extra: {
+                                            'invoiceId': currentInvoice.id,
+                                            'paymentUrl': paymentUrl,
+                                            'totalAmount': currentInvoice.totalAmount,
+                                          },
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        Navigator.of(context).pop(); // Đóng loading dialog
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Error loading payment link: $e')),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF12A8F1), // Bright blue button
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text('PAY NOW', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                                 ),
-                              );
-                              try {
-                                final paymentUrl = await ref
-                                    .read(billingProvider.notifier)
-                                    .getPaymentLink(currentInvoice.id);
-                                if (context.mounted) {
-                                  Navigator.of(context).pop(); // Đóng loading dialog
-                                  context.push(
-                                    '/invoices/pay',
-                                    extra: {
-                                      'invoiceId': currentInvoice.id,
-                                      'paymentUrl': paymentUrl,
-                                      'totalAmount': currentInvoice.totalAmount,
-                                    },
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  Navigator.of(context).pop(); // Đóng loading dialog
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error loading payment link: $e')),
-                                  );
-                                }
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF12A8F1), // Bright blue button
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 0,
-                            ),
-                            child: const Text('PAY NOW', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      );
+                    }).toList(),
                   ),
                 )
               else
@@ -331,15 +340,7 @@ class _HomeTab extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      const _NotificationItem(
-                        icon: Icons.water_drop, iconColor: Color(0xFF3B82F6), iconBg: Color(0xFFEFF6FF),
-                        title: 'Water maintenance shutdown', time: 'Saturday, Jun 28 from 8AM - 11AM', duration: '1 hour ago'
-                      ),
-                      const Divider(height: 1, indent: 64, endIndent: 20, color: AppColors.divider),
-                      const _NotificationItem(
-                        icon: Icons.celebration, iconColor: Color(0xFF10B981), iconBg: Color(0xFFECFDF5),
-                        title: 'July Resident Party', time: 'Ground Lobby - Jul 6th, 7 PM', duration: '2 days ago'
-                      ),
+                      const _AnnouncementPreview(),
                       const SizedBox(height: 12),
                     ],
                   ),
@@ -353,62 +354,181 @@ class _HomeTab extends ConsumerWidget {
   }
 }
 
-class _NotificationItem extends StatelessWidget {
-  const _NotificationItem({
+/// Tóm tắt 3 thông báo mới nhất của tòa nhà, lấy từ [notificationListProvider]
+/// (cùng nguồn dữ liệu với màn Community Board) — không dùng dữ liệu mẫu.
+class _AnnouncementPreview extends ConsumerWidget {
+  const _AnnouncementPreview();
+
+  static const int _previewCount = 3;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncNotifications = ref.watch(notificationListProvider);
+
+    return asyncNotifications.when(
+      data: (notifications) {
+        if (notifications.isEmpty) {
+          return const _AnnouncementMessage(
+            icon: Icons.notifications_off_outlined,
+            message: 'No announcements yet',
+          );
+        }
+
+        final preview = notifications.take(_previewCount).toList();
+        return Column(
+          children: [
+            for (int i = 0; i < preview.length; i++) ...[
+              if (i > 0)
+                const Divider(
+                  height: 1,
+                  indent: 64,
+                  endIndent: 20,
+                  color: AppColors.divider,
+                ),
+              _NotificationItem(notification: preview[i]),
+            ],
+          ],
+        );
+      },
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 28),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
+      ),
+      error: (error, _) => _AnnouncementMessage(
+        icon: Icons.cloud_off_outlined,
+        message: mapDioError(error),
+        onRetry: () => ref.invalidate(notificationListProvider),
+      ),
+    );
+  }
+}
+
+/// Dòng trạng thái (rỗng / lỗi) cho khối thông báo ở trang chủ.
+class _AnnouncementMessage extends StatelessWidget {
+  const _AnnouncementMessage({
     required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.title,
-    required this.time,
-    required this.duration,
+    required this.message,
+    this.onRetry,
   });
 
   final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String title;
-  final String time;
-  final String duration;
+  final String message;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+      child: Column(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  time,
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
+          Icon(icon, size: 32, color: AppColors.textTertiary),
+          const SizedBox(height: 10),
           Text(
-            duration,
-            style: const TextStyle(fontSize: 13, color: AppColors.textTertiary),
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
+          if (onRetry != null) ...[
+            const SizedBox(height: 8),
+            TextButton(onPressed: onRetry, child: const Text('Retry')),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _NotificationItem extends StatelessWidget {
+  const _NotificationItem({required this.notification});
+
+  final NotificationModel notification;
+
+  /// Tiêu đề backend có dạng "[CATEGORY] Nội dung" — tách ra như màn Community Board.
+  static (String category, String title) _splitCategory(String raw) {
+    if (raw.startsWith('[')) {
+      final closeBracket = raw.indexOf(']');
+      if (closeBracket != -1) {
+        return (
+          raw.substring(1, closeBracket),
+          raw.substring(closeBracket + 1).trim(),
+        );
+      }
+    }
+    return ('NOTICE', raw);
+  }
+
+  static (IconData, Color, Color) _styleFor(String category) {
+    switch (category) {
+      case 'OUTAGE':
+        return (Icons.warning_amber_rounded, AppColors.error, AppColors.errorBg);
+      case 'EVENT':
+        return (Icons.celebration, AppColors.success, AppColors.successBg);
+      default:
+        return (Icons.campaign_outlined, AppColors.info, AppColors.infoBg);
+    }
+  }
+
+  static String _timeAgo(DateTime createdAt) {
+    final diff = DateTime.now().difference(createdAt);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays == 1) return 'Yesterday';
+    return '${diff.inDays}d ago';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (category, title) = _splitCategory(notification.title);
+    final (icon, iconColor, iconBg) = _styleFor(category);
+
+    return InkWell(
+      onTap: () => context.push(
+        AppRoutes.notificationDetail,
+        extra: notification,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notification.body,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _timeAgo(notification.createdAt),
+              style: const TextStyle(fontSize: 13, color: AppColors.textTertiary),
+            ),
+          ],
+        ),
       ),
     );
   }

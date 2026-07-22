@@ -46,7 +46,7 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
             actions: [
               HeaderIconButton(
                 icon: Icons.refresh,
-                tooltip: 'Làm mới',
+                tooltip: 'Refresh',
                 onTap: () =>
                     ref.read(roommateProvider.notifier).fetchRoommates(),
               ),
@@ -308,7 +308,7 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                                         const SizedBox(height: 3),
                                         Text(
                                           roommate.phoneNumber ??
-                                              'Không có SĐT',
+                                              'No phone number',
                                           style: const TextStyle(
                                             fontSize: 12,
                                             color: AppColors.textSecondary,
@@ -367,7 +367,7 @@ class _RoommateListScreenState extends ConsumerState<RoommateListScreen> {
                                     const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
-                                        'Lý do từ chối: ${roommate.rejectionReason ?? "Yêu cầu bị mờ hoặc thông tin không trùng khớp."}',
+                                        'Rejection reason: ${roommate.rejectionReason ?? "Request blurry or details mismatch."}',
                                         style: const TextStyle(
                                           fontSize: 11,
                                           color: AppColors.error,

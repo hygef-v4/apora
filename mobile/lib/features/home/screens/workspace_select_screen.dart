@@ -23,12 +23,12 @@ class WorkspaceSelectScreen extends ConsumerWidget {
       body: Column(
         children: [
           GradientHeader(
-            title: 'Chọn không gian làm việc',
-            subtitle: 'Tài khoản của bạn có nhiều vai trò',
+            title: 'Select Workspace',
+            subtitle: 'Your account has multiple roles',
             actions: [
               HeaderIconButton(
                 icon: Icons.logout,
-                tooltip: 'Đăng xuất',
+                tooltip: 'Logout',
                 onTap: () => confirmAndLogout(context, ref),
               ),
             ],
@@ -42,8 +42,8 @@ class WorkspaceSelectScreen extends ConsumerWidget {
                     icon: Icons.dashboard,
                     iconBg: AppColors.infoBg,
                     iconColor: AppColors.primary,
-                    title: 'Quản lý tòa nhà',
-                    subtitle: 'Dashboard, căn hộ, nhân sự',
+                    title: 'Building Management',
+                    subtitle: 'Dashboard, apartments, staff',
                     onTap: () => context.go(AppRoutes.dashboard),
                   ),
                 if (user?.isResident ?? false)
@@ -51,8 +51,8 @@ class WorkspaceSelectScreen extends ConsumerWidget {
                     icon: Icons.home,
                     iconBg: AppColors.successBg,
                     iconColor: AppColors.success,
-                    title: 'Cư dân',
-                    subtitle: 'Hóa đơn, sự cố, bảng tin',
+                    title: 'Resident',
+                    subtitle: 'Bills, issues, announcements',
                     onTap: () => context.go(AppRoutes.residentHome),
                   ),
                 if (user?.isStaff ?? false)
@@ -60,8 +60,8 @@ class WorkspaceSelectScreen extends ConsumerWidget {
                     icon: Icons.handyman,
                     iconBg: AppColors.warningBg,
                     iconColor: AppColors.warning,
-                    title: 'Nhân viên vận hành',
-                    subtitle: 'Công việc được giao',
+                    title: 'Operations Staff',
+                    subtitle: 'Assigned tasks',
                     onTap: () => context.go(AppRoutes.tasks),
                   ),
               ],
