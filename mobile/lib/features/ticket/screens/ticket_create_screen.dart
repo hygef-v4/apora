@@ -135,6 +135,54 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
                   const SpecSectionHeader('Ticket Details'),
                   const SizedBox(height: 8),
                   const SpecFieldLabel('Category', required: true),
+                  // Dropdown chọn danh mục (theo wireframe) - đồng bộ với chip
+                  DropdownButtonFormField<String>(
+                    initialValue: _category,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: AppColors.surface,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                    hint: const Text(
+                      'Select category',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                    items: kTicketCategories
+                        .map(
+                          (c) => DropdownMenuItem(
+                            value: c.value,
+                            child: Row(
+                              children: [
+                                Icon(c.icon,
+                                    size: 18, color: AppColors.textSecondary),
+                                const SizedBox(width: 8),
+                                Text(c.label,
+                                    style: const TextStyle(fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: _isSubmitting
+                        ? null
+                        : (v) => setState(() => _category = v),
+                  ),
+                  const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -204,15 +252,19 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
                   const SizedBox(height: 8),
 
                   const SpecFieldLabel('Attach Photos (max 3)'),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
+                  // 3 ô cố định theo wireframe: ảnh đã chọn -> nút thêm -> ô trống
+                  Row(
                     children: [
-                      ..._images
-                          .asMap()
-                          .entries
-                          .map((e) => _thumbnail(e.key, e.value)),
-                      if (_images.length < _maxImages) _addImageButton(),
+                      for (int i = 0; i < _maxImages; i++) ...[
+                        if (i > 0) const SizedBox(width: 10),
+                        Expanded(
+                          child: i < _images.length
+                              ? _thumbnail(i, _images[i])
+                              : i == _images.length
+                                  ? _addImageButton()
+                                  : _emptyPhotoSlot(),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -292,65 +344,86 @@ class _TicketCreateScreenState extends ConsumerState<TicketCreateScreen> {
   }
 
   Widget _thumbnail(int index, Uint8List bytes) {
-    return Stack(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.memory(bytes, width: 90, height: 90, fit: BoxFit.cover),
-        ),
-        Positioned(
-          top: 2,
-          right: 2,
-          child: GestureDetector(
-            onTap: () => setState(() => _images.removeAt(index)),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.black54,
-                shape: BoxShape.circle,
+    return AspectRatio(
+      aspectRatio: 1,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.memory(bytes, fit: BoxFit.cover),
+          ),
+          Positioned(
+            top: 2,
+            right: 2,
+            child: GestureDetector(
+              onTap: () => setState(() => _images.removeAt(index)),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                padding: const EdgeInsets.all(2),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
               ),
-              padding: const EdgeInsets.all(2),
-              child: const Icon(Icons.close, color: Colors.white, size: 16),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _addImageButton() {
     return GestureDetector(
       onTap: _isPicking ? null : _pickImage,
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: _isPicking
+              ? const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add, color: AppColors.textTertiary, size: 26),
+                    SizedBox(height: 4),
+                    Text(
+                      'ADD PHOTO',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  /// Ô ảnh trống (placeholder) - hiển thị đủ 3 khung như wireframe.
+  Widget _emptyPhotoSlot() {
+    return AspectRatio(
+      aspectRatio: 1,
       child: Container(
-        width: 90,
-        height: 90,
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColors.divider,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppColors.border),
         ),
-        child: _isPicking
-            ? const Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              )
-            : const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add, color: AppColors.textTertiary, size: 26),
-                  SizedBox(height: 4),
-                  Text(
-                    'ADD PHOTO',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
+        child: const Icon(Icons.image_outlined,
+            color: AppColors.inactive, size: 22),
       ),
     );
   }
