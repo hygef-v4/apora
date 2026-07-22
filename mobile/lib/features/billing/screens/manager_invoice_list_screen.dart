@@ -13,12 +13,72 @@ class ManagerInvoiceListScreen extends ConsumerStatefulWidget {
 }
 
 class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScreen> {
-  static const List<String> _statusOptions = ['All Statuses', 'Success', 'Failed'];
+  static const List<String> _statusOptions = ['All Statuses', 'Success', 'Pending', 'Failed', 'Cancelled'];
 
   String _selectedMonth = 'All Months';
   String _selectedStatus = 'All Statuses';
   int _currentPage = 1;
   final int _pageSize = 5;
+
+  Widget _buildStatusBadge(String status) {
+    Color bg;
+    Color border;
+    Color text;
+    IconData icon;
+    String label;
+
+    switch (status.toUpperCase()) {
+      case 'SUCCESS':
+        bg = const Color(0xFFDCFCE7);
+        border = const Color(0xFF16A34A);
+        text = const Color(0xFF16A34A);
+        icon = Icons.check_circle;
+        label = 'Success';
+        break;
+      case 'PENDING':
+        bg = const Color(0xFFFEF3C7);
+        border = const Color(0xFFD97706);
+        text = const Color(0xFFD97706);
+        icon = Icons.schedule;
+        label = 'Pending';
+        break;
+      case 'CANCELLED':
+        bg = const Color(0xFFF1F5F9);
+        border = const Color(0xFF64748B);
+        text = const Color(0xFF64748B);
+        icon = Icons.cancel_outlined;
+        label = 'Cancelled';
+        break;
+      case 'FAILED':
+      default:
+        bg = const Color(0xFFFEE2E2);
+        border = const Color(0xFFEF4444);
+        text = const Color(0xFFEF4444);
+        icon = Icons.info_outline;
+        label = 'Failed';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: border, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: text),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: text),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -50,7 +110,9 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
     // Filter Payments chính xác theo Tháng & Trạng thái
     final filteredPayments = payments.where((p) {
       if (currentStatus == 'Success' && p.status != 'SUCCESS') return false;
-      if (currentStatus == 'Failed' && p.status == 'SUCCESS') return false;
+      if (currentStatus == 'Pending' && p.status != 'PENDING') return false;
+      if (currentStatus == 'Failed' && p.status != 'FAILED') return false;
+      if (currentStatus == 'Cancelled' && p.status != 'CANCELLED') return false;
 
       if (currentMonth != 'All Months') {
         final pMonthYear = p.monthYear ?? '${p.createdAt.month.toString().padLeft(2, '0')}/${p.createdAt.year}';
@@ -79,7 +141,7 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      // Filter Controls (Vertical Layout per mockup 2)
+                      // Filter Controls (Vertical Layout per mockup)
                       Column(
                         children: [
                           // 1. Select Month Filter Box
@@ -154,7 +216,7 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
                       ),
                       const SizedBox(height: 16),
 
-                      // Main Transaction Table matching mockup 2
+                      // Main Transaction Table matching mockup
                       if (filteredPayments.isEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(vertical: 40),
@@ -202,7 +264,6 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
                                 final dateStr = '${payment.createdAt.day.toString().padLeft(2, '0')}/${payment.createdAt.month.toString().padLeft(2, '0')}/${payment.createdAt.year}';
                                 final timeStr = '${payment.createdAt.hour.toString().padLeft(2, '0')}:${payment.createdAt.minute.toString().padLeft(2, '0')}';
                                 final aptIdStr = payment.unitNumber != null ? 'A-${payment.unitNumber}' : 'A-${payment.id}';
-                                final isSuccess = payment.status == 'SUCCESS';
 
                                 return Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -235,25 +296,7 @@ class _ManagerInvoiceListScreenState extends ConsumerState<ManagerInvoiceListScr
                                           // Column 3: Status Badge
                                           Expanded(
                                             flex: 3,
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: isSuccess ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
-                                                borderRadius: BorderRadius.circular(6),
-                                                border: Border.all(color: isSuccess ? const Color(0xFF16A34A) : const Color(0xFFEF4444), width: 1),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(isSuccess ? Icons.check_circle : Icons.info_outline, size: 12, color: isSuccess ? const Color(0xFF16A34A) : const Color(0xFFEF4444)),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    isSuccess ? 'Success' : 'Failed',
-                                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isSuccess ? const Color(0xFF16A34A) : const Color(0xFFEF4444)),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
+                                            child: _buildStatusBadge(payment.status),
                                           ),
                                         ],
                                       ),

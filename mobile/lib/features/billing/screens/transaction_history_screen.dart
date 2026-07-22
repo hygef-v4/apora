@@ -13,12 +13,72 @@ class TransactionHistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScreen> {
-  static const List<String> _statusOptions = ['All Statuses', 'Success', 'Failed'];
+  static const List<String> _statusOptions = ['All Statuses', 'Success', 'Pending', 'Failed', 'Cancelled'];
 
   String _selectedMonth = 'All Months';
   String _selectedStatus = 'All Statuses';
   int _currentPage = 1;
   final int _pageSize = 5;
+
+  Widget _buildStatusBadge(String status) {
+    Color bg;
+    Color border;
+    Color text;
+    IconData icon;
+    String label;
+
+    switch (status.toUpperCase()) {
+      case 'SUCCESS':
+        bg = const Color(0xFFDCFCE7);
+        border = const Color(0xFF16A34A);
+        text = const Color(0xFF16A34A);
+        icon = Icons.check_circle;
+        label = 'Success';
+        break;
+      case 'PENDING':
+        bg = const Color(0xFFFEF3C7);
+        border = const Color(0xFFD97706);
+        text = const Color(0xFFD97706);
+        icon = Icons.schedule;
+        label = 'Pending';
+        break;
+      case 'CANCELLED':
+        bg = const Color(0xFFF1F5F9);
+        border = const Color(0xFF64748B);
+        text = const Color(0xFF64748B);
+        icon = Icons.cancel_outlined;
+        label = 'Cancelled';
+        break;
+      case 'FAILED':
+      default:
+        bg = const Color(0xFFFEE2E2);
+        border = const Color(0xFFEF4444);
+        text = const Color(0xFFEF4444);
+        icon = Icons.info_outline;
+        label = 'Failed';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: border, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: text),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: text),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -50,7 +110,9 @@ class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScr
     // Filter Payments chính xác theo Tháng & Trạng thái
     final filteredPayments = payments.where((p) {
       if (currentStatus == 'Success' && p.status != 'SUCCESS') return false;
-      if (currentStatus == 'Failed' && p.status == 'SUCCESS') return false;
+      if (currentStatus == 'Pending' && p.status != 'PENDING') return false;
+      if (currentStatus == 'Failed' && p.status != 'FAILED') return false;
+      if (currentStatus == 'Cancelled' && p.status != 'CANCELLED') return false;
 
       if (currentMonth != 'All Months') {
         final pMonthYear = p.monthYear ?? '${p.createdAt.month.toString().padLeft(2, '0')}/${p.createdAt.year}';
@@ -154,55 +216,43 @@ class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScr
                       ),
                       const SizedBox(height: 16),
 
-                      // Main Transaction Table matching mockup
-                      if (filteredPayments.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 40),
-                          alignment: Alignment.center,
-                          child: const Column(
-                            children: [
-                              Icon(Icons.history, size: 48, color: AppColors.textTertiary),
-                              SizedBox(height: 8),
-                              Text(
-                                'No payment transactions found.',
-                                style: TextStyle(color: AppColors.textSecondary),
+                      // Table Card
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border, width: 1.0),
+                        ),
+                        child: Column(
+                          children: [
+                            // Table Header Row
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              decoration: const BoxDecoration(
+                                border: Border(bottom: BorderSide(color: AppColors.border, width: 1.0)),
                               ),
-                            ],
-                          ),
-                        )
-                      else
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.border, width: 1.0),
-                            boxShadow: AppColors.cardShadow,
-                          ),
-                          child: Column(
-                            children: [
-                              // Table Header
-                              Container(
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
-                                  border: Border(bottom: BorderSide(color: AppColors.border, width: 1.0)),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                child: const Row(
-                                  children: [
-                                    Expanded(flex: 3, child: Text('Apartment ID', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textPrimary))),
-                                    Expanded(flex: 4, child: Text('Payment Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textPrimary))),
-                                    Expanded(flex: 3, child: Text('Status', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textPrimary))),
-                                  ],
-                                ),
+                              child: const Row(
+                                children: [
+                                  Expanded(flex: 3, child: Text('Apartment ID', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary))),
+                                  Expanded(flex: 4, child: Text('Payment Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary))),
+                                  Expanded(flex: 3, child: Text('Status', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary))),
+                                ],
                               ),
+                            ),
 
+                            if (pagePayments.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(24),
+                                child: Center(
+                                  child: Text('No transactions found', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                                ),
+                              )
+                            else
                               // Table Body Rows
                               ...pagePayments.map((payment) {
                                 final dateStr = '${payment.createdAt.day.toString().padLeft(2, '0')}/${payment.createdAt.month.toString().padLeft(2, '0')}/${payment.createdAt.year}';
                                 final timeStr = '${payment.createdAt.hour.toString().padLeft(2, '0')}:${payment.createdAt.minute.toString().padLeft(2, '0')}';
                                 final aptIdStr = payment.unitNumber != null ? 'A-${payment.unitNumber}' : 'A-${payment.id}';
-                                final isSuccess = payment.status == 'SUCCESS';
 
                                 return Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -235,25 +285,7 @@ class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScr
                                           // Column 3: Status Badge
                                           Expanded(
                                             flex: 3,
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: isSuccess ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
-                                                borderRadius: BorderRadius.circular(6),
-                                                border: Border.all(color: isSuccess ? const Color(0xFF16A34A) : const Color(0xFFEF4444), width: 1),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(isSuccess ? Icons.check_circle : Icons.info_outline, size: 12, color: isSuccess ? const Color(0xFF16A34A) : const Color(0xFFEF4444)),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    isSuccess ? 'Success' : 'Failed',
-                                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isSuccess ? const Color(0xFF16A34A) : const Color(0xFFEF4444)),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
+                                            child: _buildStatusBadge(payment.status),
                                           ),
                                         ],
                                       ),
