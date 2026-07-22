@@ -4,17 +4,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/widgets/gradient_header.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../auth_profile/providers/auth_notifier.dart';
 import '../models/ticket.dart';
 import '../providers/ticket_provider.dart';
 import '../widgets/ticket_category.dart';
 
-/// UC18 - Danh sách sự cố (theo màn FID-18).
-/// Đã được thiết kế lại theo mockup giao diện cao cấp:
-/// - Bộ lọc trạng thái: Tất cả, Mới, Đang xử lý, Xong.
-/// - Mỗi thẻ sự cố có thanh viền trái hiển thị màu sắc theo trạng thái của sự cố.
-/// - Không hiển thị mức độ ưu tiên (Cao/Trung bình/Thấp) và số điện thoại của người báo.
+/// UC18 - Ticket Management (bố cục theo wireframe FID-18 trong SRS).
+/// Tab lọc theo trạng thái: All / Pending / Assigned / Processing.
+/// UC19: chỉ RESIDENT được tạo báo sự cố; Manager/Landlord xem & phân công.
 class TicketListScreen extends ConsumerStatefulWidget {
   const TicketListScreen({super.key, this.showBack = false});
 
@@ -25,6 +24,7 @@ class TicketListScreen extends ConsumerStatefulWidget {
 }
 
 class _TicketListScreenState extends ConsumerState<TicketListScreen> {
+  /// null = All; ngược lại PENDING / ASSIGNED / PROCESSING.
   String? _filter;
   bool _searchOpen = false;
   final _searchController = TextEditingController();
@@ -41,69 +41,14 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     super.dispose();
   }
 
-  String _getRelativeTime(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.isNegative) return 'Just now';
-    if (diff.inMinutes < 60) {
-      return '${diff.inMinutes.clamp(1, 59)} min ago';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours}h ago';
-    } else if (diff.inDays < 30) {
-      return '${diff.inDays}d ago';
-    }
-    return '${dt.day}/${dt.month}/${dt.year}';
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'PENDING':
-        return const Color(0xFFEA580C); // Cam đỏ
-      case 'ASSIGNED':
-        return const Color(0xFF0284C7); // Xanh dương
-      case 'PROCESSING':
-        return const Color(0xFFD97706); // Vàng cam
-      case 'RESOLVED':
-        return const Color(0xFF16A34A); // Xanh lá
-      case 'CANCELLED':
-        return const Color(0xFF64748B); // Xám
-      default:
-        return const Color(0xFF149EE7);
-    }
-  }
-
-  Widget _buildStatusBadge(String status) {
-    switch (status) {
-      case 'RESOLVED':
-        return StatusBadge.success('Resolved');
-      case 'ASSIGNED':
-        return const StatusBadge(
-          text: 'Assigned',
-          color: Color(0xFF0284C7),
-          backgroundColor: Color(0xFFF0F9FF),
-        );
-      case 'PROCESSING':
-        return StatusBadge.warning('Processing');
-      case 'CANCELLED':
-        return const StatusBadge(
-          text: 'Cancelled',
-          color: Color(0xFF64748B),
-          backgroundColor: Color(0xFFF1F5F9),
-        );
-      default:
-        return const StatusBadge(
-          text: 'Pending',
-          color: Color(0xFFEA580C),
-          backgroundColor: Color(0xFFFFF7ED),
-        );
-    }
-  }
+  String _formatDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   List<Ticket> _applyFilters(List<Ticket> all) {
     var list = all;
     if (_filter != null) {
       list = all.where((t) => t.status == _filter).toList();
     }
-
     final q = _searchController.text.trim().toLowerCase();
     if (q.isEmpty) return list;
     return list.where((t) {
@@ -120,88 +65,44 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     final state = ref.watch(ticketProvider);
     final notifier = ref.read(ticketProvider.notifier);
 
-    // UC19: chỉ cư dân (RESIDENT) mới được tạo báo sự cố; Manager/Landlord chỉ xem & phân công.
     final isResident = ref.watch(authNotifierProvider).user?.isResident ?? false;
 
-    // Tính toán số lượng cho từng tab bộ lọc
     final total = state.tickets.length;
-    final pendingCount = state.tickets.where((t) => t.status == 'PENDING').length;
-    final assignedCount = state.tickets.where((t) => t.status == 'ASSIGNED').length;
-    final processingCount = state.tickets.where((t) => t.status == 'PROCESSING').length;
-    final resolvedCount = state.tickets.where((t) => t.status == 'RESOLVED').length;
-    final cancelledCount = state.tickets.where((t) => t.status == 'CANCELLED').length;
-
-    final user = ref.watch(authNotifierProvider).user;
-    final isAdminOrOwner = user != null &&
-        (user.roles.contains('MANAGER') || user.roles.contains('LANDLORD'));
+    final pendingCount =
+        state.tickets.where((t) => t.status == 'PENDING').length;
+    final assignedCount =
+        state.tickets.where((t) => t.status == 'ASSIGNED').length;
+    final processingCount =
+        state.tickets.where((t) => t.status == 'PROCESSING').length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.background,
       body: Column(
         children: [
-          Container(
-            decoration: isAdminOrOwner
-                ? const BoxDecoration(gradient: AppColors.headerGradient)
-                : const BoxDecoration(gradient: AppColors.residentGradient),
-            width: double.infinity,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: Row(
-                  children: [
-                    if (widget.showBack)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: () => Navigator.of(context).maybePop(),
-                        ),
-                      ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Ticket Management',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$processingCount processing · $pendingCount new',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.white.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(_searchOpen ? Icons.search_off : Icons.search, color: Colors.white),
-                      tooltip: 'Search',
-                      onPressed: () => setState(() {
-                        _searchOpen = !_searchOpen;
-                        if (!_searchOpen) _searchController.clear();
-                      }),
-                    ),
-                    if (isResident)
-                      IconButton(
-                        icon: const Icon(Icons.add, color: Colors.white),
-                        tooltip: 'Report Issue',
-                        onPressed: () async {
-                          await context.push(AppRoutes.ticketCreate);
-                          if (mounted) ref.read(ticketProvider.notifier).fetchTickets();
-                        },
-                      ),
-                  ],
-                ),
+          GradientHeader(
+            title: 'Ticket Management',
+            showBack: widget.showBack,
+            actions: [
+              HeaderIconButton(
+                icon: _searchOpen ? Icons.search_off : Icons.search,
+                tooltip: 'Search',
+                onTap: () => setState(() {
+                  _searchOpen = !_searchOpen;
+                  if (!_searchOpen) _searchController.clear();
+                }),
               ),
-            ),
+              if (isResident)
+                HeaderIconButton(
+                  icon: Icons.add,
+                  tooltip: 'Report Issue',
+                  onTap: () async {
+                    await context.push(AppRoutes.ticketCreate);
+                    if (mounted) {
+                      ref.read(ticketProvider.notifier).fetchTickets();
+                    }
+                  },
+                ),
+            ],
           ),
           if (_searchOpen)
             Padding(
@@ -222,7 +123,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                         ),
                   isDense: true,
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: AppColors.surface,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -230,119 +131,48 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                 ),
               ),
             ),
-          // Tab bộ lọc theo mockup
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildTabItem(
-                    label: 'All ($total)',
-                    selected: _filter == null,
-                    onTap: () => setState(() => _filter = null),
-                    selectedBgColor: const Color(0xFF1E293B),
-                    selectedTextColor: Colors.white,
-                    unselectedTextColor: const Color(0xFF64748B),
-                    borderColor: const Color(0xFFCBD5E1),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildTabItem(
-                    label: 'Pending ($pendingCount)',
-                    selected: _filter == 'PENDING',
-                    onTap: () => setState(() => _filter = 'PENDING'),
-                    selectedBgColor: const Color(0xFFFFF7ED),
-                    selectedTextColor: const Color(0xFFEA580C),
-                    unselectedTextColor: const Color(0xFFEA580C),
-                    borderColor: const Color(0xFFFFEDD5),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildTabItem(
-                    label: 'Assigned ($assignedCount)',
-                    selected: _filter == 'ASSIGNED',
-                    onTap: () => setState(() => _filter = 'ASSIGNED'),
-                    selectedBgColor: const Color(0xFFF0F9FF),
-                    selectedTextColor: const Color(0xFF0284C7),
-                    unselectedTextColor: const Color(0xFF0284C7),
-                    borderColor: const Color(0xFFE0F2FE),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildTabItem(
-                    label: 'Processing ($processingCount)',
-                    selected: _filter == 'PROCESSING',
-                    onTap: () => setState(() => _filter = 'PROCESSING'),
-                    selectedBgColor: const Color(0xFFFFFBEB),
-                    selectedTextColor: const Color(0xFFD97706),
-                    unselectedTextColor: const Color(0xFFD97706),
-                    borderColor: const Color(0xFFFEF3C7),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildTabItem(
-                    label: 'Resolved ($resolvedCount)',
-                    selected: _filter == 'RESOLVED',
-                    onTap: () => setState(() => _filter = 'RESOLVED'),
-                    selectedBgColor: const Color(0xFFF0FDF4),
-                    selectedTextColor: const Color(0xFF16A34A),
-                    unselectedTextColor: const Color(0xFF16A34A),
-                    borderColor: const Color(0xFFBBF7D0),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildTabItem(
-                    label: 'Cancelled ($cancelledCount)',
-                    selected: _filter == 'CANCELLED',
-                    onTap: () => setState(() => _filter = 'CANCELLED'),
-                    selectedBgColor: const Color(0xFFF1F5F9),
-                    selectedTextColor: const Color(0xFF64748B),
-                    unselectedTextColor: const Color(0xFF64748B),
-                    borderColor: const Color(0xFFE2E8F0),
-                  ),
-                ],
-              ),
+          // Thanh tab chữ gạch chân theo wireframe
+          Container(
+            color: AppColors.surface,
+            child: Row(
+              children: [
+                _TabItem(
+                  label: 'All',
+                  selected: _filter == null,
+                  onTap: () => setState(() => _filter = null),
+                ),
+                _TabItem(
+                  label: 'Pending',
+                  badgeCount: pendingCount,
+                  selected: _filter == 'PENDING',
+                  onTap: () => setState(() => _filter = 'PENDING'),
+                ),
+                _TabItem(
+                  label: 'Assigned',
+                  badgeCount: assignedCount,
+                  selected: _filter == 'ASSIGNED',
+                  onTap: () => setState(() => _filter = 'ASSIGNED'),
+                ),
+                _TabItem(
+                  label: 'Processing',
+                  badgeCount: processingCount,
+                  selected: _filter == 'PROCESSING',
+                  onTap: () => setState(() => _filter = 'PROCESSING'),
+                ),
+              ],
             ),
           ),
-          Expanded(child: _buildBody(state, notifier)),
+          Expanded(child: _buildBody(state, notifier, total)),
         ],
       ),
     );
   }
 
-  Widget _buildTabItem({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-    required Color selectedBgColor,
-    required Color selectedTextColor,
-    required Color unselectedTextColor,
-    required Color borderColor,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected ? selectedBgColor : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? selectedBgColor : borderColor,
-            width: 1.2,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: selected ? selectedTextColor : unselectedTextColor,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBody(TicketState state, TicketNotifier notifier) {
+  Widget _buildBody(TicketState state, TicketNotifier notifier, int total) {
     if (state.isLoading && state.tickets.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
     }
     if (state.errorMessage != null && state.tickets.isEmpty) {
       return _emptyOrError(
@@ -365,7 +195,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
       color: AppColors.primary,
       onRefresh: () => notifier.fetchTickets(),
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
         itemCount: visible.length,
         itemBuilder: (_, i) => _ticketCard(visible[i]),
       ),
@@ -373,19 +203,14 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
   }
 
   Widget _ticketCard(Ticket t) {
-    final statusColor = _getStatusColor(t.status);
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
           boxShadow: AppColors.cardShadow,
-          border: Border.all(
-            color: statusColor.withValues(alpha: 0.3),
-            width: 1.2,
-          ),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -395,56 +220,74 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
             ref.read(ticketProvider.notifier).fetchTickets();
           },
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // #TK-001 + badge trạng thái
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      t.unitNumber,
+                      '#TK-${t.id.toString().padLeft(3, '0')}',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                    Text(
-                      _getRelativeTime(t.createdAt),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
+                    _statusBadge(t.status),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 10),
+                // Chip danh mục có icon
+                _CategoryChip(category: t.category),
+                const SizedBox(height: 10),
+                // Tiêu đề = mô tả
                 Text(
-                  ticketCategoryLabel(t.category),
+                  t.description,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Room ${t.unitNumber}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
                   ),
                 ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        t.description,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                const SizedBox(height: 4),
+                Text(
+                  'Reported by: ${t.reporterName}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                if (t.assigneeName != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Assigned to: ${t.assigneeName}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
                     ),
-                    const SizedBox(width: 12),
-                    _buildStatusBadge(t.status),
-                  ],
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Text(
+                  'Created: ${_formatDate(t.createdAt)}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ],
             ),
@@ -452,6 +295,25 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
         ),
       ),
     );
+  }
+
+  Widget _statusBadge(String status) {
+    switch (status) {
+      case 'RESOLVED':
+        return StatusBadge.success('RESOLVED');
+      case 'ASSIGNED':
+        return const StatusBadge(
+          text: 'ASSIGNED',
+          color: AppColors.primary,
+          backgroundColor: AppColors.infoBg,
+        );
+      case 'PROCESSING':
+        return StatusBadge.warning('PROCESSING');
+      case 'CANCELLED':
+        return StatusBadge.muted('CANCELLED');
+      default:
+        return StatusBadge.warning('PENDING');
+    }
   }
 
   Widget _emptyOrError({
@@ -470,7 +332,10 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
             child: Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
             ),
           ),
           if (onRetry != null) ...[
@@ -481,6 +346,86 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
               label: const Text('Retry'),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Tab chữ có gạch chân khi đang chọn (theo wireframe).
+class _TabItem extends StatelessWidget {
+  const _TabItem({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.badgeCount,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final int? badgeCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final showCount = badgeCount != null && badgeCount! > 0;
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: selected ? AppColors.primary : AppColors.border,
+                width: selected ? 2.5 : 1,
+              ),
+            ),
+          ),
+          child: Text(
+            showCount ? '$label ($badgeCount)' : label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+              color: selected ? AppColors.primary : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Chip danh mục nền nhạt, viền, icon + nhãn tiếng Anh (theo wireframe).
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({required this.category});
+
+  final String category;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(ticketCategoryIcon(category),
+              size: 13, color: AppColors.textSecondary),
+          const SizedBox(width: 5),
+          Text(
+            ticketCategoryLabel(category),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );

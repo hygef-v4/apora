@@ -34,8 +34,8 @@ class _ApartmentDetailScreenState extends ConsumerState<ApartmentDetailScreen> {
   }
 
   String _formatCurrency(double value) {
-    final format = NumberFormat.currency(locale: 'en_US', symbol: '\$');
-    return format.format(value).replaceAll('.00', '');
+    final format = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+    return format.format(value);
   }
 
   String _formatMonthYear(String monthYear) {
