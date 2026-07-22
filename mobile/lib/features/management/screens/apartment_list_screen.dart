@@ -99,14 +99,6 @@ class _ApartmentListScreenState extends ConsumerState<ApartmentListScreen> {
           GradientHeader(
             title: 'APARTMENT MANAGEMENT',
             showBack: widget.showBack,
-            actions: [
-              if (isManagement)
-                HeaderIconButton(
-                  icon: Icons.add,
-                  tooltip: 'Add Apartment',
-                  onTap: () => context.push('/manager/apartments/create'),
-                ),
-            ],
           ),
           Expanded(
             child: apartmentsAsync.when(
