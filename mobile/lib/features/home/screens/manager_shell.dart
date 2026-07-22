@@ -156,6 +156,23 @@ class _ManagementHubTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 10),
+              // 5b. UC08 - danh sách yêu cầu gia hạn (luồng theo SRS:
+              // danh sách đơn -> bấm đơn -> màn duyệt UC09)
+              AppCard(
+                onTap: () => context.push(AppRoutes.extensionList),
+                child: const _HubRow(
+                  icon: Icons.more_time,
+                  iconBg: Color(0xFFDBEAFE),
+                  iconColor: AppColors.primary,
+                  title: 'Extension Requests',
+                  subtitle: 'Review stay extension requests',
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
               // 6. nhân viên vận hành
               AppCard(
                 onTap: () => context.push(AppRoutes.staffList),
