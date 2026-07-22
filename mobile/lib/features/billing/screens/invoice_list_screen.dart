@@ -207,18 +207,25 @@ class _InvoiceListScreenState extends ConsumerState<InvoiceListScreen> {
                           isLoading: billingState.isLoading,
                           formatMoney: _formatMoney,
                           onPay: () async {
-                            final paymentUrl = await ref
-                                .read(billingProvider.notifier)
-                                .getPaymentLink(invoice.id);
-                            if (!context.mounted) return;
-                            context.push(
-                              '/invoices/pay',
-                              extra: {
-                                'invoiceId': invoice.id,
-                                'paymentUrl': paymentUrl,
-                                'totalAmount': invoice.totalAmount,
-                              },
-                            );
+                            try {
+                              final paymentUrl = await ref
+                                  .read(billingProvider.notifier)
+                                  .getPaymentLink(invoice.id);
+                              if (!context.mounted) return;
+                              context.push(
+                                '/invoices/pay',
+                                extra: {
+                                  'invoiceId': invoice.id,
+                                  'paymentUrl': paymentUrl,
+                                  'totalAmount': invoice.totalAmount,
+                                },
+                              );
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error loading payment link: $e')),
+                              );
+                            }
                           },
                         ),
                       );

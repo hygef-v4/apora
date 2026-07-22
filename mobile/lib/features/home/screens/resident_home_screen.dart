@@ -238,6 +238,7 @@ class _HomeTab extends ConsumerWidget {
                                 height: 48,
                                 child: ElevatedButton(
                                   onPressed: () async {
+                                    final navigator = Navigator.of(context, rootNavigator: true);
                                     showDialog(
                                       context: context,
                                       barrierDismissible: false,
@@ -245,28 +246,30 @@ class _HomeTab extends ConsumerWidget {
                                         child: CircularProgressIndicator(),
                                       ),
                                     );
+                                    String? paymentUrl;
                                     try {
-                                      final paymentUrl = await ref
+                                      paymentUrl = await ref
                                           .read(billingProvider.notifier)
                                           .getPaymentLink(currentInvoice.id);
-                                      if (context.mounted) {
-                                        Navigator.of(context).pop(); // Đóng loading dialog
-                                        context.push(
-                                          '/invoices/pay',
-                                          extra: {
-                                            'invoiceId': currentInvoice.id,
-                                            'paymentUrl': paymentUrl,
-                                            'totalAmount': currentInvoice.totalAmount,
-                                          },
-                                        );
-                                      }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        Navigator.of(context).pop(); // Đóng loading dialog
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(content: Text('Error loading payment link: $e')),
                                         );
                                       }
+                                    } finally {
+                                      navigator.pop();
+                                    }
+
+                                    if (paymentUrl != null && context.mounted) {
+                                      context.push(
+                                        '/invoices/pay',
+                                        extra: {
+                                          'invoiceId': currentInvoice.id,
+                                          'paymentUrl': paymentUrl,
+                                          'totalAmount': currentInvoice.totalAmount,
+                                        },
+                                      );
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(

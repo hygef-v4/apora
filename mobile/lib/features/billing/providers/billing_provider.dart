@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/dio_client.dart';
@@ -83,9 +84,16 @@ class BillingNotifier extends Notifier<BillingState> {
     try {
       final dio = ref.read(dioProvider);
       
-      final response = await dio.post('/payments/payos/create-url', data: {
-        'invoiceId': invoiceId,
-      });
+      final response = await dio.post(
+        '/payments/payos/create-url',
+        data: {
+          'invoiceId': invoiceId,
+        },
+        options: Options(
+          sendTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
 
       final checkoutUrl = response.data['data']['checkoutUrl'] as String;
       state = state.copyWith(isLoading: false, activePaymentUrl: checkoutUrl);

@@ -154,8 +154,12 @@ export async function initializePayment(invoiceId: number, userId: number): Prom
         paid_at: null,
       });
 
-      // 2. Gọi API PayOS sinh link thanh toán
-      const response = await payos.paymentRequests.create(paymentLinkData);
+      // 2. Gọi API PayOS sinh link thanh toán với timeout 4s
+      const createPromise = payos.paymentRequests.create(paymentLinkData);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('PayOS gateway response timeout')), 4000)
+      );
+      const response = await Promise.race([createPromise, timeoutPromise]);
       return response.checkoutUrl;
     } catch (err) {
       console.error('[PayOS] Thao tác tạo link thanh toán thất bại:', err);

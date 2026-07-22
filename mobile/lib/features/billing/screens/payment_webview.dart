@@ -146,15 +146,6 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
 
       if (!mounted) return;
 
-      if (_isRealPayment) {
-        try {
-          _webViewController.loadRequest(Uri.parse('about:blank'));
-        } catch (_) {}
-      }
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      if (!mounted) return;
-
       if (invoice != null) {
         context.pushReplacement(
           '/invoices/receipt',
@@ -185,11 +176,6 @@ class _PaymentWebViewState extends ConsumerState<PaymentWebView> with SingleTick
   @override
   void dispose() {
     _pulseController.dispose();
-    if (_isRealPayment) {
-      try {
-        _webViewController.loadRequest(Uri.parse('about:blank'));
-      } catch (_) {}
-    }
     super.dispose();
   }
 
